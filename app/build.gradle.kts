@@ -12,8 +12,23 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = providers.gradleProperty("appVersionCode").orElse("2").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.2.0").get()
+    }
+
+    signingConfigs {
+        create("distribution") {
+            val signingFile = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (!signingFile.isNullOrBlank()) {
+                storeFile = file(signingFile)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") { signingConfig = signingConfigs.getByName("distribution") }
     }
 
     buildFeatures { compose = true; buildConfig = true }

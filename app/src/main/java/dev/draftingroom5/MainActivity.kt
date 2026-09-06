@@ -46,6 +46,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.CancellationException
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -168,7 +172,6 @@ private fun DraftingRoom5App() {
             Screen.Dashboard -> Dashboard(
                 scheduledItems = todayItems,
                 completedIds = completedIds,
-                onRefresh = { /* Health Connect refresh is wired during device setup. */ },
                 onOpenCustom = { screen = Screen.CustomWorkout },
                 onLaunchExternal = { item ->
                     launchWorkoutApp(LocalContextHolder.current, item.destination)
@@ -199,7 +202,6 @@ private object LocalContextHolder { lateinit var current: Context }
 private fun Dashboard(
     scheduledItems: List<ScheduledItem>,
     completedIds: List<String>,
-    onRefresh: () -> Unit,
     onOpenCustom: () -> Unit,
     onLaunchExternal: (ScheduledItem) -> Unit,
 ) {
@@ -219,7 +221,12 @@ private fun Dashboard(
 
     val refreshHealth: () -> Unit = {
         coroutineScope.launch {
-            val sdkStatus = HealthConnectClient.getSdkStatus(context)
+            val sdkStatus = try {
+                HealthConnectClient.getSdkStatus(context)
+            } catch (error: Exception) {
+                healthUi = HealthUiState(connection = HealthConnection.ERROR, message = error.message ?: "Could not check Health Connect availability.")
+                return@launch
+            }
             when (sdkStatus) {
                 HealthConnectClient.SDK_UNAVAILABLE -> {
                     healthUi = HealthUiState(
@@ -246,6 +253,8 @@ private fun Dashboard(
                                 stats = readHealthStats(client),
                             )
                         }
+                    } catch (error: CancellationException) {
+                        throw error
                     } catch (error: Exception) {
                         healthUi = HealthUiState(
                             connection = HealthConnection.ERROR,
@@ -265,7 +274,7 @@ private fun Dashboard(
         } else {
             HealthUiState(
                 connection = HealthConnection.NEEDS_PERMISSION,
-                message = "Allow access to all five data types to load the dashboard.",
+                message = "Allow all five data types to load the dashboard. If Android no longer shows the prompt, use Health Connect permissions & settings below.",
             )
         }
         if (granted.containsAll(healthPermissions)) refreshHealth()
@@ -273,7 +282,13 @@ private fun Dashboard(
 
     val connectHealth: () -> Unit = {
         when (healthUi.connection) {
-            HealthConnection.UPDATE_REQUIRED -> openHealthConnectInstaller(context)
+            HealthConnection.UPDATE_REQUIRED -> {
+                try {
+                    openHealthConnectInstaller(context)
+                } catch (error: Exception) {
+                    healthUi = HealthUiState(connection = HealthConnection.ERROR, message = error.message ?: "Could not open the Health Connect installer.")
+                }
+            }
             HealthConnection.UNAVAILABLE -> refreshHealth()
             else -> coroutineScope.launch {
                 try {
@@ -281,14 +296,23 @@ private fun Dashboard(
                     val granted = client.permissionController.getGrantedPermissions()
                     if (granted.containsAll(healthPermissions)) refreshHealth()
                     else permissionLauncher.launch(healthPermissions)
-                } catch (_: IllegalStateException) {
-                    refreshHealth()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    healthUi = HealthUiState(connection = HealthConnection.ERROR, message = error.message ?: "Could not open Health Connect permissions.")
                 }
             }
         }
     }
 
-    LaunchedEffect(Unit) { refreshHealth() }
+    DisposableEffect(context) {
+        val lifecycle = (context as ComponentActivity).lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshHealth()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         topBar = {
@@ -298,7 +322,6 @@ private fun Dashboard(
                 actions = {
                     IconButton(onClick = {
                         refreshHealth()
-                        onRefresh()
                     }) {
                         if (healthUi.isLoading) CircularProgressIndicator(modifier = Modifier.padding(8.dp), strokeWidth = 2.dp)
                         else Icon(Icons.Default.Refresh, contentDescription = "Refresh Health Connect data")
@@ -318,6 +341,16 @@ private fun Dashboard(
                 Text("${LocalDate.now().dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }}, ${LocalDate.now()}", color = Color(0xFF64748B))
             }
             item { HealthConnectBanner(healthUi = healthUi, onConnect = connectHealth) }
+            item {
+                TextButton(onClick = {
+                    try {
+                        context.startActivity(Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS))
+                    } catch (error: Exception) {
+                        healthUi = HealthUiState(connection = HealthConnection.ERROR, message = "Could not open Health Connect settings: ${error.message}")
+                    }
+                }) { Text("Health Connect permissions & settings") }
+            }
+            item { AppUpdateCard() }
             item { BodyMetricRow(healthUi.stats) }
             item { WeeklyStatRow(healthUi.stats) }
             item {
