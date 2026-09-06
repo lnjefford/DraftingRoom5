@@ -602,7 +602,9 @@ private fun Double.format(decimals: Int) = String.format(Locale.US, "%.${decimal
 private fun Double?.orPlaceholder() = this?.format(1) ?: "--"
 
 private fun openHealthConnectInstaller(context: Context) {
-    val provider = HealthConnectClient.DEFAULT_PROVIDER_PACKAGE_NAME
+    // This is Health Connect's documented provider package. The client library's internal
+    // default-provider constant is intentionally not exposed to app code.
+    val provider = "com.google.android.apps.healthdata"
     val marketIntent = Intent(Intent.ACTION_VIEW).apply {
         setPackage("com.android.vending")
         data = Uri.parse("market://details?id=$provider&url=healthconnect%3A%2F%2Fonboarding")
