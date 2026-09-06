@@ -46,10 +46,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -212,6 +210,8 @@ private fun Dashboard(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
+    var healthRefreshJob by remember { mutableStateOf<Job?>(null) }
     LocalContextHolder.current = context
     var healthUi by remember { mutableStateOf(HealthUiState()) }
     val healthPermissions = remember {
@@ -224,8 +224,10 @@ private fun Dashboard(
         )
     }
 
-    val refreshHealth: () -> Unit = {
-        coroutineScope.launch {
+    val refreshHealth: () -> Unit = refresh@ {
+        if (!windowFocused) return@refresh
+        healthRefreshJob?.cancel()
+        healthRefreshJob = coroutineScope.launch {
             val sdkStatus = try {
                 HealthConnectClient.getSdkStatus(context)
             } catch (error: Exception) {
@@ -311,13 +313,15 @@ private fun Dashboard(
         }
     }
 
-    DisposableEffect(context) {
-        val lifecycle = (context as ComponentActivity).lifecycle
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) refreshHealth()
+    // Permission dialogs can resume the Activity before the app has foreground focus.
+    // Read once our own window is focused; cancel reads when a dialog/app takes over.
+    LaunchedEffect(windowFocused) {
+        if (windowFocused) {
+            refreshHealth()
+        } else {
+            healthRefreshJob?.cancel()
+            healthUi = healthUi.copy(isLoading = false)
         }
-        lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -646,6 +650,8 @@ private suspend fun readHealthStats(client: HealthConnectClient, granted: Set<St
         workoutsThisWeek = sessions.value?.size?.toString() ?: "--",
         milesThisWeek = distance.value?.let { (it / 1_609.344).format(1) } ?: "--",
         details = buildList {
+            val dateFormat = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a", Locale.getDefault()).withZone(ZoneId.systemDefault())
+            add("Checked through ${dateFormat.format(now)} · Android ${android.os.Build.VERSION.RELEASE} · App ${BuildConfig.VERSION_NAME}")
             add(measurementDetail("Weight", weight) { it.time })
             add(measurementDetail("Body fat", bodyFat) { it.time })
             add(measurementDetail("Lean mass", leanMass) { it.time })
@@ -663,7 +669,7 @@ private suspend fun <T : Record> readLatestMeasurement(
 ): T? {
     suspend fun queryRange(range: TimeRangeFilter): T? = latestHealthRecord(timestamp) { token ->
         val response = client.readRecords(
-            ReadRecordsRequest(type, timeRangeFilter = range, ascendingOrder = false, pageSize = 100, pageToken = token),
+            ReadRecordsRequest(type, timeRangeFilter = range, ascendingOrder = true, pageSize = 1_000, pageToken = token),
         )
         HealthRecordPage(response.records, response.pageToken)
     }

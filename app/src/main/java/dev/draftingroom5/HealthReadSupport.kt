@@ -25,18 +25,22 @@ internal suspend fun <T> readHealthValue(
 
 internal data class HealthRecordPage<T>(val records: List<T>, val nextToken: String?)
 
-/** Descending queries can return an empty page with a continuation token. */
+/** Find the newest record across all pages without depending on provider sort order. */
 internal suspend fun <T> latestHealthRecord(
     timestamp: (T) -> Instant,
     query: suspend (String?) -> HealthRecordPage<T>,
 ): T? {
     var token: String? = null
+    var latest: T? = null
     val visitedTokens = mutableSetOf<String>()
     do {
         val page = query(token)
-        page.records.maxByOrNull(timestamp)?.let { return it }
-        token = page.nextToken
+        page.records.maxByOrNull(timestamp)?.let { candidate ->
+            val previous = latest
+            if (previous == null || timestamp(candidate).isAfter(timestamp(previous))) latest = candidate
+        }
+        token = page.nextToken?.takeIf { it.isNotEmpty() }
         check(token == null || visitedTokens.add(token)) { "Health Connect repeated a page token." }
     } while (token != null)
-    return null
+    return latest
 }

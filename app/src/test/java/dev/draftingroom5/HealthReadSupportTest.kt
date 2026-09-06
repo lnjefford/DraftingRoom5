@@ -60,4 +60,31 @@ class HealthReadSupportTest {
             fail("Repeated token should fail")
         } catch (_: IllegalStateException) { }
     }
+
+    @Test fun selectsNewestAcrossMultipleNonEmptyPages() = runBlocking {
+        val older = Instant.parse("2026-09-05T12:00:00Z")
+        val newer = older.plusSeconds(3600)
+        val result = latestHealthRecord<Instant>({ it }) { token ->
+            if (token == null) HealthRecordPage(listOf(older), "next")
+            else HealthRecordPage(listOf(newer), "")
+        }
+        assertEquals(newer, result)
+    }
+
+    @Test fun emptyStringTerminatesPaginationWithoutAnotherRequest() = runBlocking {
+        var calls = 0
+        assertNull(latestHealthRecord<Instant>({ it }) {
+            calls++
+            HealthRecordPage(emptyList(), "")
+        })
+        assertEquals(1, calls)
+    }
+
+    @Test fun emptyTrailingPageDoesNotEraseEarlierMeasurement() = runBlocking {
+        val measurement = Instant.parse("2026-09-05T12:00:00Z")
+        assertEquals(measurement, latestHealthRecord<Instant>({ it }) { token ->
+            if (token == null) HealthRecordPage(listOf(measurement), "next")
+            else HealthRecordPage(emptyList(), null)
+        })
+    }
 }
