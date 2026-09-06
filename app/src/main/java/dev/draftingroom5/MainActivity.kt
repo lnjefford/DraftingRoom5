@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,9 +63,20 @@ import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.LeanBodyMassRecord
+import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.time.TimeRangeFilter
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +90,23 @@ private val Ink = Color(0xFF122032)
 private val Blue = Color(0xFF3E7BFA)
 private val Mint = Color(0xFF39D6A3)
 private val Mist = Color(0xFFF3F6FA)
+
+private enum class HealthConnection { CHECKING, NEEDS_PERMISSION, CONNECTED, UPDATE_REQUIRED, UNAVAILABLE, ERROR }
+
+private data class HealthStats(
+    val weight: String = "--",
+    val bodyFat: String = "--",
+    val muscle: String = "--",
+    val workoutsThisWeek: String = "--",
+    val milesThisWeek: String = "--",
+)
+
+private data class HealthUiState(
+    val connection: HealthConnection = HealthConnection.CHECKING,
+    val stats: HealthStats = HealthStats(),
+    val message: String? = null,
+    val isLoading: Boolean = false,
+)
 
 private data class ScheduledItem(
     val id: String,
@@ -175,18 +204,91 @@ private fun Dashboard(
     onLaunchExternal: (ScheduledItem) -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     LocalContextHolder.current = context
-    var refreshing by remember { mutableStateOf(false) }
-    val healthPermissions = setOf(
-        HealthPermission.getReadPermission(androidx.health.connect.client.records.WeightRecord::class),
-        HealthPermission.getReadPermission(androidx.health.connect.client.records.BodyFatRecord::class),
-        HealthPermission.getReadPermission(androidx.health.connect.client.records.LeanBodyMassRecord::class),
-        HealthPermission.getReadPermission(androidx.health.connect.client.records.ExerciseSessionRecord::class),
-        HealthPermission.getReadPermission(androidx.health.connect.client.records.DistanceRecord::class),
-    )
+    var healthUi by remember { mutableStateOf(HealthUiState()) }
+    val healthPermissions = remember {
+        setOf(
+            HealthPermission.getReadPermission(WeightRecord::class),
+            HealthPermission.getReadPermission(BodyFatRecord::class),
+            HealthPermission.getReadPermission(LeanBodyMassRecord::class),
+            HealthPermission.getReadPermission(ExerciseSessionRecord::class),
+            HealthPermission.getReadPermission(DistanceRecord::class),
+        )
+    }
+
+    val refreshHealth: () -> Unit = {
+        coroutineScope.launch {
+            val sdkStatus = HealthConnectClient.getSdkStatus(context)
+            when (sdkStatus) {
+                HealthConnectClient.SDK_UNAVAILABLE -> {
+                    healthUi = HealthUiState(
+                        connection = HealthConnection.UNAVAILABLE,
+                        message = "Health Connect is not available on this device.",
+                    )
+                }
+                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
+                    healthUi = HealthUiState(
+                        connection = HealthConnection.UPDATE_REQUIRED,
+                        message = "Health Connect needs to be installed or updated.",
+                    )
+                }
+                else -> {
+                    try {
+                        val client = HealthConnectClient.getOrCreate(context)
+                        val granted = client.permissionController.getGrantedPermissions()
+                        if (!granted.containsAll(healthPermissions)) {
+                            healthUi = HealthUiState(connection = HealthConnection.NEEDS_PERMISSION)
+                        } else {
+                            healthUi = healthUi.copy(connection = HealthConnection.CONNECTED, isLoading = true, message = null)
+                            healthUi = HealthUiState(
+                                connection = HealthConnection.CONNECTED,
+                                stats = readHealthStats(client),
+                            )
+                        }
+                    } catch (error: Exception) {
+                        healthUi = HealthUiState(
+                            connection = HealthConnection.ERROR,
+                            message = error.message ?: "Could not read Health Connect data.",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract(),
-    ) { _ -> onRefresh() }
+    ) { granted ->
+        healthUi = if (granted.containsAll(healthPermissions)) {
+            HealthUiState(connection = HealthConnection.CONNECTED, isLoading = true)
+        } else {
+            HealthUiState(
+                connection = HealthConnection.NEEDS_PERMISSION,
+                message = "Allow access to all five data types to load the dashboard.",
+            )
+        }
+        if (granted.containsAll(healthPermissions)) refreshHealth()
+    }
+
+    val connectHealth: () -> Unit = {
+        when (healthUi.connection) {
+            HealthConnection.UPDATE_REQUIRED -> openHealthConnectInstaller(context)
+            HealthConnection.UNAVAILABLE -> refreshHealth()
+            else -> coroutineScope.launch {
+                try {
+                    val client = HealthConnectClient.getOrCreate(context)
+                    val granted = client.permissionController.getGrantedPermissions()
+                    if (granted.containsAll(healthPermissions)) refreshHealth()
+                    else permissionLauncher.launch(healthPermissions)
+                } catch (_: IllegalStateException) {
+                    refreshHealth()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { refreshHealth() }
 
     Scaffold(
         topBar = {
@@ -195,10 +297,10 @@ private fun Dashboard(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Mist),
                 actions = {
                     IconButton(onClick = {
-                        refreshing = true
+                        refreshHealth()
                         onRefresh()
                     }) {
-                        if (refreshing) CircularProgressIndicator(modifier = Modifier.padding(8.dp), strokeWidth = 2.dp)
+                        if (healthUi.isLoading) CircularProgressIndicator(modifier = Modifier.padding(8.dp), strokeWidth = 2.dp)
                         else Icon(Icons.Default.Refresh, contentDescription = "Refresh Health Connect data")
                     }
                 },
@@ -215,9 +317,9 @@ private fun Dashboard(
                 Text("Fitness Tracker", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Text("${LocalDate.now().dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }}, ${LocalDate.now()}", color = Color(0xFF64748B))
             }
-            item { HealthConnectBanner(onConnect = { permissionLauncher.launch(healthPermissions) }) }
-            item { BodyMetricRow() }
-            item { WeeklyStatRow() }
+            item { HealthConnectBanner(healthUi = healthUi, onConnect = connectHealth) }
+            item { BodyMetricRow(healthUi.stats) }
+            item { WeeklyStatRow(healthUi.stats) }
             item {
                 Text("Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
@@ -243,32 +345,48 @@ private fun Dashboard(
 }
 
 @Composable
-private fun HealthConnectBanner(onConnect: () -> Unit) {
+private fun HealthConnectBanner(healthUi: HealthUiState, onConnect: () -> Unit) {
+    val (title, detail, button) = when (healthUi.connection) {
+        HealthConnection.CONNECTED -> Triple(
+            "Health Connect is connected",
+            if (healthUi.isLoading) "Loading your latest health data…" else "Your dashboard uses the latest permitted data.",
+            "Refresh data",
+        )
+        HealthConnection.UPDATE_REQUIRED -> Triple("Update Health Connect", healthUi.message.orEmpty(), "Open Play Store")
+        HealthConnection.UNAVAILABLE -> Triple("Health Connect unavailable", healthUi.message.orEmpty(), "Check again")
+        HealthConnection.ERROR -> Triple("Couldn't read Health Connect", healthUi.message.orEmpty(), "Try again")
+        HealthConnection.CHECKING -> Triple("Checking Health Connect", "Checking whether Health Connect is ready on this phone…", "Check again")
+        HealthConnection.NEEDS_PERMISSION -> Triple(
+            "Connect your health data",
+            healthUi.message ?: "Grant Health Connect access to load your latest body metrics, workout count, and running miles.",
+            "Connect Health Connect",
+        )
+    }
     Card(colors = CardDefaults.cardColors(containerColor = Ink), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(18.dp)) {
-            Text("Connect your health data", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(title, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
-            Text("Grant Health Connect access to load your latest body metrics, workout count, and running miles.", color = Color(0xFFCAD5E4))
+            Text(detail, color = Color(0xFFCAD5E4))
             Spacer(Modifier.height(12.dp))
-            Button(onClick = onConnect) { Text("Connect Health Connect") }
+            Button(onClick = onConnect, enabled = !healthUi.isLoading) { Text(button) }
         }
     }
 }
 
 @Composable
-private fun BodyMetricRow() {
+private fun BodyMetricRow(stats: HealthStats) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        MetricCard("Weight", "--", "lb", Modifier.weight(1f))
-        MetricCard("Body fat", "--", "%", Modifier.weight(1f))
-        MetricCard("Muscle", "--", "lb", Modifier.weight(1f))
+        MetricCard("Weight", stats.weight, "lb", Modifier.weight(1f))
+        MetricCard("Body fat", stats.bodyFat, "%", Modifier.weight(1f))
+        MetricCard("Muscle", stats.muscle, "lb", Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun WeeklyStatRow() {
+private fun WeeklyStatRow(stats: HealthStats) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        MetricCard("Workouts", "--", "this week", Modifier.weight(1f))
-        MetricCard("Running", "--", "mi this week", Modifier.weight(1f))
+        MetricCard("Workouts", stats.workoutsThisWeek, "this week", Modifier.weight(1f))
+        MetricCard("Running", stats.milesThisWeek, "mi this week", Modifier.weight(1f))
     }
 }
 
@@ -440,5 +558,60 @@ private fun launchWorkoutApp(context: Context, destination: Destination) {
         else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
     } catch (_: ActivityNotFoundException) {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
+    }
+}
+
+private suspend fun readHealthStats(client: HealthConnectClient): HealthStats {
+    val now = Instant.now()
+    val latestRange = TimeRangeFilter.before(now)
+    val startOfWeek = LocalDate.now()
+        .with(DayOfWeek.MONDAY)
+        .atStartOfDay(ZoneId.systemDefault())
+        .toInstant()
+    val thisWeek = TimeRangeFilter.between(startOfWeek, now)
+
+    val weight = client.readRecords(
+        ReadRecordsRequest(WeightRecord::class, timeRangeFilter = latestRange, ascendingOrder = false, pageSize = 1),
+    ).records.firstOrNull()
+    val bodyFat = client.readRecords(
+        ReadRecordsRequest(BodyFatRecord::class, timeRangeFilter = latestRange, ascendingOrder = false, pageSize = 1),
+    ).records.firstOrNull()
+    val leanMass = client.readRecords(
+        ReadRecordsRequest(LeanBodyMassRecord::class, timeRangeFilter = latestRange, ascendingOrder = false, pageSize = 1),
+    ).records.firstOrNull()
+    val sessions = client.readRecords(
+        ReadRecordsRequest(ExerciseSessionRecord::class, timeRangeFilter = thisWeek, pageSize = 100),
+    ).records
+    val distance = client.readRecords(
+        ReadRecordsRequest(DistanceRecord::class, timeRangeFilter = thisWeek, pageSize = 1_000),
+    ).records.sumOf { it.distance.inMeters }
+
+    return HealthStats(
+        weight = weight?.weight?.inKilograms?.toPounds().orPlaceholder(),
+        bodyFat = bodyFat?.percentage?.value.orPlaceholder(),
+        muscle = leanMass?.mass?.inKilograms?.toPounds().orPlaceholder(),
+        workoutsThisWeek = sessions.size.toString(),
+        milesThisWeek = (distance / 1_609.344).format(1),
+    )
+}
+
+private fun Double.toPounds() = this * 2.2046226218
+
+private fun Double.format(decimals: Int) = String.format(Locale.US, "%.${decimals}f", this)
+
+private fun Double?.orPlaceholder() = this?.format(1) ?: "--"
+
+private fun openHealthConnectInstaller(context: Context) {
+    val provider = HealthConnectClient.DEFAULT_PROVIDER_PACKAGE_NAME
+    val marketIntent = Intent(Intent.ACTION_VIEW).apply {
+        setPackage("com.android.vending")
+        data = Uri.parse("market://details?id=$provider&url=healthconnect%3A%2F%2Fonboarding")
+        putExtra("overlay", true)
+        putExtra("callerId", context.packageName)
+    }
+    try {
+        context.startActivity(marketIntent)
+    } catch (_: ActivityNotFoundException) {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$provider")))
     }
 }
