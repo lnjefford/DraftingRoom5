@@ -71,16 +71,20 @@ import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.LeanBodyMassRecord
+import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.reflect.KClass
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,9 +104,10 @@ private enum class HealthConnection { CHECKING, NEEDS_PERMISSION, CONNECTED, UPD
 private data class HealthStats(
     val weight: String = "--",
     val bodyFat: String = "--",
-    val muscle: String = "--",
+    val leanMass: String = "--",
     val workoutsThisWeek: String = "--",
     val milesThisWeek: String = "--",
+    val details: List<String> = emptyList(),
 )
 
 private data class HealthUiState(
@@ -244,13 +249,14 @@ private fun Dashboard(
                     try {
                         val client = HealthConnectClient.getOrCreate(context)
                         val granted = client.permissionController.getGrantedPermissions()
-                        if (!granted.containsAll(healthPermissions)) {
+                        if (granted.intersect(healthPermissions).isEmpty()) {
                             healthUi = HealthUiState(connection = HealthConnection.NEEDS_PERMISSION)
                         } else {
                             healthUi = healthUi.copy(connection = HealthConnection.CONNECTED, isLoading = true, message = null)
                             healthUi = HealthUiState(
                                 connection = HealthConnection.CONNECTED,
-                                stats = readHealthStats(client),
+                                stats = readHealthStats(client, granted),
+                                message = if (granted.containsAll(healthPermissions)) null else "Some permissions are off. Available measurements are shown below.",
                             )
                         }
                     } catch (error: CancellationException) {
@@ -269,15 +275,15 @@ private fun Dashboard(
     val permissionLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract(),
     ) { granted ->
-        healthUi = if (granted.containsAll(healthPermissions)) {
+        healthUi = if (granted.intersect(healthPermissions).isNotEmpty()) {
             HealthUiState(connection = HealthConnection.CONNECTED, isLoading = true)
         } else {
             HealthUiState(
                 connection = HealthConnection.NEEDS_PERMISSION,
-                message = "Allow all five data types to load the dashboard. If Android no longer shows the prompt, use Health Connect permissions & settings below.",
+                message = "Allow the data types you want to display. If Android no longer shows the prompt, use Health Connect permissions & settings below.",
             )
         }
-        if (granted.containsAll(healthPermissions)) refreshHealth()
+        if (granted.intersect(healthPermissions).isNotEmpty()) refreshHealth()
     }
 
     val connectHealth: () -> Unit = {
@@ -352,6 +358,17 @@ private fun Dashboard(
             }
             item { AppUpdateCard() }
             item { BodyMetricRow(healthUi.stats) }
+            if (healthUi.stats.details.isNotEmpty()) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Health data details", fontWeight = FontWeight.Bold)
+                            healthUi.stats.details.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                            Text("Health Connect normally limits older data to 30 days before this app first received permission. Lean mass includes more than muscle; Withings muscle mass may not be shared as lean mass.", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
             item { WeeklyStatRow(healthUi.stats) }
             item {
                 Text("Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -382,7 +399,7 @@ private fun HealthConnectBanner(healthUi: HealthUiState, onConnect: () -> Unit) 
     val (title, detail, button) = when (healthUi.connection) {
         HealthConnection.CONNECTED -> Triple(
             "Health Connect is connected",
-            if (healthUi.isLoading) "Loading your latest health data…" else "Your dashboard uses the latest permitted data.",
+            if (healthUi.isLoading) "Loading your latest health data…" else healthUi.message ?: "Access is granted. See each measurement's read status below.",
             "Refresh data",
         )
         HealthConnection.UPDATE_REQUIRED -> Triple("Update Health Connect", healthUi.message.orEmpty(), "Open Play Store")
@@ -411,7 +428,7 @@ private fun BodyMetricRow(stats: HealthStats) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         MetricCard("Weight", stats.weight, "lb", Modifier.weight(1f))
         MetricCard("Body fat", stats.bodyFat, "%", Modifier.weight(1f))
-        MetricCard("Muscle", stats.muscle, "lb", Modifier.weight(1f))
+        MetricCard("Lean mass", stats.leanMass, "lb", Modifier.weight(1f))
     }
 }
 
@@ -594,38 +611,74 @@ private fun launchWorkoutApp(context: Context, destination: Destination) {
     }
 }
 
-private suspend fun readHealthStats(client: HealthConnectClient): HealthStats {
+private suspend fun readHealthStats(client: HealthConnectClient, granted: Set<String>): HealthStats {
     val now = Instant.now()
-    val latestRange = TimeRangeFilter.before(now)
     val startOfWeek = LocalDate.now()
         .with(DayOfWeek.MONDAY)
         .atStartOfDay(ZoneId.systemDefault())
         .toInstant()
     val thisWeek = TimeRangeFilter.between(startOfWeek, now)
 
-    val weight = client.readRecords(
-        ReadRecordsRequest(WeightRecord::class, timeRangeFilter = latestRange, ascendingOrder = false, pageSize = 1),
-    ).records.firstOrNull()
-    val bodyFat = client.readRecords(
-        ReadRecordsRequest(BodyFatRecord::class, timeRangeFilter = latestRange, ascendingOrder = false, pageSize = 1),
-    ).records.firstOrNull()
-    val leanMass = client.readRecords(
-        ReadRecordsRequest(LeanBodyMassRecord::class, timeRangeFilter = latestRange, ascendingOrder = false, pageSize = 1),
-    ).records.firstOrNull()
-    val sessions = client.readRecords(
-        ReadRecordsRequest(ExerciseSessionRecord::class, timeRangeFilter = thisWeek, pageSize = 100),
-    ).records
-    val distance = client.readRecords(
-        ReadRecordsRequest(DistanceRecord::class, timeRangeFilter = thisWeek, pageSize = 1_000),
-    ).records.sumOf { it.distance.inMeters }
+    val weight = readHealthValue(HealthPermission.getReadPermission(WeightRecord::class) in granted) {
+        readLatestMeasurement(client, WeightRecord::class, now) { it.time }
+    }
+    val bodyFat = readHealthValue(HealthPermission.getReadPermission(BodyFatRecord::class) in granted) {
+        readLatestMeasurement(client, BodyFatRecord::class, now) { it.time }
+    }
+    val leanMass = readHealthValue(HealthPermission.getReadPermission(LeanBodyMassRecord::class) in granted) {
+        readLatestMeasurement(client, LeanBodyMassRecord::class, now) { it.time }
+    }
+    val sessions = readHealthValue(HealthPermission.getReadPermission(ExerciseSessionRecord::class) in granted) {
+        client.readRecords(
+            ReadRecordsRequest(ExerciseSessionRecord::class, timeRangeFilter = thisWeek, pageSize = 100),
+        ).records
+    }
+    val distance = readHealthValue(HealthPermission.getReadPermission(DistanceRecord::class) in granted) {
+        client.readRecords(
+            ReadRecordsRequest(DistanceRecord::class, timeRangeFilter = thisWeek, pageSize = 1_000),
+        ).records.sumOf { it.distance.inMeters }
+    }
 
     return HealthStats(
-        weight = weight?.weight?.inKilograms?.toPounds().orPlaceholder(),
-        bodyFat = bodyFat?.percentage?.value.orPlaceholder(),
-        muscle = leanMass?.mass?.inKilograms?.toPounds().orPlaceholder(),
-        workoutsThisWeek = sessions.size.toString(),
-        milesThisWeek = (distance / 1_609.344).format(1),
+        weight = weight.value?.weight?.inKilograms?.toPounds().orPlaceholder(),
+        bodyFat = bodyFat.value?.percentage?.value.orPlaceholder(),
+        leanMass = leanMass.value?.mass?.inKilograms?.toPounds().orPlaceholder(),
+        workoutsThisWeek = sessions.value?.size?.toString() ?: "--",
+        milesThisWeek = distance.value?.let { (it / 1_609.344).format(1) } ?: "--",
+        details = buildList {
+            add(measurementDetail("Weight", weight) { it.time })
+            add(measurementDetail("Body fat", bodyFat) { it.time })
+            add(measurementDetail("Lean mass", leanMass) { it.time })
+            sessions.issue?.let { add("Workouts: $it") }
+            distance.issue?.let { add("Distance: $it") }
+        },
     )
+}
+
+private suspend fun <T : Record> readLatestMeasurement(
+    client: HealthConnectClient,
+    type: KClass<T>,
+    now: Instant,
+    timestamp: (T) -> Instant,
+): T? {
+    suspend fun queryRange(range: TimeRangeFilter): T? = latestHealthRecord(timestamp) { token ->
+        val response = client.readRecords(
+            ReadRecordsRequest(type, timeRangeFilter = range, ascendingOrder = false, pageSize = 100, pageToken = token),
+        )
+        HealthRecordPage(response.records, response.pageToken)
+    }
+    // Start with a bounded recent query. If empty, retain access to older records
+    // that are still within Health Connect's permission-dependent history window.
+    return queryRange(TimeRangeFilter.between(now.minus(Duration.ofDays(30)), now))
+        ?: queryRange(TimeRangeFilter.before(now))
+}
+
+private fun <T : Record> measurementDetail(label: String, result: HealthReadResult<T>, timestamp: (T) -> Instant): String {
+    val record = result.value ?: return "$label: ${result.issue}"
+    val date = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a", Locale.getDefault())
+        .withZone(ZoneId.systemDefault()).format(timestamp(record))
+    val source = record.metadata.dataOrigin.packageName.ifBlank { "Unknown source" }
+    return "$label: $date · $source"
 }
 
 private fun Double.toPounds() = this * 2.2046226218

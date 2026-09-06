@@ -22,6 +22,10 @@ Configure GitHub Actions secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PA
 
 Earlier releases used temporary CI debug keys, so their signing key may no longer exist. If the original key cannot be recovered, a one-time uninstall and installation of the first consistently signed release is necessary. Uninstalling removes app-local data. Subsequent releases must use that same persistent key to update in place.
 
-Health Connect requires its provider on Android 13 and earlier; on Android 14 and later it is part of the system. Tap **Connect Health Connect**, grant the five read permissions, and return to the dashboard. If permissions were denied repeatedly, use **Health Connect permissions & settings**. The dashboard refreshes when the app resumes. A privacy rationale screen is registered for both Android permission flows.
+Health Connect requires its provider on Android 13 and earlier; on Android 14 and later it is part of the system. Tap **Connect Health Connect**, grant the read permissions for the measurements you want, and return to the dashboard. If permissions were denied repeatedly, use **Health Connect permissions & settings**. The dashboard refreshes when the app resumes. A privacy rationale screen is registered for both Android permission flows.
+
+Each metric loads independently: a denied permission or failed workout read does not hide weight or body fat. Body measurements query the last 30 days first, then fall back to older accessible history if empty, and follow continuation tokens on empty pages. **Health data details** shows each returned measurement's timestamp and source, or whether its read was denied, failed, or returned no records. Being connected confirms permission, not that records were returned. The third body metric is **Lean mass**, not muscle mass; Health Connect's lean-body-mass record is not equivalent to Withings muscle mass. No muscle value is inferred from weight and body fat.
+
+Run `testDebugUnitTest` for permission, failure isolation, cancellation, and measurement pagination regression tests. Phone validation is still required for actual Withings records: check their dates in Health Connect, refresh the dashboard, and compare its source/timestamp details. Also verify that denying exercise access does not hide permitted body measurements.
 
 Firebase backup remains a placeholder.

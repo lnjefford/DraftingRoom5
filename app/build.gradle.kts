@@ -12,7 +12,7 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 28
         targetSdk = 35
-        versionCode = providers.gradleProperty("appVersionCode").orElse("2").get().toInt()
+        versionCode = providers.gradleProperty("appVersionCode").orElse("2002").get().toInt()
         versionName = providers.gradleProperty("appVersionName").orElse("0.2.0").get()
     }
 
@@ -40,6 +40,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
