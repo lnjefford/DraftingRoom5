@@ -508,7 +508,7 @@ private fun HealthSettingsButton(onClick: () -> Unit, modifier: Modifier = Modif
         modifier = modifier,
         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
     ) {
-        Text("Permissions & settings")
+        Text("Permissions")
     }
 }
 
