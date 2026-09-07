@@ -6,7 +6,8 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 
 - Native Android app built with Kotlin and Jetpack Compose.
 - Health Connect permission flow for body mass, body-fat percentage, lean body mass, exercise sessions, and distance.
-- Weekly schedule and Saturday custom routine with a 10-second pre-timer countdown.
+- Persistent schedule and custom-routine management with create, edit, reorder, enable/disable, delete, and reset-to-default controls.
+- Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
 - Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
 - Polished dark-only interface with consistent system bars, cards, controls, and privacy rationale styling.
 - Opens Fitbod (`com.fitbod.fitbod`) and Just Run (`com.jupli.run`) when installed.
@@ -15,6 +16,8 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 ## Local build
 
 Open the project in Android Studio with Android SDK 36 installed, then run `assembleDebug`.
+
+Open **Settings → Manage schedules & routines** to customize the weekly dashboard plan. Schedule entries can launch Fitbod, JustRun, or a selected custom routine. Changes are stored on-device across restarts; **Reset built-in plan** restores the original weekly schedule and Forearm & Grip routine.
 
 The dashboard's **Check & install update** button downloads the latest public GitHub release and opens Android's installer. On first use, allow DraftingRoom5 to install apps when Android asks. Updates verify the package, version code, and signing certificate before installation. Network and installation errors appear in the update card.
 

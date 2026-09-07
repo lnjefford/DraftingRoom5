@@ -113,56 +113,17 @@ private data class HealthUiState(
     val needsAdditionalAccess: Boolean = false,
 )
 
-private data class ScheduledItem(
-    val id: String,
-    val title: String,
-    val subtitle: String,
-    val destination: Destination,
-)
-
-private enum class Destination { FITBOD, JUSTRUN, CUSTOM }
-
-private data class Exercise(
-    val name: String,
-    val detail: String,
-    val sets: String,
-    val target: String,
-    val isTimed: Boolean,
-)
-
-private val saturdayRoutine = listOf(
-    Exercise("Thick-Bar Dead Hangs", "Pull-up bar + thick adapter", "3 sets", "20 sec", true),
-    Exercise("Dumbbell Farmer's Walks", "Start 15-20 lb/hand", "3 sets", "30 sec", true),
-    Exercise("Great Ape Grips Pro Holds", "Pinch & crush", "4 sets", "20 sec", true),
-    Exercise("Seated Dumbbell Wrist Curls", "Palms up, start 5-10 lb", "3 sets", "12-15 reps", false),
-    Exercise("Seated Dumbbell Reverse Wrist Curls", "Palms down, start 5-10 lb", "3 sets", "12-15 reps", false),
-    Exercise("Finger Extensor Band Extensions", "", "2-3 sets", "15-20 reps", false),
-    Exercise("Wrist Rotations", "Pronation / supination", "2 sets", "10-12 / side", false),
-)
-
-private fun todaySchedule(today: DayOfWeek = LocalDate.now().dayOfWeek): List<ScheduledItem> = when (today) {
-    DayOfWeek.MONDAY -> listOf(
-        ScheduledItem("fitbod", "Fitbod workout", "Strength session", Destination.FITBOD),
-        ScheduledItem("justrun", "JustRun run", "Running session", Destination.JUSTRUN),
-    )
-    DayOfWeek.TUESDAY, DayOfWeek.THURSDAY -> listOf(
-        ScheduledItem("fitbod", "Fitbod workout", "Strength session", Destination.FITBOD),
-    )
-    DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY -> listOf(
-        ScheduledItem("justrun", "JustRun run", "Running session", Destination.JUSTRUN),
-    )
-    DayOfWeek.SATURDAY -> listOf(
-        ScheduledItem("forearm", "Forearm & Grip Conditioning", "Custom workout", Destination.CUSTOM),
-    )
-    DayOfWeek.SUNDAY -> emptyList()
-}
-
 @Composable
 private fun DraftingRoom5App() {
     var screen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
     val completedIds = remember { mutableStateListOf<String>() }
-    val todayItems = remember { todaySchedule() }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val planStore = remember { TrainingPlanStore(context) }
+    var trainingPlan by remember { mutableStateOf(planStore.load()) }
+    val updateTrainingPlan: (TrainingPlan) -> Unit = { updated ->
+        trainingPlan = updated
+        planStore.save(updated)
+    }
     val coroutineScope = rememberCoroutineScope()
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
     var healthRefreshJob by remember { mutableStateOf<Job?>(null) }
@@ -296,10 +257,10 @@ private fun DraftingRoom5App() {
         when (screen) {
             Screen.Dashboard -> Dashboard(
                 healthUi = healthUi,
-                scheduledItems = todayItems,
+                scheduledItems = trainingPlan.forDay(LocalDate.now().dayOfWeek),
                 completedIds = completedIds,
                 onOpenSettings = { screen = Screen.Settings },
-                onOpenCustom = { screen = Screen.CustomWorkout },
+                onOpenCustom = { item -> item.routineId?.let { screen = Screen.CustomWorkout(it, item.id) } },
                 onLaunchExternal = { item ->
                     launchWorkoutApp(context, item.destination)
                     if (item.id !in completedIds) completedIds += item.id
@@ -310,14 +271,37 @@ private fun DraftingRoom5App() {
                 onBack = { screen = Screen.Dashboard },
                 onConnectHealth = connectHealth,
                 onOpenHealthSettings = openHealthSettings,
+                onManagePlan = { screen = Screen.PlanManagement },
             )
-            Screen.CustomWorkout -> CustomWorkout(
+            Screen.PlanManagement -> PlanManagementScreen(
+                plan = trainingPlan,
+                onChange = updateTrainingPlan,
+                onEditRoutine = { screen = Screen.RoutineEditor(it) },
+                onBack = { screen = Screen.Settings },
+            )
+            is Screen.RoutineEditor -> {
+                val routineId = (screen as Screen.RoutineEditor).routineId
+                val routine = trainingPlan.routines.firstOrNull { it.id == routineId }
+                if (routine == null) screen = Screen.PlanManagement else RoutineEditorScreen(
+                    routine = routine,
+                    onChange = { updated ->
+                        updateTrainingPlan(trainingPlan.copy(routines = trainingPlan.routines.map { if (it.id == updated.id) updated else it }))
+                    },
+                    onBack = { screen = Screen.PlanManagement },
+                )
+            }
+            is Screen.CustomWorkout -> {
+                val workout = screen as Screen.CustomWorkout
+                val routine = trainingPlan.routines.firstOrNull { it.id == workout.routineId }
+                if (routine == null) screen = Screen.Dashboard else CustomWorkout(
+                routine = routine,
                 onBack = { screen = Screen.Dashboard },
                 onComplete = {
-                    if ("forearm" !in completedIds) completedIds += "forearm"
+                    if (workout.scheduleId !in completedIds) completedIds += workout.scheduleId
                     screen = Screen.Dashboard
                 },
             )
+            }
         }
     }
 }
@@ -325,7 +309,9 @@ private fun DraftingRoom5App() {
 private sealed interface Screen {
     data object Dashboard : Screen
     data object Settings : Screen
-    data object CustomWorkout : Screen
+    data object PlanManagement : Screen
+    data class RoutineEditor(val routineId: String) : Screen
+    data class CustomWorkout(val routineId: String, val scheduleId: String) : Screen
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -335,7 +321,7 @@ private fun Dashboard(
     scheduledItems: List<ScheduledItem>,
     completedIds: List<String>,
     onOpenSettings: () -> Unit,
-    onOpenCustom: () -> Unit,
+    onOpenCustom: (ScheduledItem) -> Unit,
     onLaunchExternal: (ScheduledItem) -> Unit,
 ) {
     Scaffold(
@@ -378,7 +364,7 @@ private fun Dashboard(
                         completed = item.id in completedIds,
                         onClick = {
                             when (item.destination) {
-                                Destination.CUSTOM -> onOpenCustom()
+                                Destination.CUSTOM -> onOpenCustom(item)
                                 else -> onLaunchExternal(item)
                             }
                         },
@@ -397,6 +383,7 @@ private fun SettingsScreen(
     onBack: () -> Unit,
     onConnectHealth: () -> Unit,
     onOpenHealthSettings: () -> Unit,
+    onManagePlan: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
     Scaffold(
@@ -419,6 +406,15 @@ private fun SettingsScreen(
         ) {
             item {
                 Spacer(Modifier.height(4.dp))
+                Text("Training", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("Customize your weekly schedule and workout routines.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            item {
+                OutlinedButton(onClick = onManagePlan, modifier = Modifier.fillMaxWidth()) {
+                    Text("Manage schedules & routines")
+                }
+            }
+            item {
                 Text("Connections", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Manage data access and app maintenance.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -582,7 +578,7 @@ private fun ScheduleCard(item: ScheduledItem, completed: Boolean, onClick: () ->
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
+private fun CustomWorkout(routine: CustomRoutine, onBack: () -> Unit, onComplete: () -> Unit) {
     BackHandler(onBack = onBack)
     var activeExercise by remember { mutableStateOf<Exercise?>(null) }
     var timerSeconds by remember { mutableIntStateOf(0) }
@@ -600,7 +596,7 @@ private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Forearm & Grip", fontWeight = FontWeight.Bold) },
+                title = { Text(routine.name, fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
             )
@@ -612,7 +608,7 @@ private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("Saturday custom workout", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("Custom workout", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("10-second readiness period before every timer. No rest timer.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (activeExercise != null) {
@@ -630,7 +626,7 @@ private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
                     )
                 }
             }
-            items(saturdayRoutine, key = { it.name }) { exercise ->
+            items(routine.exercises, key = { it.id }) { exercise ->
                 ExerciseCard(exercise, onStartTimer = {
                     activeExercise = exercise
                     graceSeconds = 10
@@ -651,10 +647,7 @@ private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
     }
 }
 
-private fun timedSeconds(exercise: Exercise) = when (exercise.name) {
-    "Dumbbell Farmer's Walks" -> 30
-    else -> 20
-}
+private fun timedSeconds(exercise: Exercise) = exercise.timerSeconds ?: 20
 
 @Composable
 private fun TimerPanel(exercise: Exercise, timerSeconds: Int, graceSeconds: Int, isRunning: Boolean, onStart: () -> Unit) {
@@ -684,11 +677,11 @@ private fun ExerciseCard(exercise: Exercise, onStartTimer: () -> Unit) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(exercise.name, fontWeight = FontWeight.Bold)
-                if (exercise.detail.isNotBlank()) Text(exercise.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (exercise.notes.isNotBlank()) Text(exercise.notes, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(4.dp))
                 Text("${exercise.sets}  •  ${exercise.target}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
             }
-            if (exercise.isTimed) {
+            if (exercise.timerSeconds != null) {
                 IconButton(onClick = onStartTimer) { Icon(Icons.Default.Timer, "Start timer", tint = AppBlue) }
             } else {
                 Icon(Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.outline)
