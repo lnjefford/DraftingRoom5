@@ -1,5 +1,6 @@
 package dev.draftingroom5
 
+import androidx.health.connect.client.permission.HealthPermission
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -8,6 +9,15 @@ import java.io.IOException
 import java.time.Instant
 
 class HealthReadSupportTest {
+    @Test fun requestsPastDataOnlyWhenTheDeviceSupportsIt() {
+        val base = setOf("weight", "body-fat")
+        assertEquals(base, requestedHealthPermissions(base, historyAvailable = false))
+        assertEquals(
+            base + HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY,
+            requestedHealthPermissions(base, historyAvailable = true),
+        )
+    }
+
     @Test fun missingPermissionDoesNotReadOrPreventOtherMetrics() = runBlocking {
         val denied = readHealthValue<Double>(false) { error("Must not read without permission") }
         val weight = readHealthValue(true) { 82.5 }

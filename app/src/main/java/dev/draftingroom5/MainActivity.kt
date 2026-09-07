@@ -63,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.BodyFatRecord
@@ -113,6 +114,7 @@ private data class HealthUiState(
     val stats: HealthStats = HealthStats(),
     val message: String? = null,
     val isLoading: Boolean = false,
+    val needsAdditionalAccess: Boolean = false,
 )
 
 private data class ScheduledItem(
@@ -250,6 +252,7 @@ private fun Dashboard(
                 else -> {
                     try {
                         val client = HealthConnectClient.getOrCreate(context)
+                        val requestedPermissions = healthPermissionsFor(client, healthPermissions)
                         val granted = client.permissionController.getGrantedPermissions()
                         if (granted.intersect(healthPermissions).isEmpty()) {
                             healthUi = HealthUiState(connection = HealthConnection.NEEDS_PERMISSION)
@@ -257,8 +260,13 @@ private fun Dashboard(
                             healthUi = healthUi.copy(connection = HealthConnection.CONNECTED, isLoading = true, message = null)
                             healthUi = HealthUiState(
                                 connection = HealthConnection.CONNECTED,
-                                stats = readHealthStats(client, granted),
-                                message = if (granted.containsAll(healthPermissions)) null else "Some permissions are off. Available measurements are shown below.",
+                                stats = readHealthStats(client, granted, requestedPermissions),
+                                message = when {
+                                    !granted.containsAll(healthPermissions) -> "Some measurement permissions are off. Available measurements are shown below."
+                                    !granted.containsAll(requestedPermissions) -> "Past-data access is off. Allow it to read Withings measurements from before the standard history window."
+                                    else -> null
+                                },
+                                needsAdditionalAccess = !granted.containsAll(requestedPermissions),
                             )
                         }
                     } catch (error: CancellationException) {
@@ -301,9 +309,10 @@ private fun Dashboard(
             else -> coroutineScope.launch {
                 try {
                     val client = HealthConnectClient.getOrCreate(context)
+                    val requestedPermissions = healthPermissionsFor(client, healthPermissions)
                     val granted = client.permissionController.getGrantedPermissions()
-                    if (granted.containsAll(healthPermissions)) refreshHealth()
-                    else permissionLauncher.launch(healthPermissions)
+                    if (granted.containsAll(requestedPermissions)) refreshHealth()
+                    else permissionLauncher.launch(requestedPermissions)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
@@ -368,7 +377,7 @@ private fun Dashboard(
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Health data details", fontWeight = FontWeight.Bold)
                             healthUi.stats.details.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-                            Text("Health Connect normally limits older data to 30 days before this app first received permission. Lean mass includes more than muscle; Withings muscle mass may not be shared as lean mass.", style = MaterialTheme.typography.bodySmall)
+                            Text("Withings exports weight as Weight, body-fat percentage as Body Fat, and lean body mass as Lean Body Mass. Withings muscle mass is not the same Health Connect record as lean mass.", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -404,7 +413,7 @@ private fun HealthConnectBanner(healthUi: HealthUiState, onConnect: () -> Unit) 
         HealthConnection.CONNECTED -> Triple(
             "Health Connect is connected",
             if (healthUi.isLoading) "Loading your latest health data…" else healthUi.message ?: "Access is granted. See each measurement's read status below.",
-            "Refresh data",
+            if (healthUi.needsAdditionalAccess) "Review access" else "Refresh data",
         )
         HealthConnection.UPDATE_REQUIRED -> Triple("Update Health Connect", healthUi.message.orEmpty(), "Open Play Store")
         HealthConnection.UNAVAILABLE -> Triple("Health Connect unavailable", healthUi.message.orEmpty(), "Check again")
@@ -615,7 +624,11 @@ private fun launchWorkoutApp(context: Context, destination: Destination) {
     }
 }
 
-private suspend fun readHealthStats(client: HealthConnectClient, granted: Set<String>): HealthStats {
+private suspend fun readHealthStats(
+    client: HealthConnectClient,
+    granted: Set<String>,
+    requestedPermissions: Set<String>,
+): HealthStats {
     val now = Instant.now()
     val startOfWeek = LocalDate.now()
         .with(DayOfWeek.MONDAY)
@@ -652,6 +665,15 @@ private suspend fun readHealthStats(client: HealthConnectClient, granted: Set<St
         details = buildList {
             val dateFormat = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a", Locale.getDefault()).withZone(ZoneId.systemDefault())
             add("Checked through ${dateFormat.format(now)} · Android ${android.os.Build.VERSION.RELEASE} · App ${BuildConfig.VERSION_NAME}")
+            if (HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY in requestedPermissions) {
+                add(
+                    if (HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY in granted) "Past data access: allowed"
+                    else "Past data access: off · only the standard history window is readable",
+                )
+            } else {
+                add("Past data access: unavailable on this Health Connect version")
+            }
+            add("Exact types queried: WeightRecord · BodyFatRecord · LeanBodyMassRecord")
             add(measurementDetail("Weight", weight) { it.time })
             add(measurementDetail("Body fat", bodyFat) { it.time })
             add(measurementDetail("Lean mass", leanMass) { it.time })
@@ -659,6 +681,13 @@ private suspend fun readHealthStats(client: HealthConnectClient, granted: Set<St
             distance.issue?.let { add("Distance: $it") }
         },
     )
+}
+
+private fun healthPermissionsFor(client: HealthConnectClient, healthPermissions: Set<String>): Set<String> {
+    val historyAvailable = client.features.getFeatureStatus(
+        HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_HISTORY,
+    ) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+    return requestedHealthPermissions(healthPermissions, historyAvailable)
 }
 
 private suspend fun <T : Record> readLatestMeasurement(

@@ -1,5 +1,6 @@
 package dev.draftingroom5
 
+import androidx.health.connect.client.permission.HealthPermission
 import kotlinx.coroutines.CancellationException
 import java.time.Instant
 
@@ -24,6 +25,9 @@ internal suspend fun <T> readHealthValue(
 }
 
 internal data class HealthRecordPage<T>(val records: List<T>, val nextToken: String?)
+
+internal fun requestedHealthPermissions(base: Set<String>, historyAvailable: Boolean): Set<String> =
+    if (historyAvailable) base + HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY else base
 
 /** Find the newest record across all pages without depending on provider sort order. */
 internal suspend fun <T> latestHealthRecord(

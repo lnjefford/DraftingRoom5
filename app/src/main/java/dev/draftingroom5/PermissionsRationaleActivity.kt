@@ -18,7 +18,7 @@ class PermissionsRationaleActivity : ComponentActivity() {
             MaterialTheme {
                 Column(Modifier.padding(24.dp)) {
                     Text("Health data privacy", style = MaterialTheme.typography.headlineMedium)
-                    Text("DraftingRoom5 reads weight, body fat, lean body mass, exercise sessions, and distance to display your fitness dashboard. Health data is read on this device and is not uploaded or shared. You can revoke access at any time in Health Connect settings.")
+                    Text("DraftingRoom5 reads weight, body fat, lean body mass, exercise sessions, and distance to display your fitness dashboard. Past-data access lets it find older Withings measurements outside Health Connect's standard history window. Health data is read on this device and is not uploaded or shared. You can revoke access at any time in Health Connect settings.")
                     Button(onClick = { finish() }) { Text("Done") }
                 }
             }
