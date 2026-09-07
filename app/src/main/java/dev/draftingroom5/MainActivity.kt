@@ -5,12 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,16 +24,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -166,55 +164,10 @@ private fun DraftingRoom5App() {
     var screen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
     val completedIds = remember { mutableStateListOf<String>() }
     val todayItems = remember { todaySchedule() }
-
-    MaterialTheme(
-        colorScheme = MaterialTheme.colorScheme.copy(
-            primary = Blue, secondary = Mint, background = Mist, surface = Color.White,
-            onBackground = Ink, onSurface = Ink,
-        ),
-    ) {
-        when (screen) {
-            Screen.Dashboard -> Dashboard(
-                scheduledItems = todayItems,
-                completedIds = completedIds,
-                onOpenCustom = { screen = Screen.CustomWorkout },
-                onLaunchExternal = { item ->
-                    launchWorkoutApp(LocalContextHolder.current, item.destination)
-                    if (item.id !in completedIds) completedIds += item.id
-                },
-            )
-            Screen.CustomWorkout -> CustomWorkout(
-                onBack = { screen = Screen.Dashboard },
-                onComplete = {
-                    if ("forearm" !in completedIds) completedIds += "forearm"
-                    screen = Screen.Dashboard
-                },
-            )
-        }
-    }
-}
-
-private sealed interface Screen {
-    data object Dashboard : Screen
-    data object CustomWorkout : Screen
-}
-
-/** Lightweight holder keeps the app-launch helper independent of composable screen details. */
-private object LocalContextHolder { lateinit var current: Context }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun Dashboard(
-    scheduledItems: List<ScheduledItem>,
-    completedIds: List<String>,
-    onOpenCustom: () -> Unit,
-    onLaunchExternal: (ScheduledItem) -> Unit,
-) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
     var healthRefreshJob by remember { mutableStateOf<Job?>(null) }
-    LocalContextHolder.current = context
     var healthUi by remember { mutableStateOf(HealthUiState()) }
     val healthPermissions = remember {
         setOf(
@@ -290,7 +243,7 @@ private fun Dashboard(
         } else {
             HealthUiState(
                 connection = HealthConnection.NEEDS_PERMISSION,
-                message = "Allow the data types you want to display. If Android no longer shows the prompt, use Health Connect permissions & settings below.",
+                message = "Allow the data types you want to display. If Android no longer shows the prompt, use Health Connect permissions & settings.",
             )
         }
         if (granted.intersect(healthPermissions).isNotEmpty()) refreshHealth()
@@ -322,6 +275,14 @@ private fun Dashboard(
         }
     }
 
+    val openHealthSettings: () -> Unit = {
+        try {
+            context.startActivity(Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS))
+        } catch (error: Exception) {
+            healthUi = HealthUiState(connection = HealthConnection.ERROR, message = "Could not open Health Connect settings: ${error.message}")
+        }
+    }
+
     // Permission dialogs can resume the Activity before the app has foreground focus.
     // Read once our own window is focused; cancel reads when a dialog/app takes over.
     LaunchedEffect(windowFocused) {
@@ -333,17 +294,65 @@ private fun Dashboard(
         }
     }
 
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme.copy(
+            primary = Blue, secondary = Mint, background = Mist, surface = Color.White,
+            onBackground = Ink, onSurface = Ink,
+        ),
+    ) {
+        when (screen) {
+            Screen.Dashboard -> Dashboard(
+                healthUi = healthUi,
+                scheduledItems = todayItems,
+                completedIds = completedIds,
+                onOpenSettings = { screen = Screen.Settings },
+                onOpenCustom = { screen = Screen.CustomWorkout },
+                onLaunchExternal = { item ->
+                    launchWorkoutApp(context, item.destination)
+                    if (item.id !in completedIds) completedIds += item.id
+                },
+            )
+            Screen.Settings -> SettingsScreen(
+                healthUi = healthUi,
+                onBack = { screen = Screen.Dashboard },
+                onConnectHealth = connectHealth,
+                onOpenHealthSettings = openHealthSettings,
+            )
+            Screen.CustomWorkout -> CustomWorkout(
+                onBack = { screen = Screen.Dashboard },
+                onComplete = {
+                    if ("forearm" !in completedIds) completedIds += "forearm"
+                    screen = Screen.Dashboard
+                },
+            )
+        }
+    }
+}
+
+private sealed interface Screen {
+    data object Dashboard : Screen
+    data object Settings : Screen
+    data object CustomWorkout : Screen
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Dashboard(
+    healthUi: HealthUiState,
+    scheduledItems: List<ScheduledItem>,
+    completedIds: List<String>,
+    onOpenSettings: () -> Unit,
+    onOpenCustom: () -> Unit,
+    onLaunchExternal: (ScheduledItem) -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("DraftingRoom5", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Mist),
                 actions = {
-                    IconButton(onClick = {
-                        refreshHealth()
-                    }) {
-                        if (healthUi.isLoading) CircularProgressIndicator(modifier = Modifier.padding(8.dp), strokeWidth = 2.dp)
-                        else Icon(Icons.Default.Refresh, contentDescription = "Refresh Health Connect data")
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
             )
@@ -359,17 +368,6 @@ private fun Dashboard(
                 Text("Fitness Tracker", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Text("${LocalDate.now().dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }}, ${LocalDate.now()}", color = Color(0xFF64748B))
             }
-            item { HealthConnectBanner(healthUi = healthUi, onConnect = connectHealth) }
-            item {
-                TextButton(onClick = {
-                    try {
-                        context.startActivity(Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS))
-                    } catch (error: Exception) {
-                        healthUi = HealthUiState(connection = HealthConnection.ERROR, message = "Could not open Health Connect settings: ${error.message}")
-                    }
-                }) { Text("Health Connect permissions & settings") }
-            }
-            item { AppUpdateCard() }
             item { BodyMetricRow(healthUi.stats) }
             if (healthUi.stats.details.isNotEmpty()) {
                 item {
@@ -407,12 +405,59 @@ private fun Dashboard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsScreen(
+    healthUi: HealthUiState,
+    onBack: () -> Unit,
+    onConnectHealth: () -> Unit,
+    onOpenHealthSettings: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Mist),
+            )
+        },
+        containerColor = Mist,
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                Spacer(Modifier.height(4.dp))
+                Text("Connections", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("Manage data access and app maintenance.", color = Color(0xFF64748B))
+            }
+            item { HealthConnectBanner(healthUi = healthUi, onConnect = onConnectHealth) }
+            item {
+                OutlinedButton(onClick = onOpenHealthSettings, modifier = Modifier.fillMaxWidth()) {
+                    Text("Health Connect permissions & settings")
+                }
+            }
+            item {
+                Text("App updates", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+            item { AppUpdateCard() }
+            item { Spacer(Modifier.height(18.dp)) }
+        }
+    }
+}
+
 @Composable
 private fun HealthConnectBanner(healthUi: HealthUiState, onConnect: () -> Unit) {
     val (title, detail, button) = when (healthUi.connection) {
         HealthConnection.CONNECTED -> Triple(
             "Health Connect is connected",
-            if (healthUi.isLoading) "Loading your latest health data…" else healthUi.message ?: "Access is granted. See each measurement's read status below.",
+            if (healthUi.isLoading) "Loading your latest health data…" else healthUi.message ?: "Access is granted and dashboard measurements can sync.",
             if (healthUi.needsAdditionalAccess) "Review access" else "Refresh data",
         )
         HealthConnection.UPDATE_REQUIRED -> Triple("Update Health Connect", healthUi.message.orEmpty(), "Open Play Store")
@@ -501,6 +546,7 @@ private fun ScheduleCard(item: ScheduledItem, completed: Boolean, onClick: () ->
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
+    BackHandler(onBack = onBack)
     var activeExercise by remember { mutableStateOf<Exercise?>(null) }
     var timerSeconds by remember { mutableIntStateOf(0) }
     var graceSeconds by remember { mutableIntStateOf(0) }
@@ -518,7 +564,7 @@ private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Forearm & Grip", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Mist),
             )
         },
