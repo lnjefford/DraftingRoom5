@@ -79,7 +79,6 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.reflect.KClass
 
@@ -104,7 +103,6 @@ private data class HealthStats(
     val leanMass: String = "--",
     val workoutsThisWeek: String = "--",
     val milesThisWeek: String = "--",
-    val details: List<String> = emptyList(),
 )
 
 private data class HealthUiState(
@@ -213,7 +211,7 @@ private fun DraftingRoom5App() {
                             healthUi = healthUi.copy(connection = HealthConnection.CONNECTED, isLoading = true, message = null)
                             healthUi = HealthUiState(
                                 connection = HealthConnection.CONNECTED,
-                                stats = readHealthStats(client, granted, requestedPermissions),
+                                stats = readHealthStats(client, granted),
                                 message = when {
                                     !granted.containsAll(healthPermissions) -> "Some measurement permissions are off. Available measurements are shown below."
                                     !granted.containsAll(requestedPermissions) -> "Past-data access is off. Allow it to read Withings measurements from before the standard history window."
@@ -369,17 +367,6 @@ private fun Dashboard(
                 Text("${LocalDate.now().dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }}, ${LocalDate.now()}", color = Color(0xFF64748B))
             }
             item { BodyMetricRow(healthUi.stats) }
-            if (healthUi.stats.details.isNotEmpty()) {
-                item {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Health data details", fontWeight = FontWeight.Bold)
-                            healthUi.stats.details.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-                            Text("Withings exports weight as Weight, body-fat percentage as Body Fat, and lean body mass as Lean Body Mass. Withings muscle mass is not the same Health Connect record as lean mass.", style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                }
-            }
             item { WeeklyStatRow(healthUi.stats) }
             item {
                 Text("Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -673,7 +660,6 @@ private fun launchWorkoutApp(context: Context, destination: Destination) {
 private suspend fun readHealthStats(
     client: HealthConnectClient,
     granted: Set<String>,
-    requestedPermissions: Set<String>,
 ): HealthStats {
     val now = Instant.now()
     val startOfWeek = LocalDate.now()
@@ -708,24 +694,6 @@ private suspend fun readHealthStats(
         leanMass = leanMass.value?.mass?.inKilograms?.toPounds().orPlaceholder(),
         workoutsThisWeek = sessions.value?.size?.toString() ?: "--",
         milesThisWeek = distance.value?.let { (it / 1_609.344).format(1) } ?: "--",
-        details = buildList {
-            val dateFormat = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a", Locale.getDefault()).withZone(ZoneId.systemDefault())
-            add("Checked through ${dateFormat.format(now)} · Android ${android.os.Build.VERSION.RELEASE} · App ${BuildConfig.VERSION_NAME}")
-            if (HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY in requestedPermissions) {
-                add(
-                    if (HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY in granted) "Past data access: allowed"
-                    else "Past data access: off · only the standard history window is readable",
-                )
-            } else {
-                add("Past data access: unavailable on this Health Connect version")
-            }
-            add("Exact types queried: WeightRecord · BodyFatRecord · LeanBodyMassRecord")
-            add(measurementDetail("Weight", weight) { it.time })
-            add(measurementDetail("Body fat", bodyFat) { it.time })
-            add(measurementDetail("Lean mass", leanMass) { it.time })
-            sessions.issue?.let { add("Workouts: $it") }
-            distance.issue?.let { add("Distance: $it") }
-        },
     )
 }
 
@@ -752,14 +720,6 @@ private suspend fun <T : Record> readLatestMeasurement(
     // that are still within Health Connect's permission-dependent history window.
     return queryRange(TimeRangeFilter.between(now.minus(Duration.ofDays(30)), now))
         ?: queryRange(TimeRangeFilter.before(now))
-}
-
-private fun <T : Record> measurementDetail(label: String, result: HealthReadResult<T>, timestamp: (T) -> Instant): String {
-    val record = result.value ?: return "$label: ${result.issue}"
-    val date = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a", Locale.getDefault())
-        .withZone(ZoneId.systemDefault()).format(timestamp(record))
-    val source = record.metadata.dataOrigin.packageName.ifBlank { "Unknown source" }
-    return "$label: $date · $source"
 }
 
 private fun Double.toPounds() = this * 2.2046226218
