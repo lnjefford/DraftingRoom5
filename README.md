@@ -8,6 +8,7 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 - Health Connect permission flow for body mass, body-fat percentage, lean body mass, exercise sessions, and distance.
 - Weekly schedule and Saturday custom routine with a 10-second pre-timer countdown.
 - Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
+- Polished dark-only interface with consistent system bars, cards, controls, and privacy rationale styling.
 - Opens Fitbod (`com.fitbod.fitbod`) and Just Run (`com.jupli.run`) when installed.
 - MIT licensed.
 

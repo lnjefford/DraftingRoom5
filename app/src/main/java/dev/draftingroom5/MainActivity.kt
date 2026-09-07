@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -58,7 +59,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -87,15 +87,13 @@ import kotlin.reflect.KClass
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         setContent { DraftingRoom5App() }
     }
 }
-
-private val Ink = Color(0xFF122032)
-private val Blue = Color(0xFF3E7BFA)
-private val Mint = Color(0xFF39D6A3)
-private val Mist = Color(0xFFF3F6FA)
 
 private enum class HealthConnection { CHECKING, NEEDS_PERMISSION, CONNECTED, UPDATE_REQUIRED, UNAVAILABLE, ERROR }
 
@@ -294,12 +292,7 @@ private fun DraftingRoom5App() {
         }
     }
 
-    MaterialTheme(
-        colorScheme = MaterialTheme.colorScheme.copy(
-            primary = Blue, secondary = Mint, background = Mist, surface = Color.White,
-            onBackground = Ink, onSurface = Ink,
-        ),
-    ) {
+    DraftingRoom5Theme {
         when (screen) {
             Screen.Dashboard -> Dashboard(
                 healthUi = healthUi,
@@ -349,7 +342,7 @@ private fun Dashboard(
         topBar = {
             TopAppBar(
                 title = { Text("DraftingRoom5", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Mist),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
                 actions = {
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
@@ -357,7 +350,7 @@ private fun Dashboard(
                 },
             )
         },
-        containerColor = Mist,
+        containerColor = AppBackground,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
@@ -366,7 +359,10 @@ private fun Dashboard(
             item {
                 Spacer(Modifier.height(4.dp))
                 Text("Fitness Tracker", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text("${LocalDate.now().dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }}, ${LocalDate.now()}", color = Color(0xFF64748B))
+                Text(
+                    "${LocalDate.now().dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }}, ${LocalDate.now()}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             item { BodyMetricRow(healthUi.stats) }
             item { WeeklyStatRow(healthUi.stats) }
@@ -412,10 +408,10 @@ private fun SettingsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Mist),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
             )
         },
-        containerColor = Mist,
+        containerColor = AppBackground,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
@@ -424,7 +420,7 @@ private fun SettingsScreen(
             item {
                 Spacer(Modifier.height(4.dp))
                 Text("Connections", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Manage data access and app maintenance.", color = Color(0xFF64748B))
+                Text("Manage data access and app maintenance.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item {
                 HealthConnectBanner(
@@ -464,11 +460,14 @@ private fun HealthConnectBanner(
             "Connect Health Connect",
         )
     }
-    Card(colors = CardDefaults.cardColors(containerColor = Ink), modifier = Modifier.fillMaxWidth()) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Column(Modifier.padding(18.dp)) {
-            Text(title, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
-            Text(detail, color = Color(0xFFCAD5E4))
+            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 if (maxWidth >= 360.dp) {
@@ -506,7 +505,7 @@ private fun HealthSettingsButton(onClick: () -> Unit, modifier: Modifier = Modif
     OutlinedButton(
         onClick = onClick,
         modifier = modifier,
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
     ) {
         Text("Permissions")
     }
@@ -531,14 +530,14 @@ private fun WeeklyStatRow(stats: HealthStats) {
 
 @Composable
 private fun MetricCard(label: String, value: String, unit: String, modifier: Modifier) {
-    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    Card(modifier = modifier) {
         Column(Modifier.padding(14.dp)) {
-            Text(label, color = Color(0xFF64748B), style = MaterialTheme.typography.labelMedium)
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(3.dp))
-                Text(unit, color = Color(0xFF64748B), style = MaterialTheme.typography.labelSmall)
+                Text(unit, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -546,29 +545,36 @@ private fun MetricCard(label: String, value: String, unit: String, modifier: Mod
 
 @Composable
 private fun EmptySchedule() {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    Card(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Check, null, tint = Mint)
+            Icon(Icons.Default.Check, null, tint = AppMint)
             Spacer(Modifier.height(8.dp))
             Text("Nothing Scheduled Today", fontWeight = FontWeight.Bold)
-            Text("Recovery is part of the plan.", color = Color(0xFF64748B))
+            Text("Recovery is part of the plan.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
 private fun ScheduleCard(item: ScheduledItem, completed: Boolean, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = if (completed) Color(0xFFE8FBF4) else Color.White)) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = if (completed) AppCompleted else AppSurface),
+    ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.background(if (completed) Mint else Blue, MaterialTheme.shapes.medium).padding(10.dp)) {
-                Icon(if (completed) Icons.Default.Check else Icons.Default.FitnessCenter, null, tint = Color.White)
+            Box(Modifier.background(if (completed) AppMint else AppBlue, MaterialTheme.shapes.medium).padding(10.dp)) {
+                Icon(
+                    if (completed) Icons.Default.Check else Icons.Default.FitnessCenter,
+                    null,
+                    tint = if (completed) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
+                )
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(item.title, fontWeight = FontWeight.Bold)
-                Text(if (completed) "Completed" else item.subtitle, color = Color(0xFF64748B), style = MaterialTheme.typography.bodySmall)
+                Text(if (completed) "Completed" else item.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            if (completed) Text("Done", color = Color(0xFF12835D), fontWeight = FontWeight.Bold)
+            if (completed) Text("Done", color = AppMint, fontWeight = FontWeight.Bold)
             else Button(onClick = onClick) { Text(if (item.destination == Destination.CUSTOM) "Open" else "Start") }
         }
     }
@@ -596,10 +602,10 @@ private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
             TopAppBar(
                 title = { Text("Forearm & Grip", fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Mist),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
             )
         },
-        containerColor = Mist,
+        containerColor = AppBackground,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
@@ -607,7 +613,7 @@ private fun CustomWorkout(onBack: () -> Unit, onComplete: () -> Unit) {
         ) {
             item {
                 Text("Saturday custom workout", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("10-second readiness period before every timer. No rest timer.", color = Color(0xFF64748B))
+                Text("10-second readiness period before every timer. No rest timer.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (activeExercise != null) {
                 item {
@@ -652,34 +658,40 @@ private fun timedSeconds(exercise: Exercise) = when (exercise.name) {
 
 @Composable
 private fun TimerPanel(exercise: Exercise, timerSeconds: Int, graceSeconds: Int, isRunning: Boolean, onStart: () -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ink)) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
         Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(exercise.name, color = Color.White, fontWeight = FontWeight.Bold)
+            Text(exercise.name, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             val label = if (graceSeconds > 0) "Get ready: $graceSeconds" else "%02d:%02d".format(timerSeconds / 60, timerSeconds % 60)
-            Text(label, color = Mint, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+            Text(label, color = AppMint, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Text(if (isRunning) if (graceSeconds > 0) "Timer starts after the countdown" else "Timer running" else "Timer finished", color = Color(0xFFCAD5E4))
+            Text(
+                if (isRunning) if (graceSeconds > 0) "Timer starts after the countdown" else "Timer running" else "Timer finished",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(10.dp))
-            TextButton(onClick = onStart) { Text("Restart", color = Color.White) }
+            TextButton(onClick = onStart) { Text("Restart") }
         }
     }
 }
 
 @Composable
 private fun ExerciseCard(exercise: Exercise, onStartTimer: () -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    Card(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(exercise.name, fontWeight = FontWeight.Bold)
-                if (exercise.detail.isNotBlank()) Text(exercise.detail, color = Color(0xFF64748B), style = MaterialTheme.typography.bodySmall)
+                if (exercise.detail.isNotBlank()) Text(exercise.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(4.dp))
-                Text("${exercise.sets}  •  ${exercise.target}", color = Blue, style = MaterialTheme.typography.labelLarge)
+                Text("${exercise.sets}  •  ${exercise.target}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
             }
             if (exercise.isTimed) {
-                IconButton(onClick = onStartTimer) { Icon(Icons.Default.Timer, "Start timer", tint = Blue) }
+                IconButton(onClick = onStartTimer) { Icon(Icons.Default.Timer, "Start timer", tint = AppBlue) }
             } else {
-                Icon(Icons.Default.PlayArrow, null, tint = Color(0xFF94A3B8))
+                Icon(Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.outline)
             }
         }
     }
