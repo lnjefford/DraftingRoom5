@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -424,11 +426,12 @@ private fun SettingsScreen(
                 Text("Connections", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Manage data access and app maintenance.", color = Color(0xFF64748B))
             }
-            item { HealthConnectBanner(healthUi = healthUi, onConnect = onConnectHealth) }
             item {
-                OutlinedButton(onClick = onOpenHealthSettings, modifier = Modifier.fillMaxWidth()) {
-                    Text("Health Connect permissions & settings")
-                }
+                HealthConnectBanner(
+                    healthUi = healthUi,
+                    onConnect = onConnectHealth,
+                    onOpenSettings = onOpenHealthSettings,
+                )
             }
             item {
                 Text("App updates", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -440,7 +443,11 @@ private fun SettingsScreen(
 }
 
 @Composable
-private fun HealthConnectBanner(healthUi: HealthUiState, onConnect: () -> Unit) {
+private fun HealthConnectBanner(
+    healthUi: HealthUiState,
+    onConnect: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     val (title, detail, button) = when (healthUi.connection) {
         HealthConnection.CONNECTED -> Triple(
             "Health Connect is connected",
@@ -463,8 +470,45 @@ private fun HealthConnectBanner(healthUi: HealthUiState, onConnect: () -> Unit) 
             Spacer(Modifier.height(4.dp))
             Text(detail, color = Color(0xFFCAD5E4))
             Spacer(Modifier.height(12.dp))
-            Button(onClick = onConnect, enabled = !healthUi.isLoading) { Text(button) }
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                if (maxWidth >= 360.dp) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Button(
+                            onClick = onConnect,
+                            enabled = !healthUi.isLoading,
+                            modifier = Modifier.weight(1f),
+                        ) { Text(button) }
+                        HealthSettingsButton(onClick = onOpenSettings, modifier = Modifier.weight(1f))
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Button(
+                            onClick = onConnect,
+                            enabled = !healthUi.isLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(button) }
+                        HealthSettingsButton(onClick = onOpenSettings, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun HealthSettingsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+    ) {
+        Text("Permissions & settings")
     }
 }
 
