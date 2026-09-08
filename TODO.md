@@ -14,8 +14,6 @@ Work through these when advanced model access is available again.
 
     Leave this item open for the next feature to define.
 
-13. **Rename the "running" card to "Distance"**
-
 14. **Add automatic update checks with a tappable indicator**
 
     Keep checking for app updates automatically at regular intervals. Show a small, unobtrusive indicator when an update is ready. Tapping the indicator should start the update process.

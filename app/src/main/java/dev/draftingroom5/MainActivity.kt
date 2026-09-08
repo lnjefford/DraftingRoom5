@@ -507,7 +507,7 @@ private fun Dashboard(
                     DashboardCard.BODY_FAT -> item { MetricCard("Body fat", healthUi.stats.bodyFat, "%", AppMint, Modifier.fillMaxWidth(), healthUi.stats.bodyFatTrend, healthDateRange) }
                     DashboardCard.LEAN_MASS -> item { MetricCard("Lean mass", healthUi.stats.leanMass, "lb", AppGold, Modifier.fillMaxWidth(), healthUi.stats.leanMassTrend, healthDateRange) }
                     DashboardCard.WORKOUTS -> item { MetricCard("Workouts", healthUi.stats.workouts, "last ${healthDateRange.displayLabel}", AppMint, Modifier.fillMaxWidth()) }
-                    DashboardCard.DISTANCE -> item { MetricCard("Running", healthUi.stats.distance, "mi · ${healthDateRange.displayLabel}", AppBlue, Modifier.fillMaxWidth()) }
+                    DashboardCard.DISTANCE -> item { MetricCard("Distance", healthUi.stats.distance, "mi · ${healthDateRange.displayLabel}", AppBlue, Modifier.fillMaxWidth()) }
                     DashboardCard.TODAY -> {
                         item { SectionHeader("Today", "Your scheduled training, ready when you are.") }
                         if (scheduledItems.isEmpty()) {
@@ -935,7 +935,7 @@ private fun BodyMetricRow(stats: HealthStats) {
 private fun WeeklyStatRow(stats: HealthStats) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         MetricCard("Workouts", stats.workouts, "selected range", AppMint, Modifier.weight(1f))
-        MetricCard("Running", stats.distance, "mi selected range", AppBlue, Modifier.weight(1f))
+        MetricCard("Distance", stats.distance, "mi selected range", AppBlue, Modifier.weight(1f))
     }
 }
 

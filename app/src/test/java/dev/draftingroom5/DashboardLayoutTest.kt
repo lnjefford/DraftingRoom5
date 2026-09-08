@@ -11,6 +11,7 @@ class DashboardLayoutTest {
         val layout = DashboardLayout()
 
         assertEquals(DashboardCard.entries, layout.visibleCards)
+        assertEquals("Distance", DashboardCard.DISTANCE.title)
     }
 
     @Test
