@@ -14,6 +14,7 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 - Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
 - Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
 - Branded dark-only interface with layered navy depth, blue/mint accents, elevated cards, strong visual hierarchy, and consistent system-bar styling.
+- A short first-launch brand-title animation that never blocks navigation and follows Android's reduced-motion setting.
 - Opens Fitbod (`com.fitbod.fitbod`) and Just Run (`com.jupli.run`) when installed.
 - MIT licensed.
 

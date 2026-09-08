@@ -10,10 +10,6 @@ Work through these when advanced model access is available again.
 
    Add a Settings screen and move the Health Connect status card, app update card, and Health Connect permissions/settings link off the dashboard. Keep the dashboard focused on measurements and today’s schedule while preserving those actions in Settings.
 
-9. **Add animated in-app branding**
-
-    Use restrained animation during launch or workout completion. Respect reduced-motion settings and keep animations short so they do not delay navigation.
-
 10. **Add haptic feedback**
 
     Provide haptic feedback for timer start, countdown completion, set completion, and workout completion. Make it configurable and avoid repeating vibrations excessively.
@@ -35,3 +31,9 @@ Work through these when advanced model access is available again.
 15. **Modernize schedule creation**
 
     Make creating a schedule feel modern, visual, and easy to understand. Redesign day selection with clearer, more polished controls, make repeating options easier to choose and preview, and show scheduled items clearly on a timeline so the result is obvious before saving.
+
+16. **Rework the fitness tracker workspace UI**
+
+    Show small metric cards on the dashboard, each with an up, down, or neutral trend arrow based on the last month's trend. Give each card a drilldown with a line graph that draws actual lines between the data points. Place the day, week, month, and other duration selections in this detail view. Make the duration selector visually distinct from the graph card, without putting the selector in another card.
+
+    Visually separate the dashboard's high-level stats from the schedule, taking inspiration from Epic's MyChart: a distinct header containing the stats, followed by a separate section containing schedule cards. Fix the activity header text color so it is readable against the dark background instead of black.

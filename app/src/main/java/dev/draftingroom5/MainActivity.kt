@@ -60,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -128,6 +129,7 @@ private data class HealthUiState(
 @Composable
 private fun DraftingRoom5App() {
     var screen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
+    var launchBrandAnimationPending by rememberSaveable { mutableStateOf(true) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val backupManager = remember { AutomaticBackupManager(context) }
     remember { backupManager.restoreAfterAndroidTransferIfNeeded() }
@@ -312,6 +314,8 @@ private fun DraftingRoom5App() {
                 healthDateRange = healthDateRange,
                 scheduledItems = trainingPlan.forDay(LocalDate.now().dayOfWeek),
                 completedIds = completedIds,
+                animateBrandOnEntry = launchBrandAnimationPending,
+                onBrandAnimationFinished = { launchBrandAnimationPending = false },
                 onOpenSettings = { screen = Screen.Settings },
                 onHealthDateRangeChange = { updated ->
                     healthDateRange = updated
@@ -420,6 +424,8 @@ private fun Dashboard(
     healthDateRange: HealthDateRange,
     scheduledItems: List<ScheduledItem>,
     completedIds: List<String>,
+    animateBrandOnEntry: Boolean,
+    onBrandAnimationFinished: () -> Unit,
     onOpenSettings: () -> Unit,
     onHealthDateRangeChange: (HealthDateRange) -> Unit,
     onOpenCustom: (ScheduledItem) -> Unit,
@@ -429,7 +435,13 @@ private fun Dashboard(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
             TopAppBar(
-                title = { BrandTitle("DraftingRoom5") },
+                title = {
+                    BrandTitle(
+                        title = "DraftingRoom5",
+                        animateOnEntry = animateBrandOnEntry,
+                        onAnimationFinished = onBrandAnimationFinished,
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
                     IconButton(onClick = onOpenSettings) {
