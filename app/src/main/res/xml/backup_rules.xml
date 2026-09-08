@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Only the training plan is eligible for encrypted Google cloud backup. -->
+    <include
+        domain="sharedpref"
+        path="training-plan.xml"
+        requireFlags="clientSideEncryption" />
+</full-backup-content>

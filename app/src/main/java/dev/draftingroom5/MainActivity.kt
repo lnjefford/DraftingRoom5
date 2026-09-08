@@ -123,10 +123,13 @@ private fun DraftingRoom5App() {
     val completedIds = remember { mutableStateListOf<String>() }
     val context = androidx.compose.ui.platform.LocalContext.current
     val planStore = remember { TrainingPlanStore(context) }
+    val backupStatusStore = remember { BackupStatusStore(context) }
     var trainingPlan by remember { mutableStateOf(planStore.load()) }
+    var lastBackupLocalChange by remember { mutableStateOf(backupStatusStore.lastLocalChange()) }
     val updateTrainingPlan: (TrainingPlan) -> Unit = { updated ->
         trainingPlan = updated
         planStore.save(updated)
+        lastBackupLocalChange = backupStatusStore.recordLocalChange()
     }
     val coroutineScope = rememberCoroutineScope()
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
@@ -276,6 +279,10 @@ private fun DraftingRoom5App() {
                 onConnectHealth = connectHealth,
                 onOpenHealthSettings = openHealthSettings,
                 onManagePlan = { screen = Screen.PlanManagement },
+                backupDetail = backupStatusDetail(lastBackupLocalChange),
+                onOpenBackupSettings = {
+                    runCatching { openAndroidBackupSettings(context) }
+                },
             )
             Screen.PlanManagement -> PlanManagementScreen(
                 plan = trainingPlan,
@@ -388,6 +395,8 @@ private fun SettingsScreen(
     onConnectHealth: () -> Unit,
     onOpenHealthSettings: () -> Unit,
     onManagePlan: () -> Unit,
+    backupDetail: String,
+    onOpenBackupSettings: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
     Scaffold(
@@ -429,10 +438,38 @@ private fun SettingsScreen(
                 )
             }
             item {
+                SectionHeader("Google backup", "Protect your plan when moving or replacing phones.")
+            }
+            item { GoogleBackupCard(backupDetail, onOpenBackupSettings) }
+            item {
                 SectionHeader("App updates", "Stay current with the latest DraftingRoom5 build.")
             }
             item { AppUpdateCard() }
             item { Spacer(Modifier.height(18.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun GoogleBackupCard(detail: String, onOpenBackupSettings: () -> Unit) {
+    BrandedCard(
+        containerColor = Color(0xFF142A45),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Text("Encrypted Android backup", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Backed up: schedules and custom routines. Not backed up: Health Connect measurements, permissions, downloads, or update files.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = onOpenBackupSettings, modifier = Modifier.fillMaxWidth()) {
+                Text("Open Android backup settings")
+            }
         }
     }
 }
