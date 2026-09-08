@@ -29,6 +29,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -43,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -123,8 +126,10 @@ private fun DraftingRoom5App() {
     val completedIds = remember { mutableStateListOf<String>() }
     val context = androidx.compose.ui.platform.LocalContext.current
     val planStore = remember { TrainingPlanStore(context) }
+    val dashboardLayoutStore = remember { DashboardLayoutStore(context) }
     val backupStatusStore = remember { BackupStatusStore(context) }
     var trainingPlan by remember { mutableStateOf(planStore.load()) }
+    var dashboardLayout by remember { mutableStateOf(dashboardLayoutStore.load()) }
     var lastBackupLocalChange by remember { mutableStateOf(backupStatusStore.lastLocalChange()) }
     val updateTrainingPlan: (TrainingPlan) -> Unit = { updated ->
         trainingPlan = updated
@@ -264,6 +269,7 @@ private fun DraftingRoom5App() {
         when (screen) {
             Screen.Dashboard -> Dashboard(
                 healthUi = healthUi,
+                dashboardLayout = dashboardLayout,
                 scheduledItems = trainingPlan.forDay(LocalDate.now().dayOfWeek),
                 completedIds = completedIds,
                 onOpenSettings = { screen = Screen.Settings },
@@ -279,6 +285,7 @@ private fun DraftingRoom5App() {
                 onConnectHealth = connectHealth,
                 onOpenHealthSettings = openHealthSettings,
                 onManagePlan = { screen = Screen.PlanManagement },
+                onCustomizeDashboard = { screen = Screen.DashboardCustomization },
                 backupDetail = backupStatusDetail(lastBackupLocalChange),
                 onOpenBackupSettings = {
                     runCatching { openAndroidBackupSettings(context) }
@@ -288,6 +295,15 @@ private fun DraftingRoom5App() {
                 plan = trainingPlan,
                 onChange = updateTrainingPlan,
                 onEditRoutine = { screen = Screen.RoutineEditor(it) },
+                onBack = { screen = Screen.Settings },
+            )
+            Screen.DashboardCustomization -> DashboardCustomizationScreen(
+                layout = dashboardLayout,
+                onChange = { updated ->
+                    dashboardLayout = updated
+                    dashboardLayoutStore.save(updated)
+                    lastBackupLocalChange = backupStatusStore.recordLocalChange()
+                },
                 onBack = { screen = Screen.Settings },
             )
             is Screen.RoutineEditor -> {
@@ -321,6 +337,7 @@ private sealed interface Screen {
     data object Dashboard : Screen
     data object Settings : Screen
     data object PlanManagement : Screen
+    data object DashboardCustomization : Screen
     data class RoutineEditor(val routineId: String) : Screen
     data class CustomWorkout(val routineId: String, val scheduleId: String) : Screen
 }
@@ -329,6 +346,7 @@ private sealed interface Screen {
 @Composable
 private fun Dashboard(
     healthUi: HealthUiState,
+    dashboardLayout: DashboardLayout,
     scheduledItems: List<ScheduledItem>,
     completedIds: List<String>,
     onOpenSettings: () -> Unit,
@@ -363,23 +381,32 @@ private fun Dashboard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            item { BodyMetricRow(healthUi.stats) }
-            item { WeeklyStatRow(healthUi.stats) }
-            item { SectionHeader("Today", "Your scheduled training, ready when you are.") }
-            if (scheduledItems.isEmpty()) {
-                item { EmptySchedule() }
-            } else {
-                items(scheduledItems, key = { it.id }) { item ->
-                    ScheduleCard(
-                        item = item,
-                        completed = item.id in completedIds,
-                        onClick = {
-                            when (item.destination) {
-                                Destination.CUSTOM -> onOpenCustom(item)
-                                else -> onLaunchExternal(item)
+            dashboardLayout.visibleCards.forEach { card ->
+                when (card) {
+                    DashboardCard.WEIGHT -> item { MetricCard("Weight", healthUi.stats.weight, "lb", AppBlue, Modifier.fillMaxWidth()) }
+                    DashboardCard.BODY_FAT -> item { MetricCard("Body fat", healthUi.stats.bodyFat, "%", AppMint, Modifier.fillMaxWidth()) }
+                    DashboardCard.LEAN_MASS -> item { MetricCard("Lean mass", healthUi.stats.leanMass, "lb", AppGold, Modifier.fillMaxWidth()) }
+                    DashboardCard.WORKOUTS -> item { MetricCard("Workouts", healthUi.stats.workoutsThisWeek, "this week", AppMint, Modifier.fillMaxWidth()) }
+                    DashboardCard.DISTANCE -> item { MetricCard("Running", healthUi.stats.milesThisWeek, "mi this week", AppBlue, Modifier.fillMaxWidth()) }
+                    DashboardCard.TODAY -> {
+                        item { SectionHeader("Today", "Your scheduled training, ready when you are.") }
+                        if (scheduledItems.isEmpty()) {
+                            item { EmptySchedule() }
+                        } else {
+                            items(scheduledItems, key = { "schedule-${it.id}" }) { item ->
+                                ScheduleCard(
+                                    item = item,
+                                    completed = item.id in completedIds,
+                                    onClick = {
+                                        when (item.destination) {
+                                            Destination.CUSTOM -> onOpenCustom(item)
+                                            else -> onLaunchExternal(item)
+                                        }
+                                    },
+                                )
                             }
-                        },
-                    )
+                        }
+                    }
                 }
             }
             item { Spacer(Modifier.height(18.dp)) }
@@ -395,6 +422,7 @@ private fun SettingsScreen(
     onConnectHealth: () -> Unit,
     onOpenHealthSettings: () -> Unit,
     onManagePlan: () -> Unit,
+    onCustomizeDashboard: () -> Unit,
     backupDetail: String,
     onOpenBackupSettings: () -> Unit,
 ) {
@@ -423,8 +451,13 @@ private fun SettingsScreen(
                 SectionHeader("Training", "Customize your weekly schedule and workout routines.", "Build your plan")
             }
             item {
-                OutlinedButton(onClick = onManagePlan, modifier = Modifier.fillMaxWidth()) {
-                    Text("Manage schedules & routines")
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = onCustomizeDashboard, modifier = Modifier.fillMaxWidth()) {
+                        Text("Customize dashboard")
+                    }
+                    OutlinedButton(onClick = onManagePlan, modifier = Modifier.fillMaxWidth()) {
+                        Text("Manage schedules & routines")
+                    }
                 }
             }
             item {
@@ -450,6 +483,81 @@ private fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DashboardCustomizationScreen(
+    layout: DashboardLayout,
+    onChange: (DashboardLayout) -> Unit,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    Scaffold(
+        modifier = Modifier.fillMaxSize().appScreenBackground(),
+        topBar = {
+            TopAppBar(
+                title = { Text("Customize dashboard", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+            )
+        },
+        containerColor = Color.Transparent,
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Spacer(Modifier.height(8.dp))
+                SectionHeader("Dashboard cards", "Choose what appears and arrange cards in the order you want.", "Make it yours")
+            }
+            items(layout.cards, key = { it.card.name }) { preference ->
+                val index = layout.cards.indexOf(preference)
+                BrandedCard(Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(preference.card.title, fontWeight = FontWeight.Bold)
+                            Text(
+                                preference.card.description,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        IconButton(
+                            onClick = { onChange(layout.moveCard(index, -1)) },
+                            enabled = index > 0,
+                        ) {
+                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move ${preference.card.title} up")
+                        }
+                        IconButton(
+                            onClick = { onChange(layout.moveCard(index, 1)) },
+                            enabled = index < layout.cards.lastIndex,
+                        ) {
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move ${preference.card.title} down")
+                        }
+                        Switch(
+                            checked = preference.visible,
+                            onCheckedChange = { onChange(layout.setVisible(preference.card, it)) },
+                        )
+                    }
+                }
+            }
+            item {
+                OutlinedButton(onClick = { onChange(DashboardLayout()) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Reset dashboard")
+                }
+            }
+            item { Spacer(Modifier.height(18.dp)) }
+        }
+    }
+}
+
 @Composable
 private fun GoogleBackupCard(detail: String, onOpenBackupSettings: () -> Unit) {
     BrandedCard(
@@ -462,7 +570,7 @@ private fun GoogleBackupCard(detail: String, onOpenBackupSettings: () -> Unit) {
             Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Backed up: schedules and custom routines. Not backed up: Health Connect measurements, permissions, downloads, or update files.",
+                "Backed up: schedules, custom routines, and dashboard layout. Not backed up: Health Connect measurements, permissions, downloads, or update files.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
