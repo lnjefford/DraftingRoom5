@@ -14,10 +14,6 @@ Work through these when advanced model access is available again.
 
     Leave this item open for the next feature to define.
 
-15. **Modernize schedule creation**
-
-    Make creating a schedule feel modern, visual, and easy to understand. Redesign day selection with clearer, more polished controls, make repeating options easier to choose and preview, and show scheduled items clearly on a timeline so the result is obvious before saving.
-
 16. **Rework the fitness tracker workspace UI**
 
     Show small metric cards on the dashboard, each with an up, down, or neutral trend arrow based on the last month's trend. Give each card a drilldown with a line graph that draws actual lines between the data points. Place the day, week, month, and other duration selections in this detail view. Make the duration selector visually distinct from the graph card, without putting the selector in another card.

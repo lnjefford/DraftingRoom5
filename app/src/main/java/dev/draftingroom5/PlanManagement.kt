@@ -2,6 +2,7 @@ package dev.draftingroom5
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,9 +10,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -25,6 +31,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,8 +49,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -87,38 +97,22 @@ internal fun PlanManagementScreen(
                     Text("Add scheduled item")
                 }
             }
-            itemsIndexed(plan.schedule, key = { _, item -> item.id }) { index, item ->
-                BrandedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(item.title, fontWeight = FontWeight.Bold)
-                                Text(
-                                    "${item.day.displayName()} · ${item.destination.displayName()}${if (item.subtitle.isBlank()) "" else " · ${item.subtitle}"}",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                            Switch(
-                                checked = item.enabled,
-                                onCheckedChange = { enabled ->
-                                    onChange(plan.copy(schedule = plan.schedule.toMutableList().apply { set(index, item.copy(enabled = enabled)) }))
-                                },
-                            )
-                        }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            IconButton(onClick = { onChange(plan.copy(schedule = move(plan.schedule, index, -1))) }, enabled = index > 0) {
-                                Icon(Icons.Default.KeyboardArrowUp, "Move up")
-                            }
-                            IconButton(onClick = { onChange(plan.copy(schedule = move(plan.schedule, index, 1))) }, enabled = index < plan.schedule.lastIndex) {
-                                Icon(Icons.Default.KeyboardArrowDown, "Move down")
-                            }
-                            IconButton(onClick = { editingSchedule = item }) { Icon(Icons.Default.Edit, "Edit") }
-                            IconButton(onClick = { onChange(plan.copy(schedule = plan.schedule.filterNot { it.id == item.id })) }) {
-                                Icon(Icons.Default.Delete, "Delete")
-                            }
-                        }
-                    }
+            DayOfWeek.entries.forEach { day ->
+                item(key = "timeline-${day.name}") {
+                    WeeklyTimelineDay(
+                        day = day,
+                        items = plan.schedule.filter { day in it.activeDays() },
+                        onEnabledChange = { item, enabled ->
+                            onChange(plan.copy(schedule = plan.schedule.map { if (it.id == item.id) item.copy(enabled = enabled) else it }))
+                        },
+                        onMove = { item, offset ->
+                            onChange(plan.copy(schedule = move(plan.schedule, plan.schedule.indexOfFirst { it.id == item.id }, offset)))
+                        },
+                        onEdit = { editingSchedule = it },
+                        onDelete = { item -> onChange(plan.copy(schedule = plan.schedule.filterNot { it.id == item.id })) },
+                        canMoveUp = { plan.schedule.indexOfFirst { scheduled -> scheduled.id == it.id } > 0 },
+                        canMoveDown = { plan.schedule.indexOfFirst { scheduled -> scheduled.id == it.id } in 0..<plan.schedule.lastIndex },
+                    )
                 }
             }
             item {
@@ -188,6 +182,57 @@ internal fun PlanManagementScreen(
             confirmButton = { TextButton(onClick = { onChange(defaultTrainingPlan()); resetRequested = false }) { Text("Reset") } },
             dismissButton = { TextButton(onClick = { resetRequested = false }) { Text("Cancel") } },
         )
+    }
+}
+
+@Composable
+private fun WeeklyTimelineDay(
+    day: DayOfWeek,
+    items: List<ScheduledItem>,
+    onEnabledChange: (ScheduledItem, Boolean) -> Unit,
+    onMove: (ScheduledItem, Int) -> Unit,
+    onEdit: (ScheduledItem) -> Unit,
+    onDelete: (ScheduledItem) -> Unit,
+    canMoveUp: (ScheduledItem) -> Boolean,
+    canMoveDown: (ScheduledItem) -> Boolean,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                Modifier.size(38.dp).clip(CircleShape).background(if (items.isEmpty()) AppSurfaceRaised else AppBlueStrong),
+                contentAlignment = Alignment.Center,
+            ) { Text(day.shortName(), fontWeight = FontWeight.Bold) }
+            if (items.isNotEmpty()) Box(Modifier.width(2.dp).height(64.dp).background(AppBorder))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(day.displayName(), style = MaterialTheme.typography.titleMedium)
+            if (items.isEmpty()) {
+                Text("Recovery day", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            items.forEach { item ->
+                BrandedCard(Modifier.fillMaxWidth(), containerColor = if (item.enabled) AppSurface else AppSurface.copy(alpha = 0.62f)) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(item.title, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "${item.destination.displayName()}${if (item.subtitle.isBlank()) "" else " · ${item.subtitle}"}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            Switch(item.enabled, { onEnabledChange(item, it) })
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(onClick = { onMove(item, -1) }, enabled = canMoveUp(item)) { Icon(Icons.Default.KeyboardArrowUp, "Move up") }
+                            IconButton(onClick = { onMove(item, 1) }, enabled = canMoveDown(item)) { Icon(Icons.Default.KeyboardArrowDown, "Move down") }
+                            IconButton(onClick = { onEdit(item) }) { Icon(Icons.Default.Edit, "Edit") }
+                            IconButton(onClick = { onDelete(item) }) { Icon(Icons.Default.Delete, "Delete") }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -275,7 +320,8 @@ private fun ScheduleEditorDialog(
 ) {
     var title by remember(original) { mutableStateOf(original?.title.orEmpty()) }
     var subtitle by remember(original) { mutableStateOf(original?.subtitle.orEmpty()) }
-    var day by remember(original) { mutableStateOf(original?.day ?: DayOfWeek.MONDAY) }
+    var selectedDays by remember(original) { mutableStateOf(original?.activeDays() ?: setOf(DayOfWeek.MONDAY)) }
+    var repeat by remember(original) { mutableStateOf(repeatPattern(selectedDays)) }
     var destination by remember(original) { mutableStateOf(original?.destination ?: Destination.FITBOD) }
     var routineId by remember(original, routines) { mutableStateOf(original?.routineId ?: routines.firstOrNull()?.id) }
     val selectedRoutine = routines.firstOrNull { it.id == routineId }
@@ -283,16 +329,52 @@ private fun ScheduleEditorDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (original == null) "Add scheduled item" else "Edit scheduled item") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(title, { title = it }, label = { Text("Title") }, singleLine = true)
                 OutlinedTextField(subtitle, { subtitle = it }, label = { Text("Subtitle") }, singleLine = true)
-                OutlinedButton(onClick = { day = DayOfWeek.of(day.value % 7 + 1) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Day: ${day.displayName()}")
+                Text("Repeat", style = MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(ScheduleRepeat.entries) { option ->
+                        FilterChip(
+                            selected = repeat == option,
+                            onClick = {
+                                repeat = option
+                                selectedDays = repeatDays(option, selectedDays.minByOrNull(DayOfWeek::getValue) ?: DayOfWeek.MONDAY, selectedDays)
+                            },
+                            label = { Text(option.displayName()) },
+                        )
+                    }
                 }
-                OutlinedButton(
-                    onClick = { destination = Destination.entries[(destination.ordinal + 1) % Destination.entries.size] },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Type: ${destination.displayName()}") }
+                Text("Days", style = MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    items(DayOfWeek.entries) { option ->
+                        FilterChip(
+                            selected = option in selectedDays,
+                            onClick = {
+                                val updated = if (repeat == ScheduleRepeat.WEEKLY) {
+                                    setOf(option)
+                                } else if (option in selectedDays && selectedDays.size > 1) {
+                                    selectedDays - option
+                                } else {
+                                    selectedDays + option
+                                }
+                                selectedDays = updated
+                                repeat = repeatPattern(updated)
+                            },
+                            label = { Text(option.shortName()) },
+                        )
+                    }
+                }
+                Text("Opens", style = MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(Destination.entries) { option ->
+                        FilterChip(
+                            selected = destination == option,
+                            onClick = { destination = option },
+                            label = { Text(option.displayName()) },
+                        )
+                    }
+                }
                 if (destination == Destination.CUSTOM) {
                     OutlinedButton(
                         onClick = {
@@ -305,6 +387,23 @@ private fun ScheduleEditorDialog(
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(selectedRoutine?.let { "Routine: ${it.name}" } ?: "Create a routine first") }
                 }
+                BrandedCard(Modifier.fillMaxWidth(), containerColor = AppSurfaceRaised) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("WEEKLY PREVIEW", color = AppMint, style = MaterialTheme.typography.labelMedium)
+                        Text(title.ifBlank { "Your scheduled item" }, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            DayOfWeek.entries.forEach { previewDay ->
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(
+                                        Modifier.size(26.dp).clip(CircleShape).background(if (previewDay in selectedDays) AppBlueStrong else AppBackground),
+                                        contentAlignment = Alignment.Center,
+                                    ) { Text(previewDay.shortName().take(1), style = MaterialTheme.typography.labelSmall) }
+                                }
+                            }
+                        }
+                        Text(selectedDays.summary(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
         },
         confirmButton = {
@@ -315,10 +414,11 @@ private fun ScheduleEditorDialog(
                             id = original?.id ?: newId(),
                             title = title.trim(),
                             subtitle = subtitle.trim(),
-                            day = day,
+                            day = selectedDays.minByOrNull(DayOfWeek::getValue) ?: DayOfWeek.MONDAY,
                             destination = destination,
                             routineId = if (destination == Destination.CUSTOM) routineId else null,
                             enabled = original?.enabled ?: true,
+                            repeatDays = selectedDays,
                         ),
                     )
                 },
@@ -382,6 +482,19 @@ private fun NameDialog(title: String, initial: String, onDismiss: () -> Unit, on
 }
 
 private fun DayOfWeek.displayName() = name.lowercase().replaceFirstChar { it.titlecase() }
+private fun DayOfWeek.shortName() = displayName().take(3)
+private fun ScheduleRepeat.displayName() = when (this) {
+    ScheduleRepeat.WEEKLY -> "Weekly"
+    ScheduleRepeat.WEEKDAYS -> "Weekdays"
+    ScheduleRepeat.DAILY -> "Every day"
+    ScheduleRepeat.CUSTOM -> "Custom"
+}
+private fun Set<DayOfWeek>.summary(): String = when (repeatPattern(this)) {
+    ScheduleRepeat.WEEKLY -> "Every ${single().displayName()}"
+    ScheduleRepeat.WEEKDAYS -> "Every weekday"
+    ScheduleRepeat.DAILY -> "Every day"
+    ScheduleRepeat.CUSTOM -> sortedBy(DayOfWeek::getValue).joinToString(" · ") { it.shortName() }
+}
 private fun Destination.displayName() = when (this) {
     Destination.FITBOD -> "Fitbod"
     Destination.JUSTRUN -> "JustRun"

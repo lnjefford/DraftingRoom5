@@ -43,4 +43,30 @@ class ScheduleDataTest {
         assertTrue(updated.routines.isEmpty())
         assertFalse(updated.schedule.any { it.destination == Destination.CUSTOM })
     }
+
+    @Test
+    fun repeatPresetsCreateExpectedWeeklyDays() {
+        assertEquals(setOf(DayOfWeek.THURSDAY), repeatDays(ScheduleRepeat.WEEKLY, DayOfWeek.THURSDAY, emptySet()))
+        assertEquals(DayOfWeek.entries.take(5).toSet(), repeatDays(ScheduleRepeat.WEEKDAYS, DayOfWeek.SUNDAY, emptySet()))
+        assertEquals(DayOfWeek.entries.toSet(), repeatDays(ScheduleRepeat.DAILY, DayOfWeek.MONDAY, emptySet()))
+    }
+
+    @Test
+    fun repeatedScheduleAppearsOnEachSelectedDay() {
+        val item = ScheduledItem(
+            "repeat", "Mobility", "", DayOfWeek.MONDAY, Destination.CUSTOM,
+            repeatDays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY),
+        )
+        val plan = TrainingPlan(listOf(item), emptyList())
+
+        assertEquals(listOf(item), plan.forDay(DayOfWeek.WEDNESDAY))
+        assertTrue(plan.forDay(DayOfWeek.TUESDAY).isEmpty())
+    }
+
+    @Test
+    fun olderSavedPlansDefaultToTheirSingleAssignedDay() {
+        val legacyJson = """{"schedule":[{"id":"one","title":"Workout","subtitle":"","day":"TUESDAY","destination":"FITBOD","routineId":null,"enabled":true}],"routines":[]}"""
+
+        assertEquals(setOf(DayOfWeek.TUESDAY), decodePlan(legacyJson).schedule.single().activeDays())
+    }
 }

@@ -8,6 +8,8 @@ import java.util.UUID
 
 internal enum class Destination { FITBOD, JUSTRUN, CUSTOM }
 
+internal enum class ScheduleRepeat { WEEKLY, WEEKDAYS, DAILY, CUSTOM }
+
 internal data class ScheduledItem(
     val id: String,
     val title: String,
@@ -16,6 +18,7 @@ internal data class ScheduledItem(
     val destination: Destination,
     val routineId: String? = null,
     val enabled: Boolean = true,
+    val repeatDays: Set<DayOfWeek> = setOf(day),
 )
 
 internal data class Exercise(
@@ -67,7 +70,22 @@ internal fun defaultTrainingPlan(): TrainingPlan {
 }
 
 internal fun TrainingPlan.forDay(day: DayOfWeek): List<ScheduledItem> =
-    schedule.filter { it.enabled && it.day == day }
+    schedule.filter { it.enabled && day in it.activeDays() }
+
+internal fun ScheduledItem.activeDays(): Set<DayOfWeek> = repeatDays.ifEmpty { setOf(day) }
+
+internal fun repeatDays(pattern: ScheduleRepeat, anchor: DayOfWeek, customDays: Set<DayOfWeek>): Set<DayOfWeek> = when (pattern) {
+    ScheduleRepeat.WEEKLY -> setOf(anchor)
+    ScheduleRepeat.WEEKDAYS -> DayOfWeek.entries.filterTo(linkedSetOf()) { it.value <= DayOfWeek.FRIDAY.value }
+    ScheduleRepeat.DAILY -> DayOfWeek.entries.toSet()
+    ScheduleRepeat.CUSTOM -> customDays.ifEmpty { setOf(anchor) }
+}
+
+internal fun repeatPattern(days: Set<DayOfWeek>): ScheduleRepeat = when (days) {
+    DayOfWeek.entries.toSet() -> ScheduleRepeat.DAILY
+    DayOfWeek.entries.filterTo(linkedSetOf()) { it.value <= DayOfWeek.FRIDAY.value } -> ScheduleRepeat.WEEKDAYS
+    else -> if (days.size == 1) ScheduleRepeat.WEEKLY else ScheduleRepeat.CUSTOM
+}
 
 internal fun <T> move(items: List<T>, from: Int, offset: Int): List<T> {
     val to = from + offset
@@ -110,6 +128,9 @@ internal fun encodePlan(plan: TrainingPlan): String = JSONObject().apply {
                 put("destination", item.destination.name)
                 put("routineId", item.routineId ?: JSONObject.NULL)
                 put("enabled", item.enabled)
+                put("repeatDays", JSONArray().apply {
+                    item.activeDays().sortedBy(DayOfWeek::getValue).forEach { put(it.name) }
+                })
             })
         }
     })
@@ -142,14 +163,19 @@ internal fun decodePlan(value: String): TrainingPlan {
     return TrainingPlan(
         schedule = List(scheduleJson.length()) { index ->
             scheduleJson.getJSONObject(index).let { item ->
+                val day = DayOfWeek.valueOf(item.getString("day"))
+                val repeatDaysJson = item.optJSONArray("repeatDays")
                 ScheduledItem(
                     id = item.getString("id"),
                     title = item.getString("title"),
                     subtitle = item.optString("subtitle"),
-                    day = DayOfWeek.valueOf(item.getString("day")),
+                    day = day,
                     destination = Destination.valueOf(item.getString("destination")),
                     routineId = item.optString("routineId").takeIf { it.isNotBlank() && it != "null" },
                     enabled = item.optBoolean("enabled", true),
+                    repeatDays = repeatDaysJson?.let { days ->
+                        List(days.length()) { dayIndex -> DayOfWeek.valueOf(days.getString(dayIndex)) }.toSet()
+                    }.orEmpty().ifEmpty { setOf(day) },
                 )
             }
         },
