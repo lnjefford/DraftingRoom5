@@ -1,0 +1,54 @@
+name: Dependabot patch auto-merge
+
+on:
+  workflow_run:
+    workflows: [Android commit build]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-patch-update:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the verified Dependabot patch update
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.payload.workflow_run.head_sha;
+            const pulls = await github.paginate(
+              github.rest.repos.listPullRequestsAssociatedWithCommit,
+              { owner, repo, commit_sha: sha }
+            );
+            const pull = pulls.find(candidate =>
+              candidate.state === "open" &&
+              candidate.base.ref === "main" &&
+              candidate.head.sha === sha &&
+              candidate.user.login === "dependabot[bot]" &&
+              candidate.head.repo?.full_name === `${owner}/${repo}`
+            );
+            if (!pull) {
+              core.info("The successful build does not belong to an open Dependabot pull request.");
+              return;
+            }
+            const patchGroupPrefixes = [
+              "dependabot/gradle/gradle-patch-updates-",
+              "dependabot/github_actions/actions-patch-updates-"
+            ];
+            if (!patchGroupPrefixes.some(prefix => pull.head.ref.startsWith(prefix))) {
+              core.info(`Dependabot pull request #${pull.number} is not a configured patch-only group.`);
+              return;
+            }
+            const result = await github.rest.pulls.merge({
+              owner,
+              repo,
+              pull_number: pull.number,
+              merge_method: "squash"
+            });
+            if (!result.data.merged) {
+              core.setFailed(result.data.message || `Pull request #${pull.number} was not merged.`);
+            }

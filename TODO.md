@@ -10,10 +10,6 @@ Work through these when advanced model access is available again.
 
    Add a Settings screen and move the Health Connect status card, app update card, and Health Connect permissions/settings link off the dashboard. Keep the dashboard focused on measurements and today’s schedule while preserving those actions in Settings.
 
-3. **Automate dependency updates and commit builds**
-
-   Add Dependabot configuration for Gradle dependencies and GitHub Actions. Add CI builds on pushes to `main` and pull requests so every commit produces a verifiable APK artifact. Let Dependabot patch-update pull requests auto-merge only after tests, lint, and the build pass. Keep versioned release publishing tag-driven, with the commit build serving as validation rather than an app-store release.
-
 4. **Customize the dashboard**
 
    Let the user choose which cards appear and reorder them. Persist the layout and provide a reset-to-default option.
