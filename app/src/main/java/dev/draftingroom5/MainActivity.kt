@@ -6,12 +6,14 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -153,6 +156,11 @@ private fun DraftingRoom5App() {
     var voiceSettings by remember { mutableStateOf(voiceSettingsStore.load()) }
     var backupStatus by remember { mutableStateOf(backupManager.status()) }
     var backupActionMessage by remember { mutableStateOf<String?>(null) }
+    val updateManager = remember { AppUpdateManager(context) }
+    var updateStatus by remember { mutableStateOf(updateManager.status()) }
+    var updateBusy by rememberSaveable { mutableStateOf(false) }
+    var updateActionMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingUpdateInstall by rememberSaveable { mutableStateOf(false) }
     val completedIds = completedScheduleIdsForDate(workoutHistory, LocalDate.now())
     DisposableEffect(workoutVoice) {
         onDispose { workoutVoice.shutdown() }
@@ -180,6 +188,48 @@ private fun DraftingRoom5App() {
         }
     }
     val coroutineScope = rememberCoroutineScope()
+    val installDownloadedUpdate: () -> Unit = {
+        runCatching { openDownloadedUpdateInstaller(context) }
+            .onSuccess {
+                updateActionMessage = "Confirm the update in Android's installer. If you cancel, tap the update indicator to try again."
+            }
+            .onFailure { error ->
+                updateActionMessage = "Could not open the installer: ${error.message ?: "Download the update again."}"
+            }
+    }
+    val updateInstallPermission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (pendingUpdateInstall && context.packageManager.canRequestPackageInstalls()) installDownloadedUpdate()
+        else updateActionMessage = "Installation permission was not granted. Tap the update indicator to try again."
+        pendingUpdateInstall = false
+    }
+    val checkAndInstallUpdate: () -> Unit = {
+        if (!updateBusy) coroutineScope.launch {
+            updateBusy = true
+            updateActionMessage = "Checking for updates…"
+            try {
+                val available = downloadUpdate(context) { message -> updateActionMessage = message }
+                if (!available) {
+                    updateManager.clearAvailable()
+                    updateStatus = updateManager.status()
+                    updateActionMessage = "You're running the latest version."
+                } else if (context.packageManager.canRequestPackageInstalls()) {
+                    installDownloadedUpdate()
+                } else {
+                    updateActionMessage = "Allow DraftingRoom5 to install updates, then return to the app."
+                    pendingUpdateInstall = true
+                    updateInstallPermission.launch(
+                        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                updateActionMessage = "Update failed: ${error.message ?: "Check your connection and try again."}"
+            } finally {
+                updateBusy = false
+            }
+        }
+    }
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
     var healthRefreshJob by remember { mutableStateOf<Job?>(null) }
     var healthUi by remember { mutableStateOf(HealthUiState()) }
@@ -303,7 +353,13 @@ private fun DraftingRoom5App() {
         if (windowFocused) {
             backupManager.schedule()
             backupStatus = backupManager.status()
+            updateManager.schedule()
+            updateManager.requestCheckIfStale()
             refreshHealth(healthDateRange)
+            while (true) {
+                updateStatus = updateManager.status()
+                delay(2000)
+            }
         } else {
             healthRefreshJob?.cancel()
             healthUi = healthUi.copy(isLoading = false)
@@ -330,6 +386,8 @@ private fun DraftingRoom5App() {
                 animateBrandOnEntry = launchBrandAnimationPending,
                 onBrandAnimationFinished = { launchBrandAnimationPending = false },
                 onOpenSettings = { screen = Screen.Settings },
+                updateAvailableVersion = updateStatus.availableVersion,
+                onInstallUpdate = checkAndInstallUpdate,
                 onHealthDateRangeChange = { updated ->
                     healthDateRange = updated
                     healthDateRangeStore.save(updated)
@@ -392,6 +450,10 @@ private fun DraftingRoom5App() {
                 onOpenBackupSettings = {
                     runCatching { openAndroidBackupSettings(context) }
                 },
+                updateStatus = updateStatus,
+                updateBusy = updateBusy,
+                updateActionMessage = updateActionMessage,
+                onCheckAndInstallUpdate = checkAndInstallUpdate,
             )
             Screen.PlanManagement -> PlanManagementScreen(
                 plan = trainingPlan,
@@ -462,6 +524,8 @@ private fun Dashboard(
     animateBrandOnEntry: Boolean,
     onBrandAnimationFinished: () -> Unit,
     onOpenSettings: () -> Unit,
+    updateAvailableVersion: String?,
+    onInstallUpdate: () -> Unit,
     onHealthDateRangeChange: (HealthDateRange) -> Unit,
     onOpenCustom: (ScheduledItem) -> Unit,
     onLaunchExternal: (ScheduledItem) -> Unit,
@@ -479,6 +543,15 @@ private fun Dashboard(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
+                    if (updateAvailableVersion != null) {
+                        IconButton(onClick = onInstallUpdate) {
+                            Icon(
+                                Icons.Default.SystemUpdate,
+                                contentDescription = "Update $updateAvailableVersion available. Tap to install.",
+                                tint = AppGold,
+                            )
+                        }
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
@@ -582,6 +655,10 @@ private fun SettingsScreen(
     onBackUpNow: () -> Unit,
     onRestoreLatest: () -> Unit,
     onOpenBackupSettings: () -> Unit,
+    updateStatus: AppUpdateStatus,
+    updateBusy: Boolean,
+    updateActionMessage: String?,
+    onCheckAndInstallUpdate: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
     Scaffold(
@@ -700,7 +777,14 @@ private fun SettingsScreen(
             item {
                 SectionHeader("App updates", "Stay current with the latest DraftingRoom5 build.")
             }
-            item { AppUpdateCard() }
+            item {
+                AppUpdateCard(
+                    status = updateStatus,
+                    busy = updateBusy,
+                    actionMessage = updateActionMessage,
+                    onCheckAndInstall = onCheckAndInstallUpdate,
+                )
+            }
             item { Spacer(Modifier.height(18.dp)) }
         }
     }

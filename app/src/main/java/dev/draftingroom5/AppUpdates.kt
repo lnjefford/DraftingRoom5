@@ -3,10 +3,6 @@ package dev.draftingroom5
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,76 +10,143 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import kotlinx.coroutines.CancellationException
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.TimeUnit
+
+internal data class AppUpdateStatus(
+    val lastCheckedMillis: Long? = null,
+    val availableVersion: String? = null,
+    val lastError: String? = null,
+)
+
+internal class AppUpdateManager(context: Context) {
+    private val appContext = context.applicationContext
+    private val preferences = appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+
+    fun status(): AppUpdateStatus = AppUpdateStatus(
+        lastCheckedMillis = preferences.getLong(KEY_LAST_CHECKED, 0L).takeIf { it > 0L },
+        availableVersion = preferences.getString(KEY_AVAILABLE_VERSION, null),
+        lastError = preferences.getString(KEY_LAST_ERROR, null),
+    )
+
+    fun schedule() {
+        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        val periodic = PeriodicWorkRequestBuilder<AppUpdateCheckWorker>(12, TimeUnit.HOURS)
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.MINUTES)
+            .build()
+        WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
+            PERIODIC_WORK,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            periodic,
+        )
+    }
+
+    fun requestCheckIfStale(nowMillis: Long = System.currentTimeMillis()) {
+        val lastChecked = status().lastCheckedMillis
+        if (lastChecked != null && nowMillis - lastChecked < STALE_AFTER_MILLIS) return
+        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        val request = OneTimeWorkRequestBuilder<AppUpdateCheckWorker>()
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(appContext).enqueueUniqueWork(
+            ONE_TIME_WORK,
+            ExistingWorkPolicy.KEEP,
+            request,
+        )
+    }
+
+    suspend fun checkNow(nowMillis: Long = System.currentTimeMillis()): Result<AppUpdateStatus> = runCatching {
+        val releaseVersion = fetchLatestRelease().first
+        val available = releaseVersion.takeIf { compareReleaseVersions(it, BuildConfig.VERSION_NAME) > 0 }
+        preferences.edit()
+            .putLong(KEY_LAST_CHECKED, nowMillis)
+            .apply {
+                if (available == null) remove(KEY_AVAILABLE_VERSION) else putString(KEY_AVAILABLE_VERSION, available)
+            }
+            .remove(KEY_LAST_ERROR)
+            .commit()
+        status()
+    }.onFailure { error ->
+        preferences.edit().putString(KEY_LAST_ERROR, error.message ?: "Update check failed.").apply()
+    }
+
+    fun clearAvailable() {
+        preferences.edit().remove(KEY_AVAILABLE_VERSION).apply()
+    }
+
+    private companion object {
+        const val PREFERENCES = "app-updates"
+        const val KEY_LAST_CHECKED = "last-checked"
+        const val KEY_AVAILABLE_VERSION = "available-version"
+        const val KEY_LAST_ERROR = "last-error"
+        const val PERIODIC_WORK = "app-update-check-twice-daily"
+        const val ONE_TIME_WORK = "app-update-check-on-launch"
+        const val STALE_AFTER_MILLIS = 6 * 60 * 60 * 1000L
+    }
+}
+
+internal class AppUpdateCheckWorker(appContext: Context, parameters: WorkerParameters) :
+    CoroutineWorker(appContext, parameters) {
+    override suspend fun doWork(): Result =
+        if (AppUpdateManager(applicationContext).checkNow().isSuccess) Result.success() else Result.retry()
+}
 
 @Composable
-fun AppUpdateCard() {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var busy by remember { mutableStateOf(false) }
-    var message by rememberSaveable { mutableStateOf("Check for the latest version without leaving the app.") }
-    var pendingInstall by rememberSaveable { mutableStateOf(false) }
-    val apk = File(context.cacheDir, "updates/latest.apk")
-    fun install() {
-        try {
-            check(apk.isFile) { "Download the update again." }
-            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(FileProvider.getUriForFile(context, "${context.packageName}.updates", apk), "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            })
-            message = "Confirm the update in Android's installer. If you cancel, tap the button to try again."
-        } catch (error: Exception) {
-            message = "Could not open the installer: ${error.message}"
-        }
-    }
-    val installPermission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (pendingInstall && context.packageManager.canRequestPackageInstalls()) install()
-        else message = "Installation permission was not granted. Tap the button to try again."
-        pendingInstall = false
+internal fun AppUpdateCard(
+    status: AppUpdateStatus,
+    busy: Boolean,
+    actionMessage: String?,
+    onCheckAndInstall: () -> Unit,
+) {
+    val detail = actionMessage ?: when {
+        status.availableVersion != null -> "Version ${status.availableVersion} is ready to download and install."
+        status.lastCheckedMillis != null -> "Automatic checks are active. You're running the latest version."
+        else -> "Automatic checks run twice daily when a network is available."
     }
     BrandedCard(Modifier.fillMaxWidth(), containerColor = AppSurfaceRaised) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("App updates · ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.Bold)
-            Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(enabled = !busy, onClick = {
-                scope.launch {
-                    busy = true
-                    message = "Checking for updates…"
-                    try {
-                        val available = downloadUpdate(context) { status -> message = status }
-                        if (!available) message = "You're running the latest version."
-                        else if (context.packageManager.canRequestPackageInstalls()) install()
-                        else {
-                            message = "Allow DraftingRoom5 to install updates, then return to the app."
-                            pendingInstall = true
-                            installPermission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
-                        }
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (error: Exception) {
-                        message = "Update failed: ${error.message ?: "Check your connection and try again."}"
-                    } finally {
-                        busy = false
-                    }
-                }
-            }) { Text(if (busy) "Please wait…" else "Check & install update") }
+            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Button(enabled = !busy, onClick = onCheckAndInstall) {
+                Text(if (busy) "Please wait…" else if (status.availableVersion != null) "Download & install update" else "Check & install update")
+            }
         }
     }
+}
+
+internal fun openDownloadedUpdateInstaller(context: Context) {
+    val apk = File(context.cacheDir, "updates/latest.apk")
+    check(apk.isFile) { "Download the update again." }
+    context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(
+            FileProvider.getUriForFile(context, "${context.packageName}.updates", apk),
+            "application/vnd.android.package-archive",
+        )
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    })
 }
 
 private fun connection(url: String): HttpURLConnection {
@@ -95,7 +158,7 @@ private fun connection(url: String): HttpURLConnection {
     }
 }
 
-private suspend fun downloadUpdate(context: Context, status: (String) -> Unit): Boolean = withContext(Dispatchers.IO) {
+private fun fetchLatestRelease(): Pair<String, JSONObject> {
     val api = connection("https://api.github.com/repos/lnjefford/DraftingRoom5/releases/latest")
     val release = try {
         when (api.responseCode) {
@@ -104,9 +167,24 @@ private suspend fun downloadUpdate(context: Context, status: (String) -> Unit): 
             200 -> JSONObject(api.inputStream.bufferedReader().use { it.readText() })
             else -> error("Release server returned ${api.responseCode}.")
         }
-    } finally { api.disconnect() }
-    val tag = release.getString("tag_name").removePrefix("v")
-    if (tag == BuildConfig.VERSION_NAME) return@withContext false
+    } finally {
+        api.disconnect()
+    }
+    return release.getString("tag_name").removePrefix("v") to release
+}
+
+internal fun compareReleaseVersions(left: String, right: String): Int {
+    val leftParts = left.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 }
+    val rightParts = right.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 }
+    return (0 until maxOf(leftParts.size, rightParts.size))
+        .firstNotNullOfOrNull { index ->
+            (leftParts.getOrElse(index) { 0 } - rightParts.getOrElse(index) { 0 }).takeIf { it != 0 }
+        } ?: 0
+}
+
+internal suspend fun downloadUpdate(context: Context, status: suspend (String) -> Unit): Boolean = withContext(Dispatchers.IO) {
+    val (tag, release) = fetchLatestRelease()
+    if (compareReleaseVersions(tag, BuildConfig.VERSION_NAME) <= 0) return@withContext false
     val assets = release.getJSONArray("assets")
     val asset = (0 until assets.length()).map { assets.getJSONObject(it) }
         .firstOrNull { it.getString("name") == "DraftingRoom5.apk" }
