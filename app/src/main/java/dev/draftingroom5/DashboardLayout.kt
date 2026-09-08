@@ -8,8 +8,8 @@ internal enum class DashboardCard(val title: String, val description: String) {
     WEIGHT("Weight", "Latest weight from Health Connect"),
     BODY_FAT("Body fat", "Latest body-fat percentage"),
     LEAN_MASS("Lean mass", "Latest lean body mass"),
-    WORKOUTS("Workouts", "Exercise sessions this week"),
-    DISTANCE("Running", "Distance recorded this week"),
+    WORKOUTS("Workouts", "Exercise sessions in the selected range"),
+    DISTANCE("Running", "Distance recorded in the selected range"),
     TODAY("Today's training", "Scheduled workouts for today"),
 }
 

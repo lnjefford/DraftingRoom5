@@ -87,7 +87,6 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -112,8 +111,8 @@ private data class HealthStats(
     val weight: HealthMetric = HealthMetric(),
     val bodyFat: HealthMetric = HealthMetric(),
     val leanMass: HealthMetric = HealthMetric(),
-    val workoutsThisWeek: HealthMetric = HealthMetric(),
-    val milesThisWeek: HealthMetric = HealthMetric(),
+    val workouts: HealthMetric = HealthMetric(),
+    val distance: HealthMetric = HealthMetric(),
     val weightTrend: List<HealthTrendPoint> = emptyList(),
     val bodyFatTrend: List<HealthTrendPoint> = emptyList(),
     val leanMassTrend: List<HealthTrendPoint> = emptyList(),
@@ -134,9 +133,11 @@ private fun DraftingRoom5App() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val planStore = remember { TrainingPlanStore(context) }
     val dashboardLayoutStore = remember { DashboardLayoutStore(context) }
+    val healthDateRangeStore = remember { HealthDateRangeStore(context) }
     val backupStatusStore = remember { BackupStatusStore(context) }
     var trainingPlan by remember { mutableStateOf(planStore.load()) }
     var dashboardLayout by remember { mutableStateOf(dashboardLayoutStore.load()) }
+    var healthDateRange by remember { mutableStateOf(healthDateRangeStore.load()) }
     var lastBackupLocalChange by remember { mutableStateOf(backupStatusStore.lastLocalChange()) }
     val updateTrainingPlan: (TrainingPlan) -> Unit = { updated ->
         trainingPlan = updated
@@ -157,7 +158,7 @@ private fun DraftingRoom5App() {
         )
     }
 
-    val refreshHealth: () -> Unit = refresh@ {
+    val refreshHealth: (HealthDateRange) -> Unit = refresh@ { range ->
         if (!windowFocused) return@refresh
         healthRefreshJob?.cancel()
         healthRefreshJob = coroutineScope.launch {
@@ -191,7 +192,7 @@ private fun DraftingRoom5App() {
                             healthUi = healthUi.copy(connection = HealthConnection.CONNECTED, isLoading = true, message = null)
                             healthUi = HealthUiState(
                                 connection = HealthConnection.CONNECTED,
-                                stats = readHealthStats(context, client, granted),
+                                stats = readHealthStats(context, client, granted, range),
                                 message = when {
                                     !granted.containsAll(healthPermissions) -> "Some measurement permissions are off. Available measurements are shown below."
                                     !granted.containsAll(requestedPermissions) -> "Past-data access is off. Allow it to read Withings measurements from before the standard history window."
@@ -224,7 +225,7 @@ private fun DraftingRoom5App() {
                 message = "Allow the data types you want to display. If Android no longer shows the prompt, use Health Connect permissions & settings.",
             )
         }
-        if (granted.intersect(healthPermissions).isNotEmpty()) refreshHealth()
+        if (granted.intersect(healthPermissions).isNotEmpty()) refreshHealth(healthDateRange)
     }
 
     val connectHealth: () -> Unit = {
@@ -236,13 +237,13 @@ private fun DraftingRoom5App() {
                     healthUi = HealthUiState(connection = HealthConnection.ERROR, message = error.message ?: "Could not open the Health Connect installer.")
                 }
             }
-            HealthConnection.UNAVAILABLE -> refreshHealth()
+            HealthConnection.UNAVAILABLE -> refreshHealth(healthDateRange)
             else -> coroutineScope.launch {
                 try {
                     val client = HealthConnectClient.getOrCreate(context)
                     val requestedPermissions = healthPermissionsFor(client, healthPermissions)
                     val granted = client.permissionController.getGrantedPermissions()
-                    if (granted.containsAll(requestedPermissions)) refreshHealth()
+                    if (granted.containsAll(requestedPermissions)) refreshHealth(healthDateRange)
                     else permissionLauncher.launch(requestedPermissions)
                 } catch (error: CancellationException) {
                     throw error
@@ -265,7 +266,7 @@ private fun DraftingRoom5App() {
     // Read once our own window is focused; cancel reads when a dialog/app takes over.
     LaunchedEffect(windowFocused) {
         if (windowFocused) {
-            refreshHealth()
+            refreshHealth(healthDateRange)
         } else {
             healthRefreshJob?.cancel()
             healthUi = healthUi.copy(isLoading = false)
@@ -277,9 +278,16 @@ private fun DraftingRoom5App() {
             Screen.Dashboard -> Dashboard(
                 healthUi = healthUi,
                 dashboardLayout = dashboardLayout,
+                healthDateRange = healthDateRange,
                 scheduledItems = trainingPlan.forDay(LocalDate.now().dayOfWeek),
                 completedIds = completedIds,
                 onOpenSettings = { screen = Screen.Settings },
+                onHealthDateRangeChange = { updated ->
+                    healthDateRange = updated
+                    healthDateRangeStore.save(updated)
+                    lastBackupLocalChange = backupStatusStore.recordLocalChange()
+                    refreshHealth(updated)
+                },
                 onOpenCustom = { item -> item.routineId?.let { screen = Screen.CustomWorkout(it, item.id) } },
                 onLaunchExternal = { item ->
                     launchWorkoutApp(context, item.destination)
@@ -354,9 +362,11 @@ private sealed interface Screen {
 private fun Dashboard(
     healthUi: HealthUiState,
     dashboardLayout: DashboardLayout,
+    healthDateRange: HealthDateRange,
     scheduledItems: List<ScheduledItem>,
     completedIds: List<String>,
     onOpenSettings: () -> Unit,
+    onHealthDateRangeChange: (HealthDateRange) -> Unit,
     onOpenCustom: (ScheduledItem) -> Unit,
     onLaunchExternal: (ScheduledItem) -> Unit,
 ) {
@@ -388,13 +398,14 @@ private fun Dashboard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            item { HealthDateRangeSelector(healthDateRange, onHealthDateRangeChange) }
             dashboardLayout.visibleCards.forEach { card ->
                 when (card) {
-                    DashboardCard.WEIGHT -> item { MetricCard("Weight", healthUi.stats.weight, "lb", AppBlue, Modifier.fillMaxWidth(), healthUi.stats.weightTrend) }
-                    DashboardCard.BODY_FAT -> item { MetricCard("Body fat", healthUi.stats.bodyFat, "%", AppMint, Modifier.fillMaxWidth(), healthUi.stats.bodyFatTrend) }
-                    DashboardCard.LEAN_MASS -> item { MetricCard("Lean mass", healthUi.stats.leanMass, "lb", AppGold, Modifier.fillMaxWidth(), healthUi.stats.leanMassTrend) }
-                    DashboardCard.WORKOUTS -> item { MetricCard("Workouts", healthUi.stats.workoutsThisWeek, "this week", AppMint, Modifier.fillMaxWidth()) }
-                    DashboardCard.DISTANCE -> item { MetricCard("Running", healthUi.stats.milesThisWeek, "mi this week", AppBlue, Modifier.fillMaxWidth()) }
+                    DashboardCard.WEIGHT -> item { MetricCard("Weight", healthUi.stats.weight, "lb", AppBlue, Modifier.fillMaxWidth(), healthUi.stats.weightTrend, healthDateRange) }
+                    DashboardCard.BODY_FAT -> item { MetricCard("Body fat", healthUi.stats.bodyFat, "%", AppMint, Modifier.fillMaxWidth(), healthUi.stats.bodyFatTrend, healthDateRange) }
+                    DashboardCard.LEAN_MASS -> item { MetricCard("Lean mass", healthUi.stats.leanMass, "lb", AppGold, Modifier.fillMaxWidth(), healthUi.stats.leanMassTrend, healthDateRange) }
+                    DashboardCard.WORKOUTS -> item { MetricCard("Workouts", healthUi.stats.workouts, "last ${healthDateRange.displayLabel}", AppMint, Modifier.fillMaxWidth()) }
+                    DashboardCard.DISTANCE -> item { MetricCard("Running", healthUi.stats.distance, "mi · ${healthDateRange.displayLabel}", AppBlue, Modifier.fillMaxWidth()) }
                     DashboardCard.TODAY -> {
                         item { SectionHeader("Today", "Your scheduled training, ready when you are.") }
                         if (scheduledItems.isEmpty()) {
@@ -417,6 +428,34 @@ private fun Dashboard(
                 }
             }
             item { Spacer(Modifier.height(18.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun HealthDateRangeSelector(
+    selected: HealthDateRange,
+    onSelected: (HealthDateRange) -> Unit,
+) {
+    BrandedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Health range", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HealthDateRange.entries.forEach { range ->
+                    if (range == selected) {
+                        Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(range.buttonLabel) }
+                    } else {
+                        OutlinedButton(onClick = { onSelected(range) }, modifier = Modifier.weight(1f)) { Text(range.buttonLabel) }
+                    }
+                }
+            }
+            Text(
+                "Charts, workouts, and distance · last ${selected.displayLabel}",
+                modifier = Modifier.padding(top = 8.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -674,8 +713,8 @@ private fun BodyMetricRow(stats: HealthStats) {
 @Composable
 private fun WeeklyStatRow(stats: HealthStats) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        MetricCard("Workouts", stats.workoutsThisWeek, "this week", AppMint, Modifier.weight(1f))
-        MetricCard("Running", stats.milesThisWeek, "mi this week", AppBlue, Modifier.weight(1f))
+        MetricCard("Workouts", stats.workouts, "selected range", AppMint, Modifier.weight(1f))
+        MetricCard("Running", stats.distance, "mi selected range", AppBlue, Modifier.weight(1f))
     }
 }
 
@@ -687,6 +726,7 @@ private fun MetricCard(
     accent: Color,
     modifier: Modifier,
     trend: List<HealthTrendPoint> = emptyList(),
+    dateRange: HealthDateRange? = null,
 ) {
     BrandedCard(modifier = modifier) {
         Column(Modifier.padding(14.dp)) {
@@ -705,19 +745,25 @@ private fun MetricCard(
                 color = if (metric.state == HealthMetricState.STALE) AppGold else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
             )
-            if (trend.isNotEmpty()) HealthTrendChart(label, unit, trend, accent)
+            if (trend.isNotEmpty() && dateRange != null) HealthTrendChart(label, unit, trend, accent, dateRange)
         }
     }
 }
 
 @Composable
-private fun HealthTrendChart(label: String, unit: String, trend: List<HealthTrendPoint>, accent: Color) {
+private fun HealthTrendChart(
+    label: String,
+    unit: String,
+    trend: List<HealthTrendPoint>,
+    accent: Color,
+    dateRange: HealthDateRange,
+) {
     val values = trend.mapNotNull { it.value }
     Spacer(Modifier.height(10.dp))
-    Text("Last 30 days", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text("Last ${dateRange.displayLabel}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if (values.isEmpty()) {
         Text(
-            "No trend data in the last 30 days.",
+            "No trend data in the last ${dateRange.displayLabel}.",
             modifier = Modifier.padding(top = 8.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall,
@@ -930,16 +976,12 @@ private suspend fun readHealthStats(
     context: Context,
     client: HealthConnectClient,
     granted: Set<String>,
+    dateRange: HealthDateRange,
 ): HealthStats {
     val now = Instant.now()
-    val startOfWeek = LocalDate.now()
-        .with(DayOfWeek.MONDAY)
-        .atStartOfDay(ZoneId.systemDefault())
-        .toInstant()
-    val thisWeek = TimeRangeFilter.between(startOfWeek, now)
     val zoneId = ZoneId.systemDefault()
     val trendEndDate = LocalDate.now(zoneId)
-    val trendStartDate = trendEndDate.minusDays(29)
+    val trendStartDate = dateRange.startDate(trendEndDate)
     val trendRange = TimeRangeFilter.between(trendStartDate.atStartOfDay(zoneId).toInstant(), now)
 
     val weight = readHealthValue(HealthPermission.getReadPermission(WeightRecord::class) in granted) {
@@ -961,14 +1003,10 @@ private suspend fun readHealthStats(
         readMeasurementHistory(client, LeanBodyMassRecord::class, trendRange).takeIf { it.isNotEmpty() }
     }
     val sessions = readHealthValue(HealthPermission.getReadPermission(ExerciseSessionRecord::class) in granted) {
-        client.readRecords(
-            ReadRecordsRequest(ExerciseSessionRecord::class, timeRangeFilter = thisWeek, pageSize = 100),
-        ).records.takeIf { it.isNotEmpty() }
+        readMeasurementHistory(client, ExerciseSessionRecord::class, trendRange).takeIf { it.isNotEmpty() }
     }
     val distance = readHealthValue(HealthPermission.getReadPermission(DistanceRecord::class) in granted) {
-        client.readRecords(
-            ReadRecordsRequest(DistanceRecord::class, timeRangeFilter = thisWeek, pageSize = 1_000),
-        ).records.takeIf { it.isNotEmpty() }
+        readMeasurementHistory(client, DistanceRecord::class, trendRange).takeIf { it.isNotEmpty() }
     }
 
     fun source(packageName: String?) = resolveHealthSource(context, packageName)
@@ -997,14 +1035,14 @@ private suspend fun readHealthStats(
             recordedAt = leanMass.value?.time,
             source = source(leanMass.value?.metadata?.dataOrigin?.packageName),
         ),
-        workoutsThisWeek = healthMetric(
+        workouts = healthMetric(
             value = sessions.value?.size?.toString(),
             outcome = sessions.outcome,
             syncedAt = now,
             recordedAt = latestSession?.endTime,
             source = source(latestSession?.metadata?.dataOrigin?.packageName),
         ),
-        milesThisWeek = healthMetric(
+        distance = healthMetric(
             value = distance.value?.sumOf { it.distance.inMeters }?.let { (it / 1_609.344).format(1) },
             outcome = distance.outcome,
             syncedAt = now,

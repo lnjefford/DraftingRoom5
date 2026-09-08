@@ -9,7 +9,7 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 - Persistent schedule and custom-routine management with create, edit, reorder, enable/disable, delete, and reset-to-default controls.
 - Persistent dashboard customization: show, hide, reorder, and reset metric and training cards.
 - Per-metric Health Connect sync time, source app, stale-data warning, and distinct missing/unavailable states.
-- Thirty-day weight, body-fat, and lean-mass charts with daily points and visible gaps when no measurement was recorded.
+- Persistent 7-day, 30-day, 3-month, and 1-year controls for body-measurement charts and workout/distance summaries, with daily points and visible gaps when no measurement was recorded.
 - Encrypted Android backup of schedules and custom routines through the Google account selected in system backup settings.
 - Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
 - Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
@@ -23,7 +23,7 @@ Open the project in Android Studio with Android SDK 36 installed, then run `asse
 
 Open **Settings → Customize dashboard** to choose which metric and training cards appear, move them into your preferred order, or restore the default layout. Open **Settings → Manage schedules & routines** to customize the weekly dashboard plan. Schedule entries can launch Fitbod, JustRun, or a selected custom routine. Changes are stored on-device across restarts; **Reset built-in plan** restores the original weekly schedule and Forearm & Grip routine.
 
-Open **Settings → Google backup** to review the backup scope or open Android's backup settings. Android schedules encrypted cloud backups of the training plan and dashboard layout while the phone is online and idle, then restores the latest cloud snapshot during device setup or a fresh app install. A restored snapshot replaces the built-in defaults; subsequent local edits become the next snapshot, so the most recently edited installed copy wins after Android runs backup. Offline edits remain local and become eligible when the device reconnects. Changing the system backup account affects future snapshots; Android, rather than DraftingRoom5, owns account sign-in and restore selection. Health Connect measurements and permissions are never included.
+Open **Settings → Google backup** to review the backup scope or open Android's backup settings. Android schedules encrypted cloud backups of the training plan, dashboard layout, and selected health date range while the phone is online and idle, then restores the latest cloud snapshot during device setup or a fresh app install. A restored snapshot replaces the built-in defaults; subsequent local edits become the next snapshot, so the most recently edited installed copy wins after Android runs backup. Offline edits remain local and become eligible when the device reconnects. Changing the system backup account affects future snapshots; Android, rather than DraftingRoom5, owns account sign-in and restore selection. Health Connect measurements and permissions are never included.
 
 The dashboard's **Check & install update** button downloads the latest public GitHub release and opens Android's installer. On first use, allow DraftingRoom5 to install apps when Android asks. Updates verify the package, version code, and signing certificate before installation. Network and installation errors appear in the update card.
 

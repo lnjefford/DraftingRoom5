@@ -9,4 +9,8 @@
         domain="sharedpref"
         path="dashboard-layout.xml"
         requireFlags="clientSideEncryption" />
+    <include
+        domain="sharedpref"
+        path="health-date-range.xml"
+        requireFlags="clientSideEncryption" />
 </full-backup-content>

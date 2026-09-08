@@ -10,10 +10,6 @@ Work through these when advanced model access is available again.
 
    Add a Settings screen and move the Health Connect status card, app update card, and Health Connect permissions/settings link off the dashboard. Keep the dashboard focused on measurements and today’s schedule while preserving those actions in Settings.
 
-7. **Add date-range controls**
-
-    Let the user switch charts and summaries between one week, one month, three months, and one year. Keep the selected range across app restarts.
-
 8. **Add automatic backups**
 
     Back up app settings, schedules, routines, and workout history automatically. Show the last successful backup, retry failures, support offline recovery, and let the user disable automatic backups.
