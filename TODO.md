@@ -10,10 +10,6 @@ Work through these when advanced model access is available again.
 
    Add a Settings screen and move the Health Connect status card, app update card, and Health Connect permissions/settings link off the dashboard. Keep the dashboard focused on measurements and today’s schedule while preserving those actions in Settings.
 
-11. **Add voice timer announcements**
-
-    Announce countdowns, timer start, timer completion, and set transitions through Android text-to-speech. Provide a mute toggle, voice-rate control, and graceful behavior when text-to-speech is unavailable.
-
 12. **Next feature idea**
 
     Leave this item open for the next feature to define.

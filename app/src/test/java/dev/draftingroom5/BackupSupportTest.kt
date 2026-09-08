@@ -41,6 +41,7 @@ class BackupSupportTest {
                 WorkoutHistoryEntry("history-1", "forearm-sat", "Forearm", Destination.CUSTOM, 1_780_272_000_000L),
             ),
             hapticsEnabled = false,
+            voiceSettings = VoiceAnnouncementSettings(enabled = false, rate = 1.25f),
         )
 
         val restored = decodeBackupSnapshot(encodeBackupSnapshot(snapshot))
@@ -68,5 +69,22 @@ class BackupSupportTest {
         val oldSnapshot = JSONObject(encodeBackupSnapshot(snapshot)).apply { remove("hapticsEnabled") }.toString()
 
         assertTrue(decodeBackupSnapshot(oldSnapshot).hapticsEnabled)
+    }
+
+    @Test
+    fun olderSnapshotDefaultsVoiceAnnouncements() {
+        val snapshot = BackupSnapshot(
+            createdAtMillis = 1L,
+            plan = defaultTrainingPlan(),
+            dashboardLayout = DashboardLayout(),
+            healthDateRange = HealthDateRange.MONTH,
+            workoutHistory = emptyList(),
+        )
+        val oldSnapshot = JSONObject(encodeBackupSnapshot(snapshot)).apply {
+            remove("voiceAnnouncementsEnabled")
+            remove("voiceRate")
+        }.toString()
+
+        assertEquals(VoiceAnnouncementSettings(), decodeBackupSnapshot(oldSnapshot).voiceSettings)
     }
 }

@@ -36,6 +36,7 @@ internal data class BackupSnapshot(
     val healthDateRange: HealthDateRange,
     val workoutHistory: List<WorkoutHistoryEntry>,
     val hapticsEnabled: Boolean = true,
+    val voiceSettings: VoiceAnnouncementSettings = VoiceAnnouncementSettings(),
 )
 
 internal class AutomaticBackupManager(context: Context) {
@@ -102,6 +103,7 @@ internal class AutomaticBackupManager(context: Context) {
                 healthDateRange = HealthDateRangeStore(appContext).load(),
                 workoutHistory = WorkoutHistoryStore(appContext).load(),
                 hapticsEnabled = HapticSettingsStore(appContext).isEnabled(),
+                voiceSettings = VoiceAnnouncementSettingsStore(appContext).load(),
             )
             val temporary = File(backupDirectory, "$LATEST_FILE.tmp")
             temporary.writeText(encodeBackupSnapshot(snapshot), Charsets.UTF_8)
@@ -134,6 +136,7 @@ internal class AutomaticBackupManager(context: Context) {
         HealthDateRangeStore(appContext).save(snapshot.healthDateRange)
         WorkoutHistoryStore(appContext).save(snapshot.workoutHistory)
         HapticSettingsStore(appContext).saveEnabled(snapshot.hapticsEnabled)
+        VoiceAnnouncementSettingsStore(appContext).save(snapshot.voiceSettings)
         snapshot
     }
 
@@ -176,6 +179,8 @@ internal fun encodeBackupSnapshot(snapshot: BackupSnapshot): String = JSONObject
     put("healthDateRange", snapshot.healthDateRange.name)
     put("workoutHistory", JSONArray(encodeWorkoutHistory(snapshot.workoutHistory)))
     put("hapticsEnabled", snapshot.hapticsEnabled)
+    put("voiceAnnouncementsEnabled", snapshot.voiceSettings.enabled)
+    put("voiceRate", snapshot.voiceSettings.rate.toDouble())
 }.toString()
 
 internal fun decodeBackupSnapshot(value: String): BackupSnapshot {
@@ -188,6 +193,10 @@ internal fun decodeBackupSnapshot(value: String): BackupSnapshot {
         healthDateRange = HealthDateRange.valueOf(root.getString("healthDateRange")),
         workoutHistory = decodeWorkoutHistory(root.getJSONArray("workoutHistory").toString()),
         hapticsEnabled = root.optBoolean("hapticsEnabled", true),
+        voiceSettings = VoiceAnnouncementSettings(
+            enabled = root.optBoolean("voiceAnnouncementsEnabled", true),
+            rate = normalizedVoiceRate(root.optDouble("voiceRate", DEFAULT_VOICE_RATE.toDouble()).toFloat()),
+        ),
     )
 }
 

@@ -47,12 +47,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import androidx.compose.runtime.LaunchedEffect
@@ -140,14 +142,21 @@ private fun DraftingRoom5App() {
     val workoutHistoryStore = remember { WorkoutHistoryStore(context) }
     val hapticSettingsStore = remember { HapticSettingsStore(context) }
     val workoutHaptics = remember { WorkoutHaptics(context) }
+    val voiceSettingsStore = remember { VoiceAnnouncementSettingsStore(context) }
+    var voiceAvailability by remember { mutableStateOf(VoiceAvailability.INITIALIZING) }
+    val workoutVoice = remember { WorkoutVoiceAnnouncements(context) { voiceAvailability = it } }
     var trainingPlan by remember { mutableStateOf(planStore.load()) }
     var dashboardLayout by remember { mutableStateOf(dashboardLayoutStore.load()) }
     var healthDateRange by remember { mutableStateOf(healthDateRangeStore.load()) }
     var workoutHistory by remember { mutableStateOf(workoutHistoryStore.load()) }
     var hapticsEnabled by remember { mutableStateOf(hapticSettingsStore.isEnabled()) }
+    var voiceSettings by remember { mutableStateOf(voiceSettingsStore.load()) }
     var backupStatus by remember { mutableStateOf(backupManager.status()) }
     var backupActionMessage by remember { mutableStateOf<String?>(null) }
     val completedIds = completedScheduleIdsForDate(workoutHistory, LocalDate.now())
+    DisposableEffect(workoutVoice) {
+        onDispose { workoutVoice.shutdown() }
+    }
     val requestAutomaticBackup: () -> Unit = {
         backupManager.requestBackup()
         backupStatus = backupManager.status()
@@ -346,6 +355,13 @@ private fun DraftingRoom5App() {
                     hapticSettingsStore.saveEnabled(enabled)
                     requestAutomaticBackup()
                 },
+                voiceSettings = voiceSettings,
+                voiceAvailability = voiceAvailability,
+                onVoiceSettingsChange = { updated ->
+                    voiceSettings = updated
+                    voiceSettingsStore.save(updated)
+                    requestAutomaticBackup()
+                },
                 backupStatus = backupStatus,
                 backupActionMessage = backupActionMessage,
                 onAutomaticBackupChange = { enabled ->
@@ -366,6 +382,7 @@ private fun DraftingRoom5App() {
                         healthDateRange = restored.healthDateRange
                         workoutHistory = restored.workoutHistory
                         hapticsEnabled = restored.hapticsEnabled
+                        voiceSettings = restored.voiceSettings
                         backupActionMessage = "Restored the latest recovery snapshot."
                     }.onFailure { error ->
                         backupActionMessage = error.message ?: "Could not restore the latest snapshot."
@@ -408,9 +425,14 @@ private fun DraftingRoom5App() {
                 if (routine == null) screen = Screen.Dashboard else CustomWorkout(
                     routine = routine,
                     onHapticCue = { workoutHaptics.perform(it, hapticsEnabled) },
-                    onBack = { screen = Screen.Dashboard },
+                    onVoiceCue = { workoutVoice.announce(it, voiceSettings) },
+                    onBack = {
+                        workoutVoice.stop()
+                        screen = Screen.Dashboard
+                    },
                     onComplete = {
                         workoutHaptics.perform(HapticCue.WORKOUT_COMPLETE, hapticsEnabled)
+                        workoutVoice.announce(VoiceCue.WorkoutCompleted, voiceSettings)
                         recordWorkoutCompletion(workout.scheduleId, routine.name, Destination.CUSTOM)
                         screen = Screen.Dashboard
                     },
@@ -551,6 +573,9 @@ private fun SettingsScreen(
     onCustomizeDashboard: () -> Unit,
     hapticsEnabled: Boolean,
     onHapticsEnabledChange: (Boolean) -> Unit,
+    voiceSettings: VoiceAnnouncementSettings,
+    voiceAvailability: VoiceAvailability,
+    onVoiceSettingsChange: (VoiceAnnouncementSettings) -> Unit,
     backupStatus: AutomaticBackupStatus,
     backupActionMessage: String?,
     onAutomaticBackupChange: (Boolean) -> Unit,
@@ -593,7 +618,43 @@ private fun SettingsScreen(
                 }
             }
             item {
-                SectionHeader("Workout feedback", "Control tactile cues during custom workouts.", "Stay in rhythm")
+                SectionHeader("Workout feedback", "Control tactile and spoken cues during custom workouts.", "Stay in rhythm")
+            }
+            item {
+                BrandedCard(Modifier.fillMaxWidth(), containerColor = Color(0xFF142A45)) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Voice announcements", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    when (voiceAvailability) {
+                                        VoiceAvailability.INITIALIZING -> "Checking the phone's text-to-speech service…"
+                                        VoiceAvailability.READY -> "Spoken countdown, timer, set-transition, and workout-completion cues."
+                                        VoiceAvailability.UNAVAILABLE -> "Text-to-speech is unavailable on this phone. Timers and haptics still work normally."
+                                    },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            Switch(
+                                checked = voiceSettings.enabled,
+                                onCheckedChange = { onVoiceSettingsChange(voiceSettings.copy(enabled = it)) },
+                            )
+                        }
+                        Text(
+                            "Voice rate: ${voiceRateLabel(voiceSettings.rate)} (${String.format(Locale.US, "%.2f", voiceSettings.rate)}×)",
+                            color = AppBlue,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Slider(
+                            value = voiceSettings.rate,
+                            onValueChange = { onVoiceSettingsChange(voiceSettings.copy(rate = it)) },
+                            valueRange = MIN_VOICE_RATE..MAX_VOICE_RATE,
+                            steps = 14,
+                            enabled = voiceSettings.enabled,
+                        )
+                    }
+                }
             }
             item {
                 BrandedCard(Modifier.fillMaxWidth(), containerColor = Color(0xFF142A45)) {
@@ -1007,6 +1068,7 @@ private fun ScheduleCard(item: ScheduledItem, completed: Boolean, onClick: () ->
 private fun CustomWorkout(
     routine: CustomRoutine,
     onHapticCue: (HapticCue) -> Unit,
+    onVoiceCue: (VoiceCue) -> Unit,
     onBack: () -> Unit,
     onComplete: () -> Unit,
 ) {
@@ -1015,16 +1077,28 @@ private fun CustomWorkout(
     var timerSeconds by remember { mutableIntStateOf(0) }
     var graceSeconds by remember { mutableIntStateOf(0) }
     var isRunning by remember { mutableStateOf(false) }
+    var timerStartAnnounced by remember { mutableStateOf(false) }
     val completedSets = remember(routine.id) { mutableStateMapOf<String, Int>() }
 
     LaunchedEffect(isRunning, graceSeconds, timerSeconds) {
         if (!isRunning) return@LaunchedEffect
-        delay(1000)
         if (graceSeconds > 0) {
-            if (graceSeconds == 1) onHapticCue(HapticCue.COUNTDOWN_COMPLETE)
+            delay(1000)
+            if (graceSeconds in 1..3) onVoiceCue(VoiceCue.CountdownTick(graceSeconds))
+            if (graceSeconds == 1) {
+                onHapticCue(HapticCue.COUNTDOWN_COMPLETE)
+            }
             graceSeconds--
         } else if (timerSeconds > 0) {
-            if (timerSeconds == 1) onHapticCue(HapticCue.TIMER_COMPLETE)
+            if (!timerStartAnnounced) {
+                activeExercise?.let { onVoiceCue(VoiceCue.TimerStarted(it.name, timedSeconds(it))) }
+                timerStartAnnounced = true
+            }
+            delay(1000)
+            if (timerSeconds == 1) {
+                onHapticCue(HapticCue.TIMER_COMPLETE)
+                activeExercise?.let { onVoiceCue(VoiceCue.TimerCompleted(it.name)) }
+            }
             timerSeconds--
         }
         else isRunning = false
@@ -1059,7 +1133,9 @@ private fun CustomWorkout(
                             graceSeconds = 10
                             timerSeconds = timedSeconds(activeExercise!!)
                             isRunning = true
+                            timerStartAnnounced = false
                             onHapticCue(HapticCue.TIMER_START)
+                            onVoiceCue(VoiceCue.CountdownStarted)
                         },
                     )
                 }
@@ -1071,12 +1147,19 @@ private fun CustomWorkout(
                     graceSeconds = 10
                     timerSeconds = timedSeconds(exercise)
                     isRunning = true
+                    timerStartAnnounced = false
                     onHapticCue(HapticCue.TIMER_START)
+                    onVoiceCue(VoiceCue.CountdownStarted)
                 }, completedSets = completedSets[exercise.id] ?: 0, onCompleteSet = {
                     val current = completedSets[exercise.id] ?: 0
                     if (current < setCount) {
-                        completedSets[exercise.id] = current + 1
+                        val updated = current + 1
+                        completedSets[exercise.id] = updated
                         onHapticCue(HapticCue.SET_COMPLETE)
+                        val nextExercise = if (updated == setCount) {
+                            routine.exercises.getOrNull(routine.exercises.indexOf(exercise) + 1)?.name
+                        } else null
+                        onVoiceCue(VoiceCue.SetCompleted(exercise.name, updated, setCount, nextExercise))
                     }
                 })
             }

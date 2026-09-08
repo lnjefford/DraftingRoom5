@@ -13,6 +13,7 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 - Automatic offline recovery snapshots of app settings, schedules, routines, and workout history, with encrypted Android/Google device backup eligibility.
 - Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
 - Configurable workout haptics mark timer starts, countdown and timer completion, each completed set, and workout completion while respecting the phone's system haptic setting.
+- Optional text-to-speech announces the final countdown, timer start and completion, set transitions, and workout completion with an adjustable voice rate.
 - Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
 - Branded dark-only interface with layered navy depth, blue/mint accents, elevated cards, strong visual hierarchy, and consistent system-bar styling.
 - A short first-launch brand-title animation that never blocks navigation and follows Android's reduced-motion setting.
@@ -26,6 +27,8 @@ Open the project in Android Studio with Android SDK 36 installed, then run `asse
 Open **Settings → Customize dashboard** to choose which metric and training cards appear, move them into your preferred order, or restore the default layout. Open **Settings → Manage schedules & routines** to customize the weekly dashboard plan. Schedule entries can launch Fitbod, JustRun, or a selected custom routine. Changes are stored on-device across restarts; **Reset built-in plan** restores the original weekly schedule and Forearm & Grip routine.
 
 Open **Settings → Workout feedback** to turn workout haptics on or off. Custom workouts include a per-exercise set counter; completing a set produces one short cue, while timer and workout milestones use distinct cues. Duplicate taps of the same event are throttled, and the app stays silent when Android system haptics are disabled or the phone has no vibrator.
+
+The same **Workout feedback** section includes a voice-announcement mute switch and rate control. Announcements use the phone's default Android text-to-speech voice. If no compatible voice service or language is installed, DraftingRoom5 shows that status and keeps timers and haptics working without interruption.
 
 Open **Settings → Automatic backups** to see the last successful snapshot, back up immediately, restore the latest snapshot, or turn automatic backups off. DraftingRoom5 saves a recovery snapshot after changes and every day, retries temporary failures with exponential backoff, and keeps the latest two copies on the device. Snapshots include dashboard/date-range settings, schedules, custom routines, and persistent workout completion history, so local recovery works without a network connection. Android can also encrypt and copy the snapshot to the Google account selected in system backup settings, then restore it during device setup or a fresh install. Changing the system backup account affects future cloud copies; Android owns account sign-in and transport timing. Health Connect measurements, permissions, downloads, and update files are never included.
 
