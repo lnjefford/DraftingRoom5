@@ -13,9 +13,3 @@ Work through these when advanced model access is available again.
 12. **Next feature idea**
 
     Leave this item open for the next feature to define.
-
-16. **Rework the fitness tracker workspace UI**
-
-    Show small metric cards on the dashboard, each with an up, down, or neutral trend arrow based on the last month's trend. Give each card a drilldown with a line graph that draws actual lines between the data points. Place the day, week, month, and other duration selections in this detail view. Make the duration selector visually distinct from the graph card, without putting the selector in another card.
-
-    Visually separate the dashboard's high-level stats from the schedule, taking inspiration from Epic's MyChart: a distinct header containing the stats, followed by a separate section containing schedule cards. Fix the activity header text color so it is readable against the dark background instead of black.

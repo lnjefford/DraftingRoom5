@@ -60,4 +60,27 @@ class HealthTrendSupportTest {
 
         assertNull(trend.single().value)
     }
+
+    @Test fun dailyTotalsIncludeZeroDaysAndSumRecordedValues() {
+        val trend = dailyHealthTotals(
+            samples = listOf(
+                TimedHealthValue(Instant.parse("2026-09-02T08:00:00Z"), 1.2),
+                TimedHealthValue(Instant.parse("2026-09-02T20:00:00Z"), 0.8),
+            ),
+            startDate = LocalDate.parse("2026-09-01"),
+            endDate = LocalDate.parse("2026-09-03"),
+            zoneId = utc,
+        )
+
+        assertEquals(listOf(0.0, 2.0, 0.0), trend.map { it.value })
+    }
+
+    @Test fun trendDirectionComparesEarlierAndLaterHalves() {
+        val dates = (1..4).map { LocalDate.of(2026, 9, it) }
+
+        assertEquals(HealthTrendDirection.UP, healthTrendDirection(dates.mapIndexed { index, date -> HealthTrendPoint(date, index.toDouble()) }))
+        assertEquals(HealthTrendDirection.DOWN, healthTrendDirection(dates.mapIndexed { index, date -> HealthTrendPoint(date, (4 - index).toDouble()) }))
+        assertEquals(HealthTrendDirection.NEUTRAL, healthTrendDirection(dates.map { HealthTrendPoint(it, 10.0) }))
+        assertEquals(HealthTrendDirection.NEUTRAL, healthTrendDirection(listOf(HealthTrendPoint(dates.first(), null))))
+    }
 }

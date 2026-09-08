@@ -9,7 +9,8 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 - Persistent schedule and custom-routine management with a visual weekly timeline, repeat presets, multi-day scheduling, create/edit/reorder controls, and reset-to-default behavior.
 - Persistent dashboard customization: show, hide, reorder, and reset metric and training cards.
 - Per-metric Health Connect sync time, source app, stale-data warning, and distinct missing/unavailable states.
-- Persistent 7-day, 30-day, 3-month, and 1-year controls for body-measurement charts and workout/distance summaries, with daily points and visible gaps when no measurement was recorded.
+- Compact dashboard stats with 30-day direction indicators and dedicated drilldowns for body measurements, workouts, and distance.
+- Persistent 1-day, 7-day, 30-day, 3-month, and 1-year drilldown controls, with line charts connecting recorded points and daily activity totals.
 - Automatic offline recovery snapshots of app settings, schedules, routines, and workout history, with encrypted Android/Google device backup eligibility.
 - Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
 - Configurable workout haptics mark timer starts, countdown and timer completion, each completed set, and workout completion while respecting the phone's system haptic setting.
@@ -25,6 +26,8 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 Open the project in Android Studio with Android SDK 36 installed, then run `assembleDebug`.
 
 Open **Settings → Customize dashboard** to choose which metric and training cards appear, move them into your preferred order, or restore the default layout. Open **Settings → Manage schedules & routines** to customize the weekly dashboard plan on a day-by-day timeline. The schedule editor offers weekly, weekday, daily, and custom repeat patterns, polished day controls, and a live preview before saving. Entries can launch Fitbod, JustRun, or a selected custom routine. Changes are stored on-device across restarts; **Reset built-in plan** restores the original weekly schedule and Forearm & Grip routine.
+
+The dashboard keeps health stats in a compact header above a visually separate activity schedule. Each stat shows an up, down, or steady indicator based on the last 30 days. Tap a stat to open its detail view, choose a time range, and inspect the connected line graph without crowding the dashboard.
 
 Open **Settings → Workout feedback** to turn workout haptics on or off. Custom workouts include a per-exercise set counter; completing a set produces one short cue, while timer and workout milestones use distinct cues. Duplicate taps of the same event are throttled, and the app stays silent when Android system haptics are disabled or the phone has no vibrator.
 

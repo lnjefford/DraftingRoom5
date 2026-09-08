@@ -8,6 +8,7 @@ internal enum class HealthDateRange(
     val buttonLabel: String,
     val displayLabel: String,
 ) {
+    DAY(1, "1D", "1 day"),
     WEEK(7, "1W", "7 days"),
     MONTH(30, "1M", "30 days"),
     THREE_MONTHS(90, "3M", "3 months"),

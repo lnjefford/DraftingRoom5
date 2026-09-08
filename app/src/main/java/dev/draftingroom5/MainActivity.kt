@@ -16,6 +16,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Timer
@@ -122,6 +124,8 @@ private data class HealthStats(
     val weightTrend: List<HealthTrendPoint> = emptyList(),
     val bodyFatTrend: List<HealthTrendPoint> = emptyList(),
     val leanMassTrend: List<HealthTrendPoint> = emptyList(),
+    val workoutTrend: List<HealthTrendPoint> = emptyList(),
+    val distanceTrend: List<HealthTrendPoint> = emptyList(),
 )
 
 private data class HealthUiState(
@@ -388,18 +392,28 @@ private fun DraftingRoom5App() {
                 onOpenSettings = { screen = Screen.Settings },
                 updateAvailableVersion = updateStatus.availableVersion,
                 onInstallUpdate = checkAndInstallUpdate,
-                onHealthDateRangeChange = { updated ->
-                    healthDateRange = updated
-                    healthDateRangeStore.save(updated)
-                    requestAutomaticBackup()
-                    refreshHealth(updated)
-                },
+                onOpenMetric = { card -> screen = Screen.MetricDetail(card) },
                 onOpenCustom = { item -> item.routineId?.let { screen = Screen.CustomWorkout(it, item.id) } },
                 onLaunchExternal = { item ->
                     launchWorkoutApp(context, item.destination)
                     recordWorkoutCompletion(item.id, item.title, item.destination)
                 },
             )
+            is Screen.MetricDetail -> {
+                val card = (screen as Screen.MetricDetail).card
+                MetricDetailScreen(
+                    card = card,
+                    stats = healthUi.stats,
+                    dateRange = healthDateRange,
+                    onDateRangeChange = { updated ->
+                        healthDateRange = updated
+                        healthDateRangeStore.save(updated)
+                        requestAutomaticBackup()
+                        refreshHealth(updated)
+                    },
+                    onBack = { screen = Screen.Dashboard },
+                )
+            }
             Screen.Settings -> SettingsScreen(
                 healthUi = healthUi,
                 onBack = { screen = Screen.Dashboard },
@@ -506,6 +520,7 @@ private fun DraftingRoom5App() {
 
 private sealed interface Screen {
     data object Dashboard : Screen
+    data class MetricDetail(val card: DashboardCard) : Screen
     data object Settings : Screen
     data object PlanManagement : Screen
     data object DashboardCustomization : Screen
@@ -526,7 +541,7 @@ private fun Dashboard(
     onOpenSettings: () -> Unit,
     updateAvailableVersion: String?,
     onInstallUpdate: () -> Unit,
-    onHealthDateRangeChange: (HealthDateRange) -> Unit,
+    onOpenMetric: (DashboardCard) -> Unit,
     onOpenCustom: (ScheduledItem) -> Unit,
     onLaunchExternal: (ScheduledItem) -> Unit,
 ) {
@@ -573,32 +588,39 @@ private fun Dashboard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            item { HealthDateRangeSelector(healthDateRange, onHealthDateRangeChange) }
-            dashboardLayout.visibleCards.forEach { card ->
-                when (card) {
-                    DashboardCard.WEIGHT -> item { MetricCard("Weight", healthUi.stats.weight, "lb", AppBlue, Modifier.fillMaxWidth(), healthUi.stats.weightTrend, healthDateRange) }
-                    DashboardCard.BODY_FAT -> item { MetricCard("Body fat", healthUi.stats.bodyFat, "%", AppMint, Modifier.fillMaxWidth(), healthUi.stats.bodyFatTrend, healthDateRange) }
-                    DashboardCard.LEAN_MASS -> item { MetricCard("Lean mass", healthUi.stats.leanMass, "lb", AppGold, Modifier.fillMaxWidth(), healthUi.stats.leanMassTrend, healthDateRange) }
-                    DashboardCard.WORKOUTS -> item { MetricCard("Workouts", healthUi.stats.workouts, "last ${healthDateRange.displayLabel}", AppMint, Modifier.fillMaxWidth()) }
-                    DashboardCard.DISTANCE -> item { MetricCard("Distance", healthUi.stats.distance, "mi · ${healthDateRange.displayLabel}", AppBlue, Modifier.fillMaxWidth()) }
-                    DashboardCard.TODAY -> {
-                        item { SectionHeader("Today", "Your scheduled training, ready when you are.") }
-                        if (scheduledItems.isEmpty()) {
-                            item { EmptySchedule() }
-                        } else {
-                            items(scheduledItems, key = { "schedule-${it.id}" }) { item ->
-                                ScheduleCard(
-                                    item = item,
-                                    completed = item.id in completedIds,
-                                    onClick = {
-                                        when (item.destination) {
-                                            Destination.CUSTOM -> onOpenCustom(item)
-                                            else -> onLaunchExternal(item)
-                                        }
-                                    },
-                                )
-                            }
-                        }
+            val metricCards = dashboardLayout.visibleCards.filter { it != DashboardCard.TODAY }
+            if (metricCards.isNotEmpty()) {
+                item {
+                    StatsWorkspaceHeader(
+                        cards = metricCards,
+                        stats = healthUi.stats,
+                        selectedRange = healthDateRange,
+                        onOpenMetric = onOpenMetric,
+                    )
+                }
+            }
+            if (DashboardCard.TODAY in dashboardLayout.visibleCards) {
+                item {
+                    Column(Modifier.padding(top = 10.dp)) {
+                        Text("ACTIVITY", color = AppBlue, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp)
+                        Text("Today's schedule", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineSmall)
+                        Text("Your scheduled training, ready when you are.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                if (scheduledItems.isEmpty()) {
+                    item { EmptySchedule() }
+                } else {
+                    items(scheduledItems, key = { "schedule-${it.id}" }) { item ->
+                        ScheduleCard(
+                            item = item,
+                            completed = item.id in completedIds,
+                            onClick = {
+                                when (item.destination) {
+                                    Destination.CUSTOM -> onOpenCustom(item)
+                                    else -> onLaunchExternal(item)
+                                }
+                            },
+                        )
                     }
                 }
             }
@@ -608,29 +630,189 @@ private fun Dashboard(
 }
 
 @Composable
+private fun StatsWorkspaceHeader(
+    cards: List<DashboardCard>,
+    stats: HealthStats,
+    selectedRange: HealthDateRange,
+    onOpenMetric: (DashboardCard) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(AppSurfaceRaised)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("HEALTH AT A GLANCE", color = AppMint, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp)
+        Text("Your stats", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineSmall)
+        cards.chunked(2).forEach { rowCards ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                rowCards.forEach { card ->
+                    CompactMetricCard(card, stats, selectedRange, Modifier.weight(1f)) { onOpenMetric(card) }
+                }
+                if (rowCards.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+        Text("Tap a stat for its graph and time range.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
 private fun HealthDateRangeSelector(
     selected: HealthDateRange,
     onSelected: (HealthDateRange) -> Unit,
 ) {
-    BrandedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp)) {
-            Text("Health range", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HealthDateRange.entries.forEach { range ->
-                    if (range == selected) {
-                        Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(range.buttonLabel) }
-                    } else {
-                        OutlinedButton(onClick = { onSelected(range) }, modifier = Modifier.weight(1f)) { Text(range.buttonLabel) }
+    Column(Modifier.fillMaxWidth()) {
+        Text("Time range", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            HealthDateRange.entries.forEach { range ->
+                if (range == selected) {
+                    Button(onClick = {}, modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)) {
+                        Text(range.buttonLabel)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { onSelected(range) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp),
+                    ) { Text(range.buttonLabel) }
+                }
+            }
+        }
+    }
+}
+
+private fun DashboardCard.metric(stats: HealthStats): HealthMetric = when (this) {
+    DashboardCard.WEIGHT -> stats.weight
+    DashboardCard.BODY_FAT -> stats.bodyFat
+    DashboardCard.LEAN_MASS -> stats.leanMass
+    DashboardCard.WORKOUTS -> stats.workouts
+    DashboardCard.DISTANCE -> stats.distance
+    DashboardCard.TODAY -> HealthMetric()
+}
+
+private fun DashboardCard.trend(stats: HealthStats): List<HealthTrendPoint> = when (this) {
+    DashboardCard.WEIGHT -> stats.weightTrend
+    DashboardCard.BODY_FAT -> stats.bodyFatTrend
+    DashboardCard.LEAN_MASS -> stats.leanMassTrend
+    DashboardCard.WORKOUTS -> stats.workoutTrend
+    DashboardCard.DISTANCE -> stats.distanceTrend
+    DashboardCard.TODAY -> emptyList()
+}
+
+private val DashboardCard.unit: String
+    get() = when (this) {
+        DashboardCard.WEIGHT, DashboardCard.LEAN_MASS -> "lb"
+        DashboardCard.BODY_FAT -> "%"
+        DashboardCard.WORKOUTS -> "sessions"
+        DashboardCard.DISTANCE -> "mi"
+        DashboardCard.TODAY -> ""
+    }
+
+private val DashboardCard.accent: Color
+    get() = when (this) {
+        DashboardCard.WEIGHT, DashboardCard.DISTANCE -> AppBlue
+        DashboardCard.BODY_FAT, DashboardCard.WORKOUTS -> AppMint
+        DashboardCard.LEAN_MASS -> AppGold
+        DashboardCard.TODAY -> AppBlue
+    }
+
+private fun List<HealthTrendPoint>.forRange(range: HealthDateRange): List<HealthTrendPoint> {
+    val end = lastOrNull()?.date ?: LocalDate.now()
+    val start = range.startDate(end)
+    return filter { !it.date.isBefore(start) && !it.date.isAfter(end) }
+}
+
+@Composable
+private fun CompactMetricCard(
+    card: DashboardCard,
+    stats: HealthStats,
+    selectedRange: HealthDateRange,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val metric = card.metric(stats)
+    val direction = healthTrendDirection(card.trend(stats).forRange(HealthDateRange.MONTH))
+    val trendIcon = when (direction) {
+        HealthTrendDirection.UP -> Icons.Default.KeyboardArrowUp
+        HealthTrendDirection.DOWN -> Icons.Default.KeyboardArrowDown
+        HealthTrendDirection.NEUTRAL -> Icons.Default.Remove
+    }
+    val trendText = when (direction) {
+        HealthTrendDirection.UP -> "Up over 30 days"
+        HealthTrendDirection.DOWN -> "Down over 30 days"
+        HealthTrendDirection.NEUTRAL -> "Steady over 30 days"
+    }
+    BrandedCard(modifier.clip(MaterialTheme.shapes.medium).clickable(onClick = onClick)) {
+        Column(Modifier.padding(13.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(card.title, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                Icon(trendIcon, contentDescription = trendText, tint = card.accent)
+            }
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(metric.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    if (card == DashboardCard.WORKOUTS || card == DashboardCard.DISTANCE) "${card.unit} · ${selectedRange.buttonLabel}" else card.unit,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+            Text(trendText, color = card.accent, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MetricDetailScreen(
+    card: DashboardCard,
+    stats: HealthStats,
+    dateRange: HealthDateRange,
+    onDateRangeChange: (HealthDateRange) -> Unit,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val metric = card.metric(stats)
+    val trend = card.trend(stats).forRange(dateRange)
+    Scaffold(
+        modifier = Modifier.fillMaxSize().appScreenBackground(),
+        topBar = {
+            TopAppBar(
+                title = { Text(card.title, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+            )
+        },
+        containerColor = Color.Transparent,
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            item {
+                Column(Modifier.padding(top = 8.dp)) {
+                    Text("HEALTH DETAIL", color = card.accent, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(metric.value, style = MaterialTheme.typography.displayMedium)
+                        Spacer(Modifier.width(8.dp))
+                        Text(card.unit, modifier = Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(metric.detail(), color = if (metric.state == HealthMetricState.STALE) AppGold else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            item { HealthDateRangeSelector(dateRange, onDateRangeChange) }
+            item {
+                BrandedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("${card.title} trend", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                        HealthTrendChart(card.title, card.unit, trend, card.accent, dateRange)
                     }
                 }
             }
-            Text(
-                "Charts, workouts, and distance · last ${selected.displayLabel}",
-                modifier = Modifier.padding(top = 8.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            item { Spacer(Modifier.height(20.dp)) }
         }
     }
 }
@@ -1092,15 +1274,17 @@ private fun HealthTrendChart(
         fun x(index: Int) = size.width * index / denominator
         fun y(value: Double) = size.height - ((value - minimum) / spread).toFloat() * size.height
 
-        for (index in 0 until trend.lastIndex) {
-            val start = trend[index].value
-            val end = trend[index + 1].value
-            if (start != null && end != null) {
-                drawLine(accent, start = androidx.compose.ui.geometry.Offset(x(index), y(start)), end = androidx.compose.ui.geometry.Offset(x(index + 1), y(end)), strokeWidth = 4f)
-            }
+        val recordedPoints = trend.mapIndexedNotNull { index, point -> point.value?.let { index to it } }
+        recordedPoints.zipWithNext().forEach { (start, end) ->
+            drawLine(
+                accent,
+                start = androidx.compose.ui.geometry.Offset(x(start.first), y(start.second)),
+                end = androidx.compose.ui.geometry.Offset(x(end.first), y(end.second)),
+                strokeWidth = 4f,
+            )
         }
-        trend.forEachIndexed { index, point ->
-            point.value?.let { value -> drawCircle(accent, radius = 5f, center = androidx.compose.ui.geometry.Offset(x(index), y(value))) }
+        recordedPoints.forEach { (index, value) ->
+            drawCircle(accent, radius = 5f, center = androidx.compose.ui.geometry.Offset(x(index), y(value)))
         }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1341,7 +1525,8 @@ private suspend fun readHealthStats(
     val now = Instant.now()
     val zoneId = ZoneId.systemDefault()
     val trendEndDate = LocalDate.now(zoneId)
-    val trendStartDate = dateRange.startDate(trendEndDate)
+    val selectedStartDate = dateRange.startDate(trendEndDate)
+    val trendStartDate = minOf(selectedStartDate, HealthDateRange.MONTH.startDate(trendEndDate))
     val trendRange = TimeRangeFilter.between(trendStartDate.atStartOfDay(zoneId).toInstant(), now)
 
     val weight = readHealthValue(HealthPermission.getReadPermission(WeightRecord::class) in granted) {
@@ -1370,8 +1555,11 @@ private suspend fun readHealthStats(
     }
 
     fun source(packageName: String?) = resolveHealthSource(context, packageName)
-    val latestSession = sessions.value?.maxByOrNull { it.endTime }
-    val latestDistance = distance.value?.maxByOrNull { it.endTime }
+    val selectedStart = selectedStartDate.atStartOfDay(zoneId).toInstant()
+    val selectedSessions = sessions.value?.filter { !it.endTime.isBefore(selectedStart) }
+    val selectedDistances = distance.value?.filter { !it.endTime.isBefore(selectedStart) }
+    val latestSession = selectedSessions?.maxByOrNull { it.endTime }
+    val latestDistance = selectedDistances?.maxByOrNull { it.endTime }
 
     return HealthStats(
         weight = healthMetric(
@@ -1396,14 +1584,14 @@ private suspend fun readHealthStats(
             source = source(leanMass.value?.metadata?.dataOrigin?.packageName),
         ),
         workouts = healthMetric(
-            value = sessions.value?.size?.toString(),
+            value = selectedSessions?.size?.toString(),
             outcome = sessions.outcome,
             syncedAt = now,
             recordedAt = latestSession?.endTime,
             source = source(latestSession?.metadata?.dataOrigin?.packageName),
         ),
         distance = healthMetric(
-            value = distance.value?.sumOf { it.distance.inMeters }?.let { (it / 1_609.344).format(1) },
+            value = selectedDistances?.sumOf { it.distance.inMeters }?.let { (it / 1_609.344).format(1) },
             outcome = distance.outcome,
             syncedAt = now,
             recordedAt = latestDistance?.endTime,
@@ -1427,6 +1615,22 @@ private suspend fun readHealthStats(
             trendEndDate,
             zoneId,
         ),
+        workoutTrend = sessions.value?.let { records ->
+            dailyHealthTotals(
+                records.map { TimedHealthValue(it.endTime, 1.0) },
+                trendStartDate,
+                trendEndDate,
+                zoneId,
+            )
+        }.orEmpty(),
+        distanceTrend = distance.value?.let { records ->
+            dailyHealthTotals(
+                records.map { TimedHealthValue(it.endTime, it.distance.inMeters / 1_609.344) },
+                trendStartDate,
+                trendEndDate,
+                zoneId,
+            )
+        }.orEmpty(),
     )
 }
 
