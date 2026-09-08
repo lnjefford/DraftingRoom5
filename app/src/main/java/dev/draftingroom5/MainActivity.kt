@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -66,6 +67,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -111,6 +114,9 @@ private data class HealthStats(
     val leanMass: HealthMetric = HealthMetric(),
     val workoutsThisWeek: HealthMetric = HealthMetric(),
     val milesThisWeek: HealthMetric = HealthMetric(),
+    val weightTrend: List<HealthTrendPoint> = emptyList(),
+    val bodyFatTrend: List<HealthTrendPoint> = emptyList(),
+    val leanMassTrend: List<HealthTrendPoint> = emptyList(),
 )
 
 private data class HealthUiState(
@@ -384,9 +390,9 @@ private fun Dashboard(
             }
             dashboardLayout.visibleCards.forEach { card ->
                 when (card) {
-                    DashboardCard.WEIGHT -> item { MetricCard("Weight", healthUi.stats.weight, "lb", AppBlue, Modifier.fillMaxWidth()) }
-                    DashboardCard.BODY_FAT -> item { MetricCard("Body fat", healthUi.stats.bodyFat, "%", AppMint, Modifier.fillMaxWidth()) }
-                    DashboardCard.LEAN_MASS -> item { MetricCard("Lean mass", healthUi.stats.leanMass, "lb", AppGold, Modifier.fillMaxWidth()) }
+                    DashboardCard.WEIGHT -> item { MetricCard("Weight", healthUi.stats.weight, "lb", AppBlue, Modifier.fillMaxWidth(), healthUi.stats.weightTrend) }
+                    DashboardCard.BODY_FAT -> item { MetricCard("Body fat", healthUi.stats.bodyFat, "%", AppMint, Modifier.fillMaxWidth(), healthUi.stats.bodyFatTrend) }
+                    DashboardCard.LEAN_MASS -> item { MetricCard("Lean mass", healthUi.stats.leanMass, "lb", AppGold, Modifier.fillMaxWidth(), healthUi.stats.leanMassTrend) }
                     DashboardCard.WORKOUTS -> item { MetricCard("Workouts", healthUi.stats.workoutsThisWeek, "this week", AppMint, Modifier.fillMaxWidth()) }
                     DashboardCard.DISTANCE -> item { MetricCard("Running", healthUi.stats.milesThisWeek, "mi this week", AppBlue, Modifier.fillMaxWidth()) }
                     DashboardCard.TODAY -> {
@@ -674,7 +680,14 @@ private fun WeeklyStatRow(stats: HealthStats) {
 }
 
 @Composable
-private fun MetricCard(label: String, metric: HealthMetric, unit: String, accent: Color, modifier: Modifier) {
+private fun MetricCard(
+    label: String,
+    metric: HealthMetric,
+    unit: String,
+    accent: Color,
+    modifier: Modifier,
+    trend: List<HealthTrendPoint> = emptyList(),
+) {
     BrandedCard(modifier = modifier) {
         Column(Modifier.padding(14.dp)) {
             Box(Modifier.width(28.dp).height(3.dp).clip(RoundedCornerShape(50)).background(accent))
@@ -692,7 +705,57 @@ private fun MetricCard(label: String, metric: HealthMetric, unit: String, accent
                 color = if (metric.state == HealthMetricState.STALE) AppGold else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
             )
+            if (trend.isNotEmpty()) HealthTrendChart(label, unit, trend, accent)
         }
+    }
+}
+
+@Composable
+private fun HealthTrendChart(label: String, unit: String, trend: List<HealthTrendPoint>, accent: Color) {
+    val values = trend.mapNotNull { it.value }
+    Spacer(Modifier.height(10.dp))
+    Text("Last 30 days", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (values.isEmpty()) {
+        Text(
+            "No trend data in the last 30 days.",
+            modifier = Modifier.padding(top = 8.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
+        return
+    }
+
+    val minimum = values.min()
+    val maximum = values.max()
+    val spread = (maximum - minimum).takeIf { it > 0.0 } ?: 1.0
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(96.dp)
+            .padding(top = 8.dp)
+            .semantics {
+                contentDescription = "$label trend, ${values.size} recorded days, from ${minimum.format(1)} to ${maximum.format(1)} $unit"
+            },
+    ) {
+        val denominator = (trend.size - 1).coerceAtLeast(1).toFloat()
+        fun x(index: Int) = size.width * index / denominator
+        fun y(value: Double) = size.height - ((value - minimum) / spread).toFloat() * size.height
+
+        for (index in 0 until trend.lastIndex) {
+            val start = trend[index].value
+            val end = trend[index + 1].value
+            if (start != null && end != null) {
+                drawLine(accent, start = androidx.compose.ui.geometry.Offset(x(index), y(start)), end = androidx.compose.ui.geometry.Offset(x(index + 1), y(end)), strokeWidth = 4f)
+            }
+        }
+        trend.forEachIndexed { index, point ->
+            point.value?.let { value -> drawCircle(accent, radius = 5f, center = androidx.compose.ui.geometry.Offset(x(index), y(value))) }
+        }
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(trend.first().date.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("${minimum.format(1)}–${maximum.format(1)} $unit", style = MaterialTheme.typography.labelSmall, color = accent)
+        Text(trend.last().date.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -874,6 +937,10 @@ private suspend fun readHealthStats(
         .atStartOfDay(ZoneId.systemDefault())
         .toInstant()
     val thisWeek = TimeRangeFilter.between(startOfWeek, now)
+    val zoneId = ZoneId.systemDefault()
+    val trendEndDate = LocalDate.now(zoneId)
+    val trendStartDate = trendEndDate.minusDays(29)
+    val trendRange = TimeRangeFilter.between(trendStartDate.atStartOfDay(zoneId).toInstant(), now)
 
     val weight = readHealthValue(HealthPermission.getReadPermission(WeightRecord::class) in granted) {
         readLatestMeasurement(client, WeightRecord::class, now) { it.time }
@@ -883,6 +950,15 @@ private suspend fun readHealthStats(
     }
     val leanMass = readHealthValue(HealthPermission.getReadPermission(LeanBodyMassRecord::class) in granted) {
         readLatestMeasurement(client, LeanBodyMassRecord::class, now) { it.time }
+    }
+    val weightHistory = readHealthValue(HealthPermission.getReadPermission(WeightRecord::class) in granted) {
+        readMeasurementHistory(client, WeightRecord::class, trendRange).takeIf { it.isNotEmpty() }
+    }
+    val bodyFatHistory = readHealthValue(HealthPermission.getReadPermission(BodyFatRecord::class) in granted) {
+        readMeasurementHistory(client, BodyFatRecord::class, trendRange).takeIf { it.isNotEmpty() }
+    }
+    val leanMassHistory = readHealthValue(HealthPermission.getReadPermission(LeanBodyMassRecord::class) in granted) {
+        readMeasurementHistory(client, LeanBodyMassRecord::class, trendRange).takeIf { it.isNotEmpty() }
     }
     val sessions = readHealthValue(HealthPermission.getReadPermission(ExerciseSessionRecord::class) in granted) {
         client.readRecords(
@@ -935,7 +1011,44 @@ private suspend fun readHealthStats(
             recordedAt = latestDistance?.endTime,
             source = source(latestDistance?.metadata?.dataOrigin?.packageName),
         ),
+        weightTrend = dailyHealthTrend(
+            weightHistory.value.orEmpty().map { TimedHealthValue(it.time, it.weight.inKilograms.toPounds()) },
+            trendStartDate,
+            trendEndDate,
+            zoneId,
+        ),
+        bodyFatTrend = dailyHealthTrend(
+            bodyFatHistory.value.orEmpty().map { TimedHealthValue(it.time, it.percentage.value) },
+            trendStartDate,
+            trendEndDate,
+            zoneId,
+        ),
+        leanMassTrend = dailyHealthTrend(
+            leanMassHistory.value.orEmpty().map { TimedHealthValue(it.time, it.mass.inKilograms.toPounds()) },
+            trendStartDate,
+            trendEndDate,
+            zoneId,
+        ),
     )
+}
+
+private suspend fun <T : Record> readMeasurementHistory(
+    client: HealthConnectClient,
+    type: KClass<T>,
+    range: TimeRangeFilter,
+): List<T> {
+    val records = mutableListOf<T>()
+    val visitedTokens = mutableSetOf<String>()
+    var token: String? = null
+    do {
+        val response = client.readRecords(
+            ReadRecordsRequest(type, timeRangeFilter = range, ascendingOrder = true, pageSize = 1_000, pageToken = token),
+        )
+        records += response.records
+        token = response.pageToken?.takeIf { it.isNotEmpty() }
+        check(token == null || visitedTokens.add(token)) { "Health Connect repeated a page token." }
+    } while (token != null)
+    return records
 }
 
 private fun resolveHealthSource(context: Context, packageName: String?): String? {
@@ -979,8 +1092,6 @@ private suspend fun <T : Record> readLatestMeasurement(
     return queryRange(TimeRangeFilter.between(now.minus(Duration.ofDays(30)), now))
         ?: queryRange(TimeRangeFilter.before(now))
 }
-
-private fun Double.toPounds() = this * 2.2046226218
 
 private fun Double.format(decimals: Int) = String.format(Locale.US, "%.${decimals}f", this)
 

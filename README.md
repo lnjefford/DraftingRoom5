@@ -9,6 +9,7 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 - Persistent schedule and custom-routine management with create, edit, reorder, enable/disable, delete, and reset-to-default controls.
 - Persistent dashboard customization: show, hide, reorder, and reset metric and training cards.
 - Per-metric Health Connect sync time, source app, stale-data warning, and distinct missing/unavailable states.
+- Thirty-day weight, body-fat, and lean-mass charts with daily points and visible gaps when no measurement was recorded.
 - Encrypted Android backup of schedules and custom routines through the Google account selected in system backup settings.
 - Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
 - Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
