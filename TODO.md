@@ -55,3 +55,11 @@ Work through these when advanced model access is available again.
     Leave this item open for the next feature to define.
 
 14. **Rename the "running" card to "Distance"**
+
+15. **Add automatic update checks with a tappable indicator**
+
+    Keep checking for app updates automatically at regular intervals. Show a small, unobtrusive indicator when an update is ready. Tapping the indicator should start the update process.
+
+16. **Modernize schedule creation**
+
+    Make creating a schedule feel modern, visual, and easy to understand. Redesign day selection with clearer, more polished controls, make repeating options easier to choose and preview, and show scheduled items clearly on a timeline so the result is obvious before saving.

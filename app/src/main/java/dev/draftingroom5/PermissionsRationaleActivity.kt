@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 class PermissionsRationaleActivity : ComponentActivity() {
@@ -26,14 +27,29 @@ class PermissionsRationaleActivity : ComponentActivity() {
         )
         setContent {
             DraftingRoom5Theme {
-                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(
+                    Modifier.fillMaxSize().appScreenBackground(),
+                    color = Color.Transparent,
+                ) {
                     Column(
                         modifier = Modifier.systemBarsPadding().padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Text("Health data privacy", style = MaterialTheme.typography.headlineMedium)
-                        Text("DraftingRoom5 reads weight, body fat, lean body mass, exercise sessions, and distance to display your fitness dashboard. Past-data access lets it find older Withings measurements outside Health Connect's standard history window. Health data is read on this device and is not uploaded or shared. You can revoke access at any time in Health Connect settings.")
-                        Button(onClick = { finish() }) { Text("Done") }
+                        BrandTitle("DraftingRoom5")
+                        SectionHeader(
+                            title = "Health data privacy",
+                            subtitle = "Clear, local, and under your control.",
+                            eyebrow = "Your data",
+                        )
+                        BrandedCard(containerColor = AppSurfaceRaised) {
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                            ) {
+                                Text("DraftingRoom5 reads weight, body fat, lean body mass, exercise sessions, and distance to display your fitness dashboard. Past-data access lets it find older Withings measurements outside Health Connect's standard history window. Health data is read on this device and is not uploaded or shared. You can revoke access at any time in Health Connect settings.")
+                                Button(onClick = { finish() }) { Text("Done") }
+                            }
+                        }
                     }
                 }
             }

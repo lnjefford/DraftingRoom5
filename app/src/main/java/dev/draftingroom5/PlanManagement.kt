@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,22 +64,22 @@ internal fun PlanManagementScreen(
     var resetRequested by remember { mutableStateOf(false) }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
             TopAppBar(
                 title = { Text("Schedules & routines", fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
-        containerColor = AppBackground,
+        containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("Weekly schedule", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Items appear on the dashboard for their assigned day.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionHeader("Weekly schedule", "Items appear on the dashboard for their assigned day.", "Plan the week")
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { addingSchedule = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Add, null)
@@ -87,7 +88,7 @@ internal fun PlanManagementScreen(
                 }
             }
             itemsIndexed(plan.schedule, key = { _, item -> item.id }) { index, item ->
-                Card(Modifier.fillMaxWidth()) {
+                BrandedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -122,8 +123,7 @@ internal fun PlanManagementScreen(
             }
             item {
                 Spacer(Modifier.height(8.dp))
-                Text("Custom routines", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Build routines, then assign them to scheduled items.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionHeader("Custom routines", "Build routines, then assign them to scheduled items.", "Make it yours")
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = { addingRoutine = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Add, null)
@@ -132,7 +132,7 @@ internal fun PlanManagementScreen(
                 }
             }
             itemsIndexed(plan.routines, key = { _, routine -> routine.id }) { _, routine ->
-                Card(Modifier.fillMaxWidth()) {
+                BrandedCard(Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(routine.name, fontWeight = FontWeight.Bold)
@@ -203,23 +203,23 @@ internal fun RoutineEditorScreen(
     var addingExercise by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     Scaffold(
+        modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
             TopAppBar(
                 title = { Text(routine.name, fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 actions = { IconButton(onClick = { renaming = true }) { Icon(Icons.Default.Edit, "Rename routine") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
-        containerColor = AppBackground,
+        containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("Exercises", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Reorder exercises and configure sets, targets, timers, and notes.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionHeader("Exercises", "Reorder exercises and configure sets, targets, timers, and notes.", "Routine builder")
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { addingExercise = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Add, null)
@@ -228,7 +228,7 @@ internal fun RoutineEditorScreen(
                 }
             }
             itemsIndexed(routine.exercises, key = { _, exercise -> exercise.id }) { index, exercise ->
-                Card(Modifier.fillMaxWidth()) {
+                BrandedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
                         Text(exercise.name, fontWeight = FontWeight.Bold)
                         Text("${exercise.sets} · ${exercise.target}${exercise.timerSeconds?.let { " · ${it}s timer" } ?: ""}", color = AppBlue)

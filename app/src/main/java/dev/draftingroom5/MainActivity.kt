@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -58,10 +59,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.PermissionController
@@ -325,10 +329,11 @@ private fun Dashboard(
     onLaunchExternal: (ScheduledItem) -> Unit,
 ) {
     Scaffold(
+        modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
             TopAppBar(
-                title = { Text("DraftingRoom5", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
+                title = { BrandTitle("DraftingRoom5") },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
@@ -336,15 +341,16 @@ private fun Dashboard(
                 },
             )
         },
-        containerColor = AppBackground,
+        containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                Spacer(Modifier.height(4.dp))
-                Text("Fitness Tracker", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text("YOUR TRAINING ROOM", color = AppMint, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp)
+                Text("Fitness tracker", style = MaterialTheme.typography.headlineMedium)
                 Text(
                     "${LocalDate.now().dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }}, ${LocalDate.now()}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -352,9 +358,7 @@ private fun Dashboard(
             }
             item { BodyMetricRow(healthUi.stats) }
             item { WeeklyStatRow(healthUi.stats) }
-            item {
-                Text("Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            }
+            item { SectionHeader("Today", "Your scheduled training, ready when you are.") }
             if (scheduledItems.isEmpty()) {
                 item { EmptySchedule() }
             } else {
@@ -387,6 +391,7 @@ private fun SettingsScreen(
 ) {
     BackHandler(onBack = onBack)
     Scaffold(
+        modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
             TopAppBar(
                 title = { Text("Settings", fontWeight = FontWeight.Bold) },
@@ -395,19 +400,18 @@ private fun SettingsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
-        containerColor = AppBackground,
+        containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                Spacer(Modifier.height(4.dp))
-                Text("Training", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Customize your weekly schedule and workout routines.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                SectionHeader("Training", "Customize your weekly schedule and workout routines.", "Build your plan")
             }
             item {
                 OutlinedButton(onClick = onManagePlan, modifier = Modifier.fillMaxWidth()) {
@@ -415,8 +419,7 @@ private fun SettingsScreen(
                 }
             }
             item {
-                Text("Connections", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Manage data access and app maintenance.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionHeader("Connections", "Manage data access and app maintenance.", "Keep data moving")
             }
             item {
                 HealthConnectBanner(
@@ -426,7 +429,7 @@ private fun SettingsScreen(
                 )
             }
             item {
-                Text("App updates", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                SectionHeader("App updates", "Stay current with the latest DraftingRoom5 build.")
             }
             item { AppUpdateCard() }
             item { Spacer(Modifier.height(18.dp)) }
@@ -456,8 +459,8 @@ private fun HealthConnectBanner(
             "Connect Health Connect",
         )
     }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    BrandedCard(
+        containerColor = Color(0xFF142A45),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp)) {
@@ -510,24 +513,26 @@ private fun HealthSettingsButton(onClick: () -> Unit, modifier: Modifier = Modif
 @Composable
 private fun BodyMetricRow(stats: HealthStats) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        MetricCard("Weight", stats.weight, "lb", Modifier.weight(1f))
-        MetricCard("Body fat", stats.bodyFat, "%", Modifier.weight(1f))
-        MetricCard("Lean mass", stats.leanMass, "lb", Modifier.weight(1f))
+        MetricCard("Weight", stats.weight, "lb", AppBlue, Modifier.weight(1f))
+        MetricCard("Body fat", stats.bodyFat, "%", AppMint, Modifier.weight(1f))
+        MetricCard("Lean mass", stats.leanMass, "lb", AppGold, Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun WeeklyStatRow(stats: HealthStats) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        MetricCard("Workouts", stats.workoutsThisWeek, "this week", Modifier.weight(1f))
-        MetricCard("Running", stats.milesThisWeek, "mi this week", Modifier.weight(1f))
+        MetricCard("Workouts", stats.workoutsThisWeek, "this week", AppMint, Modifier.weight(1f))
+        MetricCard("Running", stats.milesThisWeek, "mi this week", AppBlue, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun MetricCard(label: String, value: String, unit: String, modifier: Modifier) {
-    Card(modifier = modifier) {
+private fun MetricCard(label: String, value: String, unit: String, accent: Color, modifier: Modifier) {
+    BrandedCard(modifier = modifier) {
         Column(Modifier.padding(14.dp)) {
+            Box(Modifier.width(28.dp).height(3.dp).clip(RoundedCornerShape(50)).background(accent))
+            Spacer(Modifier.height(10.dp))
             Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.Bottom) {
@@ -541,7 +546,7 @@ private fun MetricCard(label: String, value: String, unit: String, modifier: Mod
 
 @Composable
 private fun EmptySchedule() {
-    Card(Modifier.fillMaxWidth()) {
+    BrandedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.Check, null, tint = AppMint)
             Spacer(Modifier.height(8.dp))
@@ -553,9 +558,9 @@ private fun EmptySchedule() {
 
 @Composable
 private fun ScheduleCard(item: ScheduledItem, completed: Boolean, onClick: () -> Unit) {
-    Card(
+    BrandedCard(
         Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = if (completed) AppCompleted else AppSurface),
+        containerColor = if (completed) AppCompleted else AppSurfaceRaised,
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.background(if (completed) AppMint else AppBlue, MaterialTheme.shapes.medium).padding(10.dp)) {
@@ -594,22 +599,22 @@ private fun CustomWorkout(routine: CustomRoutine, onBack: () -> Unit, onComplete
     }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
             TopAppBar(
                 title = { Text(routine.name, fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
-        containerColor = AppBackground,
+        containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("Custom workout", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("10-second readiness period before every timer. No rest timer.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionHeader("Custom workout", "10-second readiness period before every timer. No rest timer.", "Focus mode")
             }
             if (activeExercise != null) {
                 item {
@@ -651,9 +656,9 @@ private fun timedSeconds(exercise: Exercise) = exercise.timerSeconds ?: 20
 
 @Composable
 private fun TimerPanel(exercise: Exercise, timerSeconds: Int, graceSeconds: Int, isRunning: Boolean, onStart: () -> Unit) {
-    Card(
+    BrandedCard(
         Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        containerColor = Color(0xFF142F4D),
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(exercise.name, fontWeight = FontWeight.Bold)
@@ -673,7 +678,7 @@ private fun TimerPanel(exercise: Exercise, timerSeconds: Int, graceSeconds: Int,
 
 @Composable
 private fun ExerciseCard(exercise: Exercise, onStartTimer: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    BrandedCard(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(exercise.name, fontWeight = FontWeight.Bold)

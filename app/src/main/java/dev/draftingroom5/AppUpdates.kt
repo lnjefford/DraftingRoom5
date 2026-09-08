@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -57,7 +56,7 @@ fun AppUpdateCard() {
         else message = "Installation permission was not granted. Tap the button to try again."
         pendingInstall = false
     }
-    Card(Modifier.fillMaxWidth()) {
+    BrandedCard(Modifier.fillMaxWidth(), containerColor = AppSurfaceRaised) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("App updates · ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.Bold)
             Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
