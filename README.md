@@ -12,6 +12,7 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 - Persistent 7-day, 30-day, 3-month, and 1-year controls for body-measurement charts and workout/distance summaries, with daily points and visible gaps when no measurement was recorded.
 - Automatic offline recovery snapshots of app settings, schedules, routines, and workout history, with encrypted Android/Google device backup eligibility.
 - Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
+- Configurable workout haptics mark timer starts, countdown and timer completion, each completed set, and workout completion while respecting the phone's system haptic setting.
 - Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
 - Branded dark-only interface with layered navy depth, blue/mint accents, elevated cards, strong visual hierarchy, and consistent system-bar styling.
 - A short first-launch brand-title animation that never blocks navigation and follows Android's reduced-motion setting.
@@ -23,6 +24,8 @@ DraftingRoom5 is an Android workspace designed to grow by modules. Its first mod
 Open the project in Android Studio with Android SDK 36 installed, then run `assembleDebug`.
 
 Open **Settings → Customize dashboard** to choose which metric and training cards appear, move them into your preferred order, or restore the default layout. Open **Settings → Manage schedules & routines** to customize the weekly dashboard plan. Schedule entries can launch Fitbod, JustRun, or a selected custom routine. Changes are stored on-device across restarts; **Reset built-in plan** restores the original weekly schedule and Forearm & Grip routine.
+
+Open **Settings → Workout feedback** to turn workout haptics on or off. Custom workouts include a per-exercise set counter; completing a set produces one short cue, while timer and workout milestones use distinct cues. Duplicate taps of the same event are throttled, and the app stays silent when Android system haptics are disabled or the phone has no vibrator.
 
 Open **Settings → Automatic backups** to see the last successful snapshot, back up immediately, restore the latest snapshot, or turn automatic backups off. DraftingRoom5 saves a recovery snapshot after changes and every day, retries temporary failures with exponential backoff, and keeps the latest two copies on the device. Snapshots include dashboard/date-range settings, schedules, custom routines, and persistent workout completion history, so local recovery works without a network connection. Android can also encrypt and copy the snapshot to the Google account selected in system backup settings, then restore it during device setup or a fresh install. Changing the system backup account affects future cloud copies; Android owns account sign-in and transport timing. Health Connect measurements, permissions, downloads, and update files are never included.
 

@@ -35,6 +35,7 @@ internal data class BackupSnapshot(
     val dashboardLayout: DashboardLayout,
     val healthDateRange: HealthDateRange,
     val workoutHistory: List<WorkoutHistoryEntry>,
+    val hapticsEnabled: Boolean = true,
 )
 
 internal class AutomaticBackupManager(context: Context) {
@@ -100,6 +101,7 @@ internal class AutomaticBackupManager(context: Context) {
                 dashboardLayout = DashboardLayoutStore(appContext).load(),
                 healthDateRange = HealthDateRangeStore(appContext).load(),
                 workoutHistory = WorkoutHistoryStore(appContext).load(),
+                hapticsEnabled = HapticSettingsStore(appContext).isEnabled(),
             )
             val temporary = File(backupDirectory, "$LATEST_FILE.tmp")
             temporary.writeText(encodeBackupSnapshot(snapshot), Charsets.UTF_8)
@@ -131,6 +133,7 @@ internal class AutomaticBackupManager(context: Context) {
         DashboardLayoutStore(appContext).save(snapshot.dashboardLayout)
         HealthDateRangeStore(appContext).save(snapshot.healthDateRange)
         WorkoutHistoryStore(appContext).save(snapshot.workoutHistory)
+        HapticSettingsStore(appContext).saveEnabled(snapshot.hapticsEnabled)
         snapshot
     }
 
@@ -172,6 +175,7 @@ internal fun encodeBackupSnapshot(snapshot: BackupSnapshot): String = JSONObject
     put("dashboardLayout", JSONObject(encodeDashboardLayout(snapshot.dashboardLayout)))
     put("healthDateRange", snapshot.healthDateRange.name)
     put("workoutHistory", JSONArray(encodeWorkoutHistory(snapshot.workoutHistory)))
+    put("hapticsEnabled", snapshot.hapticsEnabled)
 }.toString()
 
 internal fun decodeBackupSnapshot(value: String): BackupSnapshot {
@@ -183,6 +187,7 @@ internal fun decodeBackupSnapshot(value: String): BackupSnapshot {
         dashboardLayout = decodeDashboardLayout(root.getJSONObject("dashboardLayout").toString()),
         healthDateRange = HealthDateRange.valueOf(root.getString("healthDateRange")),
         workoutHistory = decodeWorkoutHistory(root.getJSONArray("workoutHistory").toString()),
+        hapticsEnabled = root.optBoolean("hapticsEnabled", true),
     )
 }
 

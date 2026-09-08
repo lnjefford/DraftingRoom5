@@ -58,6 +58,7 @@ import kotlinx.coroutines.Job
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -137,10 +138,13 @@ private fun DraftingRoom5App() {
     val dashboardLayoutStore = remember { DashboardLayoutStore(context) }
     val healthDateRangeStore = remember { HealthDateRangeStore(context) }
     val workoutHistoryStore = remember { WorkoutHistoryStore(context) }
+    val hapticSettingsStore = remember { HapticSettingsStore(context) }
+    val workoutHaptics = remember { WorkoutHaptics(context) }
     var trainingPlan by remember { mutableStateOf(planStore.load()) }
     var dashboardLayout by remember { mutableStateOf(dashboardLayoutStore.load()) }
     var healthDateRange by remember { mutableStateOf(healthDateRangeStore.load()) }
     var workoutHistory by remember { mutableStateOf(workoutHistoryStore.load()) }
+    var hapticsEnabled by remember { mutableStateOf(hapticSettingsStore.isEnabled()) }
     var backupStatus by remember { mutableStateOf(backupManager.status()) }
     var backupActionMessage by remember { mutableStateOf<String?>(null) }
     val completedIds = completedScheduleIdsForDate(workoutHistory, LocalDate.now())
@@ -336,6 +340,12 @@ private fun DraftingRoom5App() {
                 onOpenHealthSettings = openHealthSettings,
                 onManagePlan = { screen = Screen.PlanManagement },
                 onCustomizeDashboard = { screen = Screen.DashboardCustomization },
+                hapticsEnabled = hapticsEnabled,
+                onHapticsEnabledChange = { enabled ->
+                    hapticsEnabled = enabled
+                    hapticSettingsStore.saveEnabled(enabled)
+                    requestAutomaticBackup()
+                },
                 backupStatus = backupStatus,
                 backupActionMessage = backupActionMessage,
                 onAutomaticBackupChange = { enabled ->
@@ -355,6 +365,7 @@ private fun DraftingRoom5App() {
                         dashboardLayout = restored.dashboardLayout
                         healthDateRange = restored.healthDateRange
                         workoutHistory = restored.workoutHistory
+                        hapticsEnabled = restored.hapticsEnabled
                         backupActionMessage = "Restored the latest recovery snapshot."
                     }.onFailure { error ->
                         backupActionMessage = error.message ?: "Could not restore the latest snapshot."
@@ -395,13 +406,15 @@ private fun DraftingRoom5App() {
                 val workout = screen as Screen.CustomWorkout
                 val routine = trainingPlan.routines.firstOrNull { it.id == workout.routineId }
                 if (routine == null) screen = Screen.Dashboard else CustomWorkout(
-                routine = routine,
-                onBack = { screen = Screen.Dashboard },
-                onComplete = {
-                    recordWorkoutCompletion(workout.scheduleId, routine.name, Destination.CUSTOM)
-                    screen = Screen.Dashboard
-                },
-            )
+                    routine = routine,
+                    onHapticCue = { workoutHaptics.perform(it, hapticsEnabled) },
+                    onBack = { screen = Screen.Dashboard },
+                    onComplete = {
+                        workoutHaptics.perform(HapticCue.WORKOUT_COMPLETE, hapticsEnabled)
+                        recordWorkoutCompletion(workout.scheduleId, routine.name, Destination.CUSTOM)
+                        screen = Screen.Dashboard
+                    },
+                )
             }
         }
     }
@@ -536,6 +549,8 @@ private fun SettingsScreen(
     onOpenHealthSettings: () -> Unit,
     onManagePlan: () -> Unit,
     onCustomizeDashboard: () -> Unit,
+    hapticsEnabled: Boolean,
+    onHapticsEnabledChange: (Boolean) -> Unit,
     backupStatus: AutomaticBackupStatus,
     backupActionMessage: String?,
     onAutomaticBackupChange: (Boolean) -> Unit,
@@ -574,6 +589,27 @@ private fun SettingsScreen(
                     }
                     OutlinedButton(onClick = onManagePlan, modifier = Modifier.fillMaxWidth()) {
                         Text("Manage schedules & routines")
+                    }
+                }
+            }
+            item {
+                SectionHeader("Workout feedback", "Control tactile cues during custom workouts.", "Stay in rhythm")
+            }
+            item {
+                BrandedCard(Modifier.fillMaxWidth(), containerColor = Color(0xFF142A45)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Haptic feedback", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Tactile cues for timer starts and finishes, completed sets, and completed workouts. System haptic settings are respected.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Switch(checked = hapticsEnabled, onCheckedChange = onHapticsEnabledChange)
                     }
                 }
             }
@@ -968,18 +1004,29 @@ private fun ScheduleCard(item: ScheduledItem, completed: Boolean, onClick: () ->
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CustomWorkout(routine: CustomRoutine, onBack: () -> Unit, onComplete: () -> Unit) {
+private fun CustomWorkout(
+    routine: CustomRoutine,
+    onHapticCue: (HapticCue) -> Unit,
+    onBack: () -> Unit,
+    onComplete: () -> Unit,
+) {
     BackHandler(onBack = onBack)
     var activeExercise by remember { mutableStateOf<Exercise?>(null) }
     var timerSeconds by remember { mutableIntStateOf(0) }
     var graceSeconds by remember { mutableIntStateOf(0) }
     var isRunning by remember { mutableStateOf(false) }
+    val completedSets = remember(routine.id) { mutableStateMapOf<String, Int>() }
 
     LaunchedEffect(isRunning, graceSeconds, timerSeconds) {
         if (!isRunning) return@LaunchedEffect
         delay(1000)
-        if (graceSeconds > 0) graceSeconds--
-        else if (timerSeconds > 0) timerSeconds--
+        if (graceSeconds > 0) {
+            if (graceSeconds == 1) onHapticCue(HapticCue.COUNTDOWN_COMPLETE)
+            graceSeconds--
+        } else if (timerSeconds > 0) {
+            if (timerSeconds == 1) onHapticCue(HapticCue.TIMER_COMPLETE)
+            timerSeconds--
+        }
         else isRunning = false
     }
 
@@ -1012,16 +1059,25 @@ private fun CustomWorkout(routine: CustomRoutine, onBack: () -> Unit, onComplete
                             graceSeconds = 10
                             timerSeconds = timedSeconds(activeExercise!!)
                             isRunning = true
+                            onHapticCue(HapticCue.TIMER_START)
                         },
                     )
                 }
             }
             items(routine.exercises, key = { it.id }) { exercise ->
+                val setCount = exerciseSetCount(exercise)
                 ExerciseCard(exercise, onStartTimer = {
                     activeExercise = exercise
                     graceSeconds = 10
                     timerSeconds = timedSeconds(exercise)
                     isRunning = true
+                    onHapticCue(HapticCue.TIMER_START)
+                }, completedSets = completedSets[exercise.id] ?: 0, onCompleteSet = {
+                    val current = completedSets[exercise.id] ?: 0
+                    if (current < setCount) {
+                        completedSets[exercise.id] = current + 1
+                        onHapticCue(HapticCue.SET_COMPLETE)
+                    }
                 })
             }
             item {
@@ -1038,6 +1094,9 @@ private fun CustomWorkout(routine: CustomRoutine, onBack: () -> Unit, onComplete
 }
 
 private fun timedSeconds(exercise: Exercise) = exercise.timerSeconds ?: 20
+
+internal fun exerciseSetCount(exercise: Exercise): Int =
+    Regex("\\d+").find(exercise.sets)?.value?.toIntOrNull()?.coerceAtLeast(1) ?: 1
 
 @Composable
 private fun TimerPanel(exercise: Exercise, timerSeconds: Int, graceSeconds: Int, isRunning: Boolean, onStart: () -> Unit) {
@@ -1062,7 +1121,13 @@ private fun TimerPanel(exercise: Exercise, timerSeconds: Int, graceSeconds: Int,
 }
 
 @Composable
-private fun ExerciseCard(exercise: Exercise, onStartTimer: () -> Unit) {
+private fun ExerciseCard(
+    exercise: Exercise,
+    onStartTimer: () -> Unit,
+    completedSets: Int,
+    onCompleteSet: () -> Unit,
+) {
+    val setCount = exerciseSetCount(exercise)
     BrandedCard(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -1071,10 +1136,14 @@ private fun ExerciseCard(exercise: Exercise, onStartTimer: () -> Unit) {
                 Spacer(Modifier.height(4.dp))
                 Text("${exercise.sets}  •  ${exercise.target}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
             }
-            if (exercise.timerSeconds != null) {
-                IconButton(onClick = onStartTimer) { Icon(Icons.Default.Timer, "Start timer", tint = AppBlue) }
-            } else {
-                Icon(Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.outline)
+            Column(horizontalAlignment = Alignment.End) {
+                if (exercise.timerSeconds != null) {
+                    IconButton(onClick = onStartTimer) { Icon(Icons.Default.Timer, "Start timer", tint = AppBlue) }
+                }
+                Text("$completedSets/$setCount sets", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                TextButton(onClick = onCompleteSet, enabled = completedSets < setCount) {
+                    Text(if (completedSets == setCount) "Sets done" else "Complete set")
+                }
             }
         }
     }

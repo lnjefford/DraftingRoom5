@@ -3,6 +3,7 @@ package dev.draftingroom5
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.json.JSONObject
 import java.time.ZoneId
 
 class BackupSupportTest {
@@ -39,6 +40,7 @@ class BackupSupportTest {
             workoutHistory = listOf(
                 WorkoutHistoryEntry("history-1", "forearm-sat", "Forearm", Destination.CUSTOM, 1_780_272_000_000L),
             ),
+            hapticsEnabled = false,
         )
 
         val restored = decodeBackupSnapshot(encodeBackupSnapshot(snapshot))
@@ -52,5 +54,19 @@ class BackupSupportTest {
 
         assertTrue(backupIsStale(AutomaticBackupStatus(), now))
         assertTrue(backupIsStale(AutomaticBackupStatus(lastSuccessfulMillis = now - 48 * 60 * 60 * 1000), now))
+    }
+
+    @Test
+    fun olderSnapshotDefaultsHapticsToEnabled() {
+        val snapshot = BackupSnapshot(
+            createdAtMillis = 1L,
+            plan = defaultTrainingPlan(),
+            dashboardLayout = DashboardLayout(),
+            healthDateRange = HealthDateRange.MONTH,
+            workoutHistory = emptyList(),
+        )
+        val oldSnapshot = JSONObject(encodeBackupSnapshot(snapshot)).apply { remove("hapticsEnabled") }.toString()
+
+        assertTrue(decodeBackupSnapshot(oldSnapshot).hapticsEnabled)
     }
 }
