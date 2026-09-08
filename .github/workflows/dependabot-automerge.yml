@@ -36,8 +36,8 @@ jobs:
               return;
             }
             const patchGroupPrefixes = [
-              "dependabot/gradle/gradle-patch-updates-",
-              "dependabot/github_actions/actions-patch-updates-"
+              "dependabot/gradle/main/gradle-patch-updates-",
+              "dependabot/github_actions/main/actions-patch-updates-"
             ];
             if (!patchGroupPrefixes.some(prefix => pull.head.ref.startsWith(prefix))) {
               core.info(`Dependabot pull request #${pull.number} is not a configured patch-only group.`);
