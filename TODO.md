@@ -10,10 +10,6 @@ Work through these when advanced model access is available again.
 
    Add a Settings screen and move the Health Connect status card, app update card, and Health Connect permissions/settings link off the dashboard. Keep the dashboard focused on measurements and today’s schedule while preserving those actions in Settings.
 
-5. **Show last synced time per health metric**
-
-   Display the most recent successful sync time for weight, body fat, lean mass, workouts, and distance. Show the source app when available and distinguish stale data from missing data.
-
 6. **Add health trend charts**
 
     Plot weight, body fat, and lean mass over time. Handle missing days, multiple records on one day, unit conversion, and a clear empty state.

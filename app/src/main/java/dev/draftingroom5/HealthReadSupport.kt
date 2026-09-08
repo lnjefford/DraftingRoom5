@@ -4,7 +4,13 @@ import androidx.health.connect.client.permission.HealthPermission
 import kotlinx.coroutines.CancellationException
 import java.time.Instant
 
-internal data class HealthReadResult<T>(val value: T? = null, val issue: String? = null)
+internal enum class HealthReadOutcome { SUCCESS, MISSING, UNAVAILABLE }
+
+internal data class HealthReadResult<T>(
+    val value: T? = null,
+    val issue: String? = null,
+    val outcome: HealthReadOutcome = HealthReadOutcome.UNAVAILABLE,
+)
 
 /** A missing permission or a failed metric must not hide successfully read measurements. */
 internal suspend fun <T> readHealthValue(
@@ -14,7 +20,14 @@ internal suspend fun <T> readHealthValue(
     if (!permitted) return HealthReadResult(issue = "Read permission is off. Enable it in Health Connect settings.")
     return try {
         val value = read()
-        HealthReadResult(value, if (value == null) "No readable records returned. Check the entry date and this app's read access in Health Connect." else null)
+        if (value == null) {
+            HealthReadResult(
+                issue = "No readable records returned. Check the entry date and this app's read access in Health Connect.",
+                outcome = HealthReadOutcome.MISSING,
+            )
+        } else {
+            HealthReadResult(value = value, outcome = HealthReadOutcome.SUCCESS)
+        }
     } catch (error: CancellationException) {
         throw error
     } catch (_: SecurityException) {

@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -105,11 +106,11 @@ class MainActivity : ComponentActivity() {
 private enum class HealthConnection { CHECKING, NEEDS_PERMISSION, CONNECTED, UPDATE_REQUIRED, UNAVAILABLE, ERROR }
 
 private data class HealthStats(
-    val weight: String = "--",
-    val bodyFat: String = "--",
-    val leanMass: String = "--",
-    val workoutsThisWeek: String = "--",
-    val milesThisWeek: String = "--",
+    val weight: HealthMetric = HealthMetric(),
+    val bodyFat: HealthMetric = HealthMetric(),
+    val leanMass: HealthMetric = HealthMetric(),
+    val workoutsThisWeek: HealthMetric = HealthMetric(),
+    val milesThisWeek: HealthMetric = HealthMetric(),
 )
 
 private data class HealthUiState(
@@ -184,7 +185,7 @@ private fun DraftingRoom5App() {
                             healthUi = healthUi.copy(connection = HealthConnection.CONNECTED, isLoading = true, message = null)
                             healthUi = HealthUiState(
                                 connection = HealthConnection.CONNECTED,
-                                stats = readHealthStats(client, granted),
+                                stats = readHealthStats(context, client, granted),
                                 message = when {
                                     !granted.containsAll(healthPermissions) -> "Some measurement permissions are off. Available measurements are shown below."
                                     !granted.containsAll(requestedPermissions) -> "Past-data access is off. Allow it to read Withings measurements from before the standard history window."
@@ -673,7 +674,7 @@ private fun WeeklyStatRow(stats: HealthStats) {
 }
 
 @Composable
-private fun MetricCard(label: String, value: String, unit: String, accent: Color, modifier: Modifier) {
+private fun MetricCard(label: String, metric: HealthMetric, unit: String, accent: Color, modifier: Modifier) {
     BrandedCard(modifier = modifier) {
         Column(Modifier.padding(14.dp)) {
             Box(Modifier.width(28.dp).height(3.dp).clip(RoundedCornerShape(50)).background(accent))
@@ -681,10 +682,16 @@ private fun MetricCard(label: String, value: String, unit: String, accent: Color
             Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(metric.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(3.dp))
                 Text(unit, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
             }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                metric.detail(),
+                color = if (metric.state == HealthMetricState.STALE) AppGold else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
     }
 }
@@ -857,6 +864,7 @@ private fun launchWorkoutApp(context: Context, destination: Destination) {
 }
 
 private suspend fun readHealthStats(
+    context: Context,
     client: HealthConnectClient,
     granted: Set<String>,
 ): HealthStats {
@@ -879,21 +887,72 @@ private suspend fun readHealthStats(
     val sessions = readHealthValue(HealthPermission.getReadPermission(ExerciseSessionRecord::class) in granted) {
         client.readRecords(
             ReadRecordsRequest(ExerciseSessionRecord::class, timeRangeFilter = thisWeek, pageSize = 100),
-        ).records
+        ).records.takeIf { it.isNotEmpty() }
     }
     val distance = readHealthValue(HealthPermission.getReadPermission(DistanceRecord::class) in granted) {
         client.readRecords(
             ReadRecordsRequest(DistanceRecord::class, timeRangeFilter = thisWeek, pageSize = 1_000),
-        ).records.sumOf { it.distance.inMeters }
+        ).records.takeIf { it.isNotEmpty() }
     }
 
+    fun source(packageName: String?) = resolveHealthSource(context, packageName)
+    val latestSession = sessions.value?.maxByOrNull { it.endTime }
+    val latestDistance = distance.value?.maxByOrNull { it.endTime }
+
     return HealthStats(
-        weight = weight.value?.weight?.inKilograms?.toPounds().orPlaceholder(),
-        bodyFat = bodyFat.value?.percentage?.value.orPlaceholder(),
-        leanMass = leanMass.value?.mass?.inKilograms?.toPounds().orPlaceholder(),
-        workoutsThisWeek = sessions.value?.size?.toString() ?: "--",
-        milesThisWeek = distance.value?.let { (it / 1_609.344).format(1) } ?: "--",
+        weight = healthMetric(
+            value = weight.value?.weight?.inKilograms?.toPounds()?.format(1),
+            outcome = weight.outcome,
+            syncedAt = now,
+            recordedAt = weight.value?.time,
+            source = source(weight.value?.metadata?.dataOrigin?.packageName),
+        ),
+        bodyFat = healthMetric(
+            value = bodyFat.value?.percentage?.value?.format(1),
+            outcome = bodyFat.outcome,
+            syncedAt = now,
+            recordedAt = bodyFat.value?.time,
+            source = source(bodyFat.value?.metadata?.dataOrigin?.packageName),
+        ),
+        leanMass = healthMetric(
+            value = leanMass.value?.mass?.inKilograms?.toPounds()?.format(1),
+            outcome = leanMass.outcome,
+            syncedAt = now,
+            recordedAt = leanMass.value?.time,
+            source = source(leanMass.value?.metadata?.dataOrigin?.packageName),
+        ),
+        workoutsThisWeek = healthMetric(
+            value = sessions.value?.size?.toString(),
+            outcome = sessions.outcome,
+            syncedAt = now,
+            recordedAt = latestSession?.endTime,
+            source = source(latestSession?.metadata?.dataOrigin?.packageName),
+        ),
+        milesThisWeek = healthMetric(
+            value = distance.value?.sumOf { it.distance.inMeters }?.let { (it / 1_609.344).format(1) },
+            outcome = distance.outcome,
+            syncedAt = now,
+            recordedAt = latestDistance?.endTime,
+            source = source(latestDistance?.metadata?.dataOrigin?.packageName),
+        ),
     )
+}
+
+private fun resolveHealthSource(context: Context, packageName: String?): String? {
+    if (packageName.isNullOrBlank()) return null
+    val packageManager = context.packageManager
+    return runCatching {
+        val info = if (Build.VERSION.SDK_INT >= 33) {
+            packageManager.getApplicationInfo(
+                packageName,
+                android.content.pm.PackageManager.ApplicationInfoFlags.of(0),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getApplicationInfo(packageName, 0)
+        }
+        packageManager.getApplicationLabel(info).toString().takeIf { it.isNotBlank() }
+    }.getOrNull() ?: packageName
 }
 
 private fun healthPermissionsFor(client: HealthConnectClient, healthPermissions: Set<String>): Set<String> {
