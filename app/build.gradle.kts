@@ -12,8 +12,8 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 28
         targetSdk = 35
-        versionCode = providers.gradleProperty("appVersionCode").orElse("12000").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.12.0").get()
+        versionCode = providers.gradleProperty("appVersionCode").orElse("13000").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.13.0").get()
     }
 
     signingConfigs {
@@ -41,6 +41,7 @@ android {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -51,5 +52,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.androidx.health.connect)
+    implementation(libs.androidx.work.runtime)
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

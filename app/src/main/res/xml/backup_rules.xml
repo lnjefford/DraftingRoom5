@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Only user-authored app configuration is eligible for encrypted cloud backup. -->
+    <!-- App-owned recovery snapshots are eligible for encrypted cloud backup. -->
     <include
-        domain="sharedpref"
-        path="training-plan.xml"
+        domain="file"
+        path="automatic-backups/latest.json"
+        requireFlags="clientSideEncryption" />
+    <include
+        domain="file"
+        path="automatic-backups/previous.json"
         requireFlags="clientSideEncryption" />
     <include
         domain="sharedpref"
-        path="dashboard-layout.xml"
-        requireFlags="clientSideEncryption" />
-    <include
-        domain="sharedpref"
-        path="health-date-range.xml"
+        path="automatic-backup.xml"
         requireFlags="clientSideEncryption" />
 </full-backup-content>

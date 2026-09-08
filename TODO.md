@@ -10,10 +10,6 @@ Work through these when advanced model access is available again.
 
    Add a Settings screen and move the Health Connect status card, app update card, and Health Connect permissions/settings link off the dashboard. Keep the dashboard focused on measurements and today’s schedule while preserving those actions in Settings.
 
-8. **Add automatic backups**
-
-    Back up app settings, schedules, routines, and workout history automatically. Show the last successful backup, retry failures, support offline recovery, and let the user disable automatic backups.
-
 9. **Add animated in-app branding**
 
     Use restrained animation during launch or workout completion. Respect reduced-motion settings and keep animations short so they do not delay navigation.

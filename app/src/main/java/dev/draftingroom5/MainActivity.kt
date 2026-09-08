@@ -58,7 +58,6 @@ import kotlinx.coroutines.Job
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -129,20 +128,41 @@ private data class HealthUiState(
 @Composable
 private fun DraftingRoom5App() {
     var screen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
-    val completedIds = remember { mutableStateListOf<String>() }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val backupManager = remember { AutomaticBackupManager(context) }
+    remember { backupManager.restoreAfterAndroidTransferIfNeeded() }
     val planStore = remember { TrainingPlanStore(context) }
     val dashboardLayoutStore = remember { DashboardLayoutStore(context) }
     val healthDateRangeStore = remember { HealthDateRangeStore(context) }
-    val backupStatusStore = remember { BackupStatusStore(context) }
+    val workoutHistoryStore = remember { WorkoutHistoryStore(context) }
     var trainingPlan by remember { mutableStateOf(planStore.load()) }
     var dashboardLayout by remember { mutableStateOf(dashboardLayoutStore.load()) }
     var healthDateRange by remember { mutableStateOf(healthDateRangeStore.load()) }
-    var lastBackupLocalChange by remember { mutableStateOf(backupStatusStore.lastLocalChange()) }
+    var workoutHistory by remember { mutableStateOf(workoutHistoryStore.load()) }
+    var backupStatus by remember { mutableStateOf(backupManager.status()) }
+    var backupActionMessage by remember { mutableStateOf<String?>(null) }
+    val completedIds = completedScheduleIdsForDate(workoutHistory, LocalDate.now())
+    val requestAutomaticBackup: () -> Unit = {
+        backupManager.requestBackup()
+        backupStatus = backupManager.status()
+    }
     val updateTrainingPlan: (TrainingPlan) -> Unit = { updated ->
         trainingPlan = updated
         planStore.save(updated)
-        lastBackupLocalChange = backupStatusStore.recordLocalChange()
+        requestAutomaticBackup()
+    }
+    val recordWorkoutCompletion: (String, String, Destination) -> Unit = { scheduleId, title, destination ->
+        if (scheduleId !in completedIds) {
+            workoutHistory = workoutHistory + WorkoutHistoryEntry(
+                id = newId(),
+                scheduleId = scheduleId,
+                title = title,
+                destination = destination,
+                completedAtMillis = System.currentTimeMillis(),
+            )
+            workoutHistoryStore.save(workoutHistory)
+            requestAutomaticBackup()
+        }
     }
     val coroutineScope = rememberCoroutineScope()
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
@@ -266,10 +286,21 @@ private fun DraftingRoom5App() {
     // Read once our own window is focused; cancel reads when a dialog/app takes over.
     LaunchedEffect(windowFocused) {
         if (windowFocused) {
+            backupManager.schedule()
+            backupStatus = backupManager.status()
             refreshHealth(healthDateRange)
         } else {
             healthRefreshJob?.cancel()
             healthUi = healthUi.copy(isLoading = false)
+        }
+    }
+
+    LaunchedEffect(screen, windowFocused) {
+        if (screen == Screen.Settings && windowFocused) {
+            while (true) {
+                backupStatus = backupManager.status()
+                delay(1000)
+            }
         }
     }
 
@@ -285,13 +316,13 @@ private fun DraftingRoom5App() {
                 onHealthDateRangeChange = { updated ->
                     healthDateRange = updated
                     healthDateRangeStore.save(updated)
-                    lastBackupLocalChange = backupStatusStore.recordLocalChange()
+                    requestAutomaticBackup()
                     refreshHealth(updated)
                 },
                 onOpenCustom = { item -> item.routineId?.let { screen = Screen.CustomWorkout(it, item.id) } },
                 onLaunchExternal = { item ->
                     launchWorkoutApp(context, item.destination)
-                    if (item.id !in completedIds) completedIds += item.id
+                    recordWorkoutCompletion(item.id, item.title, item.destination)
                 },
             )
             Screen.Settings -> SettingsScreen(
@@ -301,7 +332,31 @@ private fun DraftingRoom5App() {
                 onOpenHealthSettings = openHealthSettings,
                 onManagePlan = { screen = Screen.PlanManagement },
                 onCustomizeDashboard = { screen = Screen.DashboardCustomization },
-                backupDetail = backupStatusDetail(lastBackupLocalChange),
+                backupStatus = backupStatus,
+                backupActionMessage = backupActionMessage,
+                onAutomaticBackupChange = { enabled ->
+                    backupManager.setEnabled(enabled)
+                    backupStatus = backupManager.status()
+                    backupActionMessage = if (enabled) "Automatic backups enabled." else "Automatic backups disabled."
+                },
+                onBackUpNow = {
+                    val result = backupManager.createBackup()
+                    if (result.isFailure) backupManager.requestBackup()
+                    backupStatus = backupManager.status()
+                    backupActionMessage = if (result.isSuccess) "Recovery snapshot saved." else "Backup failed and will retry automatically."
+                },
+                onRestoreLatest = {
+                    backupManager.restoreLatest().onSuccess { restored ->
+                        trainingPlan = restored.plan
+                        dashboardLayout = restored.dashboardLayout
+                        healthDateRange = restored.healthDateRange
+                        workoutHistory = restored.workoutHistory
+                        backupActionMessage = "Restored the latest recovery snapshot."
+                    }.onFailure { error ->
+                        backupActionMessage = error.message ?: "Could not restore the latest snapshot."
+                    }
+                    backupStatus = backupManager.status()
+                },
                 onOpenBackupSettings = {
                     runCatching { openAndroidBackupSettings(context) }
                 },
@@ -317,7 +372,7 @@ private fun DraftingRoom5App() {
                 onChange = { updated ->
                     dashboardLayout = updated
                     dashboardLayoutStore.save(updated)
-                    lastBackupLocalChange = backupStatusStore.recordLocalChange()
+                    requestAutomaticBackup()
                 },
                 onBack = { screen = Screen.Settings },
             )
@@ -339,7 +394,7 @@ private fun DraftingRoom5App() {
                 routine = routine,
                 onBack = { screen = Screen.Dashboard },
                 onComplete = {
-                    if (workout.scheduleId !in completedIds) completedIds += workout.scheduleId
+                    recordWorkoutCompletion(workout.scheduleId, routine.name, Destination.CUSTOM)
                     screen = Screen.Dashboard
                 },
             )
@@ -469,7 +524,11 @@ private fun SettingsScreen(
     onOpenHealthSettings: () -> Unit,
     onManagePlan: () -> Unit,
     onCustomizeDashboard: () -> Unit,
-    backupDetail: String,
+    backupStatus: AutomaticBackupStatus,
+    backupActionMessage: String?,
+    onAutomaticBackupChange: (Boolean) -> Unit,
+    onBackUpNow: () -> Unit,
+    onRestoreLatest: () -> Unit,
     onOpenBackupSettings: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
@@ -517,9 +576,18 @@ private fun SettingsScreen(
                 )
             }
             item {
-                SectionHeader("Google backup", "Protect your plan when moving or replacing phones.")
+                SectionHeader("Automatic backups", "Recover your settings, training plan, and workout history.")
             }
-            item { GoogleBackupCard(backupDetail, onOpenBackupSettings) }
+            item {
+                AutomaticBackupCard(
+                    status = backupStatus,
+                    actionMessage = backupActionMessage,
+                    onEnabledChange = onAutomaticBackupChange,
+                    onBackUpNow = onBackUpNow,
+                    onRestoreLatest = onRestoreLatest,
+                    onOpenBackupSettings = onOpenBackupSettings,
+                )
+            }
             item {
                 SectionHeader("App updates", "Stay current with the latest DraftingRoom5 build.")
             }
@@ -605,25 +673,69 @@ private fun DashboardCustomizationScreen(
 }
 
 @Composable
-private fun GoogleBackupCard(detail: String, onOpenBackupSettings: () -> Unit) {
+private fun AutomaticBackupCard(
+    status: AutomaticBackupStatus,
+    actionMessage: String?,
+    onEnabledChange: (Boolean) -> Unit,
+    onBackUpNow: () -> Unit,
+    onRestoreLatest: () -> Unit,
+    onOpenBackupSettings: () -> Unit,
+) {
     BrandedCard(
         containerColor = Color(0xFF142A45),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp)) {
-            Text("Encrypted Android backup", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Offline recovery snapshots", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    val needsAttention = backupIsStale(status, System.currentTimeMillis())
+                    Text(
+                        when {
+                            !status.enabled -> "Automatic backup is off"
+                            needsAttention -> "Backup needs attention"
+                            else -> "Automatic backup is on"
+                        },
+                        color = if (status.enabled && !needsAttention) AppMint else AppGold,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                Switch(checked = status.enabled, onCheckedChange = onEnabledChange)
+            }
             Spacer(Modifier.height(4.dp))
-            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(backupStatusDetail(status), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            actionMessage?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, color = AppMint, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(Modifier.height(8.dp))
             Text(
-                "Backed up: schedules, custom routines, and dashboard layout. Not backed up: Health Connect measurements, permissions, downloads, or update files.",
+                "Includes app settings, schedules, custom routines, and workout history. Keeps the latest two snapshots for offline recovery. Health Connect measurements and permissions are never copied.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = onOpenBackupSettings, modifier = Modifier.fillMaxWidth()) {
-                Text("Open Android backup settings")
+            Button(onClick = onBackUpNow, enabled = status.enabled, modifier = Modifier.fillMaxWidth()) {
+                Text("Back up now")
             }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onRestoreLatest,
+                enabled = status.hasRecoverySnapshot,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Restore latest snapshot")
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onOpenBackupSettings, modifier = Modifier.fillMaxWidth()) {
+                Text("Google backup settings")
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Android can encrypt and copy these snapshots to your selected Google backup account for device setup or reinstall recovery.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
     }
 }

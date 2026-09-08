@@ -99,7 +99,7 @@ internal class TrainingPlanStore(context: Context) {
     }
 }
 
-private fun encodePlan(plan: TrainingPlan): String = JSONObject().apply {
+internal fun encodePlan(plan: TrainingPlan): String = JSONObject().apply {
     put("schedule", JSONArray().apply {
         plan.schedule.forEach { item ->
             put(JSONObject().apply {
@@ -135,7 +135,7 @@ private fun encodePlan(plan: TrainingPlan): String = JSONObject().apply {
     })
 }.toString()
 
-private fun decodePlan(value: String): TrainingPlan {
+internal fun decodePlan(value: String): TrainingPlan {
     val root = JSONObject(value)
     val scheduleJson = root.getJSONArray("schedule")
     val routinesJson = root.getJSONArray("routines")
