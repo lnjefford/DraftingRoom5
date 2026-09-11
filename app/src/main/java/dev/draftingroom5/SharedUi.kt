@@ -157,7 +157,6 @@ internal fun AppConfirmationDialog(
 internal fun FoundationDestinationScreen(route: AppRoute, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     val title = when (route) {
-        is AppRoute.ScheduleEditor -> if (route.entryId == null) "Add scheduled item" else "Edit scheduled item"
         is AppRoute.InstalledAppPicker -> "Choose app"
         is AppRoute.ExerciseEditor -> if (route.exerciseId == null) "Add exercise" else "Edit exercise"
         is AppRoute.Completion -> "Session complete"

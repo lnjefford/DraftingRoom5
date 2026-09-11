@@ -203,6 +203,12 @@ private fun DraftingRoom5App() {
     val navigation = rememberAppNavigationState()
     val screen = navigation.current
     val screenState = rememberSaveableStateHolder()
+    var savedRouteKeys by rememberSaveable { mutableStateOf(navigation.backStack.map(::encodeAppRoute)) }
+    LaunchedEffect(navigation.backStack) {
+        val activeKeys = navigation.backStack.map(::encodeAppRoute)
+        (savedRouteKeys - activeKeys.toSet()).forEach(screenState::removeState)
+        savedRouteKeys = activeKeys
+    }
     var launchBrandAnimationPending by rememberSaveable { mutableStateOf(true) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val backupManager = remember { AutomaticBackupManager(context) }
@@ -217,6 +223,10 @@ private fun DraftingRoom5App() {
     var confirmDataReset by remember { mutableStateOf(false) }
     var unavailableRoutine by remember { mutableStateOf<Routine?>(null) }
     var launchError by remember { mutableStateOf<String?>(null) }
+    var appPickerRoutineId by rememberSaveable { mutableStateOf<String?>(null) }
+    var appPickerPurpose by rememberSaveable { mutableStateOf<String?>(null) }
+    var editorReplacementPackage by rememberSaveable { mutableStateOf<String?>(null) }
+    var editorReplacementLabel by rememberSaveable { mutableStateOf<String?>(null) }
     var trainingPlan by remember { mutableStateOf(appDocument.plan) }
     var dashboardLayout by remember { mutableStateOf(appDocument.preferences.dashboardLayout) }
     var healthDateRange by remember { mutableStateOf(appDocument.preferences.healthDateRange) }
@@ -230,6 +240,24 @@ private fun DraftingRoom5App() {
     var updateBusy by remember { mutableStateOf(false) }
     var updateActionMessage by remember { mutableStateOf<String?>(null) }
     var pendingUpdateInstall by rememberSaveable { mutableStateOf(false) }
+    var routineDraftId by rememberSaveable { mutableStateOf<String?>(null) }
+    var routineDraftExecution by rememberSaveable { mutableStateOf<String?>(null) }
+    var routineDraftPackage by rememberSaveable { mutableStateOf<String?>(null) }
+    var routineDraftAppLabel by rememberSaveable { mutableStateOf<String?>(null) }
+    val routineDraft = routineDraftId?.let { id ->
+        val execution = routineDraftExecution?.let { runCatching { RoutineExecution.valueOf(it) }.getOrNull() }
+        execution?.let { RoutineDraft(id, it, routineDraftPackage, routineDraftAppLabel) }
+    }
+    val clearRoutineDraft: () -> Unit = {
+        routineDraftId = null
+        routineDraftExecution = null
+        routineDraftPackage = null
+        routineDraftAppLabel = null
+    }
+    val clearAppPicker: () -> Unit = {
+        appPickerRoutineId = null
+        appPickerPurpose = null
+    }
     DisposableEffect(workoutVoice) {
         onDispose { workoutVoice.shutdown() }
     }
@@ -261,8 +289,8 @@ private fun DraftingRoom5App() {
     val persistDocument: ((AppDocument) -> AppDocument) -> Boolean = { transform ->
         acceptDocumentResult(appRepository.update(appDocument.generation, transform))
     }
-    val updateTrainingPlan: (TrainingPlan) -> Unit = { updated ->
-        if (acceptDocumentResult(appRepository.replacePlan(appDocument.generation, updated))) requestAutomaticBackup()
+    val updateTrainingPlan: (TrainingPlan) -> Boolean = { updated ->
+        acceptDocumentResult(appRepository.replacePlan(appDocument.generation, updated)).also { if (it) requestAutomaticBackup() }
     }
     val recordWorkoutCompletion: (String, Routine, LocalDate) -> Boolean = { scheduleId, routine, scheduledDate ->
         val completedIds = completedScheduleIdsForDate(workoutHistory, scheduledDate)
@@ -477,12 +505,22 @@ private fun DraftingRoom5App() {
                 title = { Text("App unavailable") },
                 text = { Text(launchError ?: "${routine.name} could not open its linked app.") },
                 confirmButton = { TextButton(onClick = {
+                    unavailableRoutine = null
+                    appPickerRoutineId = routine.id
+                    appPickerPurpose = "RECOVERY"
+                    navigation.navigate(AppRoute.InstalledAppPicker(routine.id))
+                }) { Text("Change app") } },
+                dismissButton = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { unavailableRoutine = null }) { Text("Cancel") }
+                        TextButton(onClick = {
                     val packageName = routine.appLink?.packageName.orEmpty()
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${Uri.encode(packageName)}"))) }
                         .onSuccess { unavailableRoutine = null }
                         .onFailure { launchError = "No app can open the store. Install the linked app, then try again." }
-                }) { Text("Open store") } },
-                dismissButton = { TextButton(onClick = { unavailableRoutine = null }) { Text("Cancel") } },
+                        }) { Text("Open store") }
+                    }
+                },
             )
         }
         documentError?.let { message ->
@@ -535,8 +573,9 @@ private fun DraftingRoom5App() {
                 onOpenCustom = { item, date -> navigation.navigate(AppRoute.GuidedSession(item.routineId, item.id, date)) },
                 onLaunchExternal = { item ->
                     val routine = trainingPlan.routineFor(item)
-                    runCatching { launchWorkoutApp(context, routine) }.onFailure {
-                        launchError = "${routine.name} could not open its linked app. It may be missing or unavailable."
+                    val result = launchLinkedApp(context, routine)
+                    if (result is LinkedAppLaunchResult.Failed) {
+                        launchError = linkedAppRecoveryMessage(routine, result)
                         unavailableRoutine = routine
                     }
                 },
@@ -616,11 +655,49 @@ private fun DraftingRoom5App() {
             )
             AppRoute.PlanManagement -> PlanManagementScreen(
                 plan = trainingPlan,
+                hapticsEnabled = hapticsEnabled,
+                partialSessionCounts = appDocument.partialSessions.groupingBy { it.routineId }.eachCount(),
                 onChange = updateTrainingPlan,
                 onReset = {
                     if (acceptDocumentResult(appRepository.resetPlan(appDocument.generation))) requestAutomaticBackup()
                 },
                 onEditRoutine = { navigation.navigate(AppRoute.RoutineEditor(it)) },
+                onAddGuidedRoutine = {
+                    val draftId = newId()
+                    routineDraftId = draftId
+                    routineDraftExecution = RoutineExecution.GUIDED.name
+                    routineDraftPackage = null
+                    routineDraftAppLabel = null
+                    navigation.navigate(AppRoute.RoutineEditor(draftId))
+                },
+                onAddLinkedRoutine = {
+                    val draftId = newId()
+                    routineDraftId = draftId
+                    routineDraftExecution = RoutineExecution.LINKED_APP.name
+                    routineDraftPackage = null
+                    routineDraftAppLabel = null
+                    navigation.navigate(AppRoute.InstalledAppPicker(draftId))
+                },
+                onRenameRoutine = { routineId, name ->
+                    val renamed = trainingPlan.copy(routines = trainingPlan.routines.map { routine ->
+                        if (routine.id == routineId) routine.copy(revision = routine.revision + 1, name = name) else routine
+                    })
+                    if (acceptDocumentResult(appRepository.replacePlan(appDocument.generation, renamed, acknowledgeSavedSessions = true))) {
+                        requestAutomaticBackup()
+                    }
+                },
+                onDeleteRoutine = { routineId ->
+                    if (acceptDocumentResult(appRepository.deleteRoutine(appDocument.generation, routineId))) requestAutomaticBackup()
+                },
+                onDeleteSchedule = { scheduleEntryId ->
+                    if (acceptDocumentResult(appRepository.deleteScheduleEntry(appDocument.generation, scheduleEntryId))) requestAutomaticBackup()
+                },
+                onAddSchedule = { day -> navigation.navigate(AppRoute.ScheduleEditor(null, newId(), day)) },
+                onEditSchedule = { entryId ->
+                    val anchor = trainingPlan.schedule.firstOrNull { it.id == entryId }
+                        ?.days?.minByOrNull(java.time.DayOfWeek::getValue) ?: java.time.DayOfWeek.MONDAY
+                    navigation.navigate(AppRoute.ScheduleEditor(entryId, newId(), anchor))
+                },
                 onBack = { navigation.back() },
             )
             AppRoute.DashboardCustomization -> DashboardCustomizationScreen(
@@ -635,18 +712,183 @@ private fun DraftingRoom5App() {
             is AppRoute.RoutineEditor -> {
                 val routineId = screen.routineId
                 val routine = trainingPlan.routines.firstOrNull { it.id == routineId }
-                if (routine == null) navigation.back() else RoutineEditorScreen(
+                val draft = routineDraft?.takeIf { it.id == routineId }
+                var acknowledgedSessions by rememberSaveable(routineId) { mutableStateOf(false) }
+                if (routine != null && !acknowledgedSessions && appDocument.partialSessions.any { it.routineId == routineId }) {
+                    AppConfirmationDialog(
+                        title = "Edit ${routine.name}?",
+                        message = "Saved incomplete sessions keep their original name, artwork, exercises and progress. Your edits apply to future sessions. Deleting this routine also deletes its incomplete sessions.",
+                        confirmLabel = "Continue editing",
+                        onConfirm = { acknowledgedSessions = true },
+                        onDismiss = { navigation.back() },
+                    )
+                } else if (routine?.execution == RoutineExecution.LINKED_APP) LinkedAppRoutineEditorScreen(
                     routine = routine,
-                    onChange = { updated ->
-                        updateTrainingPlan(trainingPlan.copy(routines = trainingPlan.routines.map { if (it.id == updated.id) updated else it }))
+                    replacement = editorReplacementPackage?.let { packageName ->
+                        InstalledAppOption(packageName, editorReplacementLabel ?: linkedAppDisplayName(packageName), "App")
+                    },
+                    scheduleSummary = trainingPlan.routineScheduleSummary(routine.id),
+                    onChooseApp = {
+                        editorReplacementPackage = null
+                        editorReplacementLabel = null
+                        appPickerRoutineId = routine.id
+                        appPickerPurpose = "EDITOR"
+                        navigation.navigate(AppRoute.InstalledAppPicker(routine.id))
+                    },
+                    onSave = { updated ->
+                        val saved = acceptDocumentResult(appRepository.replacePlan(
+                            appDocument.generation,
+                            trainingPlan.copy(routines = trainingPlan.routines.map { if (it.id == updated.id) updated else it }),
+                        ))
+                        if (saved) {
+                            requestAutomaticBackup()
+                            editorReplacementPackage = null
+                            editorReplacementLabel = null
+                            clearAppPicker()
+                            navigation.back()
+                        }
+                        saved
+                    },
+                    onDelete = {
+                        if (acceptDocumentResult(appRepository.deleteRoutine(appDocument.generation, routine.id))) {
+                            requestAutomaticBackup()
+                            editorReplacementPackage = null
+                            editorReplacementLabel = null
+                            clearAppPicker()
+                            navigation.back()
+                        }
+                    },
+                    onTestLink = { launchLinkedApp(context, it) },
+                    onBack = {
+                        editorReplacementPackage = null
+                        editorReplacementLabel = null
+                        clearAppPicker()
+                        navigation.back()
+                    },
+                ) else if (routine != null) GuidedRoutineEditorScreen(
+                    routine = routine,
+                    scheduleSummary = trainingPlan.routineScheduleSummary(routine.id),
+                    isNew = false,
+                    hapticsEnabled = hapticsEnabled,
+                    onPersist = { updated ->
+                        val saved = acceptDocumentResult(appRepository.replacePlan(
+                            appDocument.generation,
+                            trainingPlan.copy(routines = trainingPlan.routines.map { if (it.id == updated.id) updated else it }),
+                            acknowledgeSavedSessions = acknowledgedSessions,
+                        ))
+                        if (saved) requestAutomaticBackup()
+                        saved
+                    },
+                    onDelete = {
+                        if (acceptDocumentResult(appRepository.deleteRoutine(appDocument.generation, routine.id))) {
+                            requestAutomaticBackup()
+                            navigation.back()
+                        }
                     },
                     onBack = { navigation.back() },
+                ) else if (draft?.execution == RoutineExecution.GUIDED) GuidedRoutineEditorScreen(
+                    routine = Routine(
+                        id = draft.id,
+                        revision = 1,
+                        name = "",
+                        artworkId = RoutineArtworkCatalog.FALLBACK_ID,
+                        execution = RoutineExecution.GUIDED,
+                        exercises = emptyList(),
+                        appLink = null,
+                    ),
+                    scheduleSummary = "Not scheduled",
+                    isNew = true,
+                    hapticsEnabled = hapticsEnabled,
+                    onPersist = { created ->
+                        val saved = created.isSaveableGuidedRoutine() && acceptDocumentResult(appRepository.replacePlan(
+                            appDocument.generation,
+                            trainingPlan.copy(routines = trainingPlan.routines + created),
+                        ))
+                        if (saved) {
+                            requestAutomaticBackup()
+                            clearRoutineDraft()
+                        }
+                        saved
+                    },
+                    onDelete = {
+                        clearRoutineDraft()
+                        navigation.back()
+                    },
+                    onBack = {
+                        clearRoutineDraft()
+                        navigation.back()
+                    },
+                ) else if (draft != null) NewRoutineDraftScreen(
+                    draft = draft,
+                    onChooseApp = {
+                        appPickerRoutineId = draft.id
+                        appPickerPurpose = "EDITOR"
+                        navigation.navigate(AppRoute.InstalledAppPicker(draft.id))
+                    },
+                    onTestLink = { launchLinkedApp(context, it) },
+                    onSaveLinked = { name, artworkId ->
+                        val savedRoutine = draft.savedLinkedRoutine(name, artworkId) ?: return@NewRoutineDraftScreen false
+                        val saved = acceptDocumentResult(appRepository.replacePlan(
+                            appDocument.generation,
+                            trainingPlan.copy(routines = trainingPlan.routines + savedRoutine),
+                        ))
+                        if (saved) {
+                            requestAutomaticBackup()
+                            clearRoutineDraft()
+                            navigation.back()
+                        }
+                        saved
+                    },
+                    onDiscard = {
+                        clearRoutineDraft()
+                        navigation.back()
+                    },
+                ) else navigation.back()
+            }
+            is AppRoute.InstalledAppPicker -> {
+                val draft = routineDraft?.takeIf {
+                    it.id == screen.ownerDraftId && it.execution == RoutineExecution.LINKED_APP
+                }
+                val existingRoutine = trainingPlan.routines.firstOrNull {
+                    it.id == screen.ownerDraftId && it.id == appPickerRoutineId && it.execution == RoutineExecution.LINKED_APP
+                }
+                if (draft == null && existingRoutine == null) navigation.back() else InstalledAppPickerScreen(
+                    onSelect = { app ->
+                        if (draft != null) {
+                            val selected = draft.withSelectedApp(app)
+                            routineDraftPackage = selected.packageName
+                            routineDraftAppLabel = selected.appLabel
+                            if (appPickerPurpose == "EDITOR") {
+                                clearAppPicker()
+                                navigation.back()
+                            } else {
+                                navigation.back()
+                                navigation.navigate(AppRoute.RoutineEditor(selected.id))
+                            }
+                        } else if (existingRoutine != null && appPickerPurpose == "EDITOR") {
+                            editorReplacementPackage = app.packageName
+                            editorReplacementLabel = app.label
+                            clearAppPicker()
+                            navigation.back()
+                        } else if (existingRoutine != null) {
+                            editorReplacementPackage = app.packageName
+                            editorReplacementLabel = app.label
+                            clearAppPicker()
+                            navigation.back()
+                            navigation.navigate(AppRoute.RoutineEditor(existingRoutine.id))
+                        }
+                    },
+                    onBack = {
+                        if (draft != null && appPickerPurpose != "EDITOR") clearRoutineDraft()
+                        clearAppPicker()
+                        navigation.back()
+                    },
                 )
             }
             is AppRoute.GuidedSession -> {
                 val workout = screen
                 val routine = trainingPlan.routines.firstOrNull { it.id == workout.routineId }
-                if (routine == null) navigation.dashboard() else CustomWorkout(
+                if (routine == null) navigation.dashboard() else GuidedWorkout(
                     routine = routine,
                     onHapticCue = { workoutHaptics.perform(it, hapticsEnabled) },
                     onVoiceCue = { workoutVoice.announce(it, voiceSettings) },
@@ -663,8 +905,22 @@ private fun DraftingRoom5App() {
                     },
                 )
             }
-            is AppRoute.ScheduleEditor,
-            is AppRoute.InstalledAppPicker,
+            is AppRoute.ScheduleEditor -> {
+                val original = screen.entryId?.let { id -> trainingPlan.schedule.firstOrNull { it.id == id } }
+                if (screen.entryId != null && original == null) navigation.back() else ScheduleEditorScreen(
+                    plan = trainingPlan,
+                    original = original,
+                    draftId = screen.draftId,
+                    requestedAnchor = screen.anchor,
+                    hasSavedSessions = appDocument.partialSessions.any { it.occurrence.scheduleEntryId == screen.entryId },
+                    onSave = { updated ->
+                        val saved = acceptDocumentResult(appRepository.replacePlan(appDocument.generation, updated))
+                        if (saved) requestAutomaticBackup()
+                        saved
+                    },
+                    onBack = { navigation.back() },
+                )
+            }
             is AppRoute.ExerciseEditor,
             is AppRoute.Completion -> FoundationDestinationScreen(
                 route = screen,
@@ -698,6 +954,7 @@ private fun Dashboard(
     val selectedDate = LocalDate.ofEpochDay(selectedEpochDay)
     val week = dashboardWeek(today)
     val sessions = dashboardSessions(trainingPlan, partialSessions, workoutHistory, selectedDate)
+    val savedSessions = savedDashboardSessions(trainingPlan, partialSessions, selectedDate)
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
@@ -759,6 +1016,14 @@ private fun Dashboard(
                                 today = today,
                                 onSelect = { selectedEpochDay = it.toEpochDay() },
                             )
+                        }
+                        if (savedSessions.isNotEmpty()) {
+                            item(key = "saved-heading-$sectionIndex") { EditorialSectionLabel("SAVED SESSIONS") }
+                            items(savedSessions, key = { "saved-$sectionIndex-${it.scheduleEntry.id}-${it.savedOriginDate}" }) { session ->
+                                SessionCard(session = session) {
+                                    onOpenCustom(session.scheduleEntry, checkNotNull(session.savedOriginDate))
+                                }
+                            }
                         }
                     }
                     is DashboardSection.Metrics -> item(key = "metrics-$sectionIndex-${section.cards.joinToString { it.name }}") {
@@ -1861,6 +2126,7 @@ private fun SessionCard(session: DashboardSession, onClick: () -> Unit) {
     )
     val progress = session.progressLabel
     val metadata = when {
+        progress != null && session.savedOriginDate != null -> "$progress · ${session.savedOriginDate.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))}"
         progress != null -> progress
         completed -> "Completed"
         routine.execution == RoutineExecution.GUIDED -> "${routine.exercises.size} exercises"
@@ -1962,6 +2228,61 @@ internal fun CoreShellReviewPreview(screen: String) {
     when (screen) {
         "Settings" -> SettingsScreenPreview()
         "Customization" -> DashboardCustomizationPreview()
+        "Schedule", "Routines" -> DraftingRoom5Theme {
+            PlanManagementScreen(
+                plan = defaultTrainingPlan(),
+                partialSessionCounts = emptyMap(),
+                onChange = { true },
+                onReset = {},
+                onEditRoutine = {},
+                onAddGuidedRoutine = {},
+                onAddLinkedRoutine = {},
+                onRenameRoutine = { _, _ -> },
+                onDeleteRoutine = {},
+                onDeleteSchedule = {},
+                onAddSchedule = {},
+                onEditSchedule = {},
+                onBack = {},
+                initialTab = if (screen == "Routines") 1 else 0,
+            )
+        }
+        "Linked editor" -> DraftingRoom5Theme {
+            LinkedAppRoutineEditorScreen(
+                routine = defaultTrainingPlan().routines.first { it.execution == RoutineExecution.LINKED_APP },
+                replacement = null,
+                scheduleSummary = "Scheduled Mon · Tue · Thu",
+                onChooseApp = {},
+                onSave = { true },
+                onDelete = {},
+                onTestLink = { LinkedAppLaunchResult.Failed(LinkedAppLaunchFailure.UNAVAILABLE) },
+                onBack = {},
+            )
+        }
+        "Guided editor" -> DraftingRoom5Theme {
+            val plan = defaultTrainingPlan()
+            val routine = plan.routines.first { it.execution == RoutineExecution.GUIDED }
+            GuidedRoutineEditorScreen(
+                routine = routine,
+                scheduleSummary = plan.routineScheduleSummary(routine.id),
+                isNew = false,
+                onPersist = { true },
+                onDelete = {},
+                onBack = {},
+            )
+        }
+        "Schedule editor" -> DraftingRoom5Theme {
+            ScheduleEditorScreen(
+                plan = defaultTrainingPlan(),
+                original = null,
+                draftId = "preview-schedule",
+                requestedAnchor = java.time.DayOfWeek.SATURDAY,
+                onSave = { true },
+                onBack = {},
+            )
+        }
+        "Exercise builder" -> DraftingRoom5Theme {
+            ExerciseEditorScreen(defaultTrainingPlan().routines.last().exercises.first(), {}, {})
+        }
         "Weight" -> MetricDetailPreview("Weight")
         else -> DraftingRoom5Theme {
             Dashboard(
@@ -2030,7 +2351,7 @@ private fun DashboardHeroFallbackPreview() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun CustomWorkout(
+private fun GuidedWorkout(
     routine: Routine,
     onHapticCue: (HapticCue) -> Unit,
     onVoiceCue: (VoiceCue) -> Unit,
@@ -2085,7 +2406,7 @@ private fun CustomWorkout(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                SectionHeader("Custom workout", "10-second readiness period before every timer. No rest timer.", "Focus mode")
+                SectionHeader("Guided session", "10-second readiness period before every timer. No rest timer.", "Focus mode")
             }
             if (activeExercise != null) {
                 item {
@@ -2192,14 +2513,6 @@ private fun ExerciseCard(
             }
         }
     }
-}
-
-private fun launchWorkoutApp(context: Context, routine: Routine) {
-    val link = checkNotNull(routine.appLink)
-    val launchIntent = link.deepLink?.let { Intent(Intent.ACTION_VIEW, Uri.parse(it)).setPackage(link.packageName) }
-        ?: context.packageManager.getLaunchIntentForPackage(link.packageName)
-        ?: throw ActivityNotFoundException("The linked app is not installed.")
-    context.startActivity(launchIntent)
 }
 
 private suspend fun readHealthStats(

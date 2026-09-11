@@ -7,7 +7,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.android.tools.screenshot.PreviewTest
 
 class CoreShellScreens : PreviewParameterProvider<String> {
-    override val values = sequenceOf("Dashboard", "Weight", "Settings", "Customization")
+    override val values = sequenceOf("Dashboard", "Weight", "Settings", "Customization", "Schedule", "Routines", "Guided editor", "Linked editor", "Schedule editor", "Exercise builder")
 }
 
 @PreviewTest

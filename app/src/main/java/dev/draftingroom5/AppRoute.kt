@@ -9,6 +9,7 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import java.time.LocalDate
+import java.time.DayOfWeek
 
 /** Every full-screen destination in the clean application shell. */
 internal sealed interface AppRoute {
@@ -18,7 +19,7 @@ internal sealed interface AppRoute {
     data object DashboardCustomization : AppRoute
     data object PlanManagement : AppRoute
     data class RoutineEditor(val routineId: String) : AppRoute
-    data class ScheduleEditor(val entryId: String?, val draftId: String) : AppRoute
+    data class ScheduleEditor(val entryId: String?, val draftId: String, val anchor: DayOfWeek) : AppRoute
     data class InstalledAppPicker(val ownerDraftId: String) : AppRoute
     data class ExerciseEditor(val ownerDraftId: String, val exerciseId: String?) : AppRoute
 
@@ -83,7 +84,7 @@ internal fun encodeAppRoute(route: AppRoute): String = when (route) {
     AppRoute.DashboardCustomization -> "customization"
     AppRoute.PlanManagement -> "planning"
     is AppRoute.RoutineEditor -> "routine:${route.routineId}"
-    is AppRoute.ScheduleEditor -> "schedule:${route.entryId.orEmpty()}:${route.draftId}"
+    is AppRoute.ScheduleEditor -> "schedule:${route.entryId.orEmpty()}:${route.draftId}:${route.anchor.name}"
     is AppRoute.InstalledAppPicker -> "apps:${route.ownerDraftId}"
     is AppRoute.ExerciseEditor -> "exercise:${route.ownerDraftId}:${route.exerciseId.orEmpty()}"
     is AppRoute.GuidedSession -> "session:${route.routineId}:${route.scheduleEntryId}:${route.scheduledDate}"
@@ -99,7 +100,11 @@ internal fun decodeAppRoute(value: String): AppRoute? {
         "customization" -> AppRoute.DashboardCustomization.takeIf { parts.size == 1 }
         "planning" -> AppRoute.PlanManagement.takeIf { parts.size == 1 }
         "routine" -> parts.getOrNull(1)?.takeIf(String::isNotBlank)?.let { AppRoute.RoutineEditor(it) }
-        "schedule" -> if (parts.size == 3 && parts[2].isNotBlank()) AppRoute.ScheduleEditor(parts[1].ifBlank { null }, parts[2]) else null
+        "schedule" -> if (parts.size == 4 && parts[2].isNotBlank()) {
+            runCatching { DayOfWeek.valueOf(parts[3]) }.getOrNull()?.let {
+                AppRoute.ScheduleEditor(parts[1].ifBlank { null }, parts[2], it)
+            }
+        } else null
         "apps" -> parts.getOrNull(1)?.takeIf(String::isNotBlank)?.let { AppRoute.InstalledAppPicker(it) }
         "exercise" -> if (parts.size == 3 && parts[1].isNotBlank()) AppRoute.ExerciseEditor(parts[1], parts[2].ifBlank { null }) else null
         "session" -> if (parts.size == 4 && parts[1].isNotBlank() && parts[2].isNotBlank()) {

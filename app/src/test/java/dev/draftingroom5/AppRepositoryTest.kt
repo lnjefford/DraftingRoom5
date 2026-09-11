@@ -79,18 +79,76 @@ class AppRepositoryTest {
     @Test fun deletingRoutineCascadesPartialsButPreservesHistoryAndPreferences() {
         val session = partialFixture()
         val history = WorkoutHistoryEntry("finished", session.occurrence.copy(scheduledDate = session.occurrence.scheduledDate.minusWeeks(1)), session.snapshot, 1, 2)
-        val document = defaultAppDocument().copy(partialSessions = listOf(session), history = listOf(history),
+        val base = defaultAppDocument()
+        val document = base.copy(plan = base.plan.copy(schedule = base.plan.schedule + ScheduleEntry(
+            "second-forearm", session.routineId, setOf(java.time.DayOfWeek.SUNDAY),
+        )), partialSessions = listOf(session), history = listOf(history),
             preferences = AppPreferences(hapticsEnabled = false))
         val repository = AppRepository(FakeDocumentStorage(encodeAppDocument(document)))
         repository.load()
         val deleted = (repository.deleteRoutine(1, session.routineId) as RepositoryResult.Success).value
         assertTrue(deleted.partialSessions.isEmpty())
+        assertFalse(deleted.plan.routines.any { it.id == session.routineId })
         assertFalse(deleted.plan.schedule.any { it.routineId == session.routineId })
         assertEquals(listOf(history), deleted.history)
         val reset = (repository.resetPlan(deleted.generation) as RepositoryResult.Success).value
         assertEquals(defaultTrainingPlan(), reset.plan)
         assertTrue(reset.history.isEmpty())
         assertFalse(reset.preferences.hapticsEnabled)
+    }
+
+    @Test fun deletingScheduleEntryPreservesRoutinePartialHistoryAndPreferences() {
+        val session = partialFixture()
+        val history = WorkoutHistoryEntry("finished", session.occurrence.copy(scheduledDate = session.occurrence.scheduledDate.minusWeeks(1)), session.snapshot, 1, 2)
+        val original = defaultAppDocument().copy(
+            partialSessions = listOf(session),
+            history = listOf(history),
+            preferences = AppPreferences(hapticsEnabled = false),
+        )
+        val repository = AppRepository(FakeDocumentStorage(encodeAppDocument(original)))
+        repository.load()
+
+        val deleted = (repository.deleteScheduleEntry(original.generation, session.occurrence.scheduleEntryId) as RepositoryResult.Success).value
+
+        assertFalse(deleted.plan.schedule.any { it.id == session.occurrence.scheduleEntryId })
+        assertTrue(deleted.plan.routines.any { it.id == session.routineId })
+        assertEquals(listOf(session), deleted.partialSessions)
+        assertEquals(listOf(history), deleted.history)
+        assertFalse(deleted.preferences.hapticsEnabled)
+    }
+
+    @Test fun failedRoutineCascadePublishesNeitherDeletionNorPartialRemoval() {
+        val session = partialFixture()
+        val original = defaultAppDocument().copy(partialSessions = listOf(session))
+        val storage = FakeDocumentStorage(encodeAppDocument(original))
+        val repository = AppRepository(storage)
+        repository.load()
+        storage.failWrites = true
+
+        assertTrue(repository.deleteRoutine(original.generation, session.routineId) is RepositoryResult.Failed)
+        assertEquals(original, (repository.state.value as LoadState.Ready).value)
+        assertEquals(original, decodeAppDocument(checkNotNull(storage.value)))
+    }
+
+    @Test fun resetPlanInstallsOnlyCurrentDefaultsAndPreservesPreferences() {
+        val original = defaultAppDocument().copy(
+            partialSessions = listOf(partialFixture()),
+            history = listOf(WorkoutHistoryEntry("finished", partialFixture().occurrence.copy(scheduledDate = java.time.LocalDate.of(2026, 9, 5)), partialFixture().snapshot, 1, 2)),
+            preferences = AppPreferences(hapticsEnabled = false),
+        )
+        val storage = FakeDocumentStorage(encodeAppDocument(original))
+        val repository = AppRepository(storage)
+        repository.load()
+
+        val reset = (repository.resetPlan(original.generation) as RepositoryResult.Success).value
+
+        assertEquals(defaultTrainingPlan(), reset.plan)
+        assertTrue(reset.partialSessions.isEmpty())
+        assertTrue(reset.history.isEmpty())
+        assertEquals(original.preferences, reset.preferences)
+        val encoded = checkNotNull(storage.value)
+        assertFalse(encoded.contains("destination"))
+        assertFalse(encoded.contains("customRoutine"))
     }
 
     @Test fun restoringSnapshotClearsForeignBootTimersAndRejectsWrongFormat() {

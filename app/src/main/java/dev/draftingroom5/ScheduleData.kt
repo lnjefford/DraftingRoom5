@@ -67,6 +67,9 @@ internal fun defaultTrainingPlan(): TrainingPlan {
 
 internal fun TrainingPlan.forDay(day: DayOfWeek): List<ScheduleEntry> = schedule.filter { day in it.days }
 
+internal fun TrainingPlan.scheduleCounts(): Map<DayOfWeek, Int> =
+    DayOfWeek.entries.associateWith { day -> schedule.count { day in it.days } }
+
 internal fun TrainingPlan.routineFor(entry: ScheduleEntry): Routine =
     checkNotNull(routines.firstOrNull { it.id == entry.routineId }) { "Schedule ${entry.id} references a missing routine." }
 
@@ -99,6 +102,9 @@ internal fun TrainingPlan.moveScheduleOnDay(day: DayOfWeek, entryId: String, off
     occupied.forEachIndexed { index, slot -> result[slot] = checkNotNull(byId[movedIds[index]]) }
     return copy(schedule = result)
 }
+
+internal fun TrainingPlan.removeScheduleEntry(id: String): TrainingPlan =
+    copy(schedule = schedule.filterNot { it.id == id })
 
 internal fun TrainingPlan.removeRoutine(id: String): TrainingPlan = copy(
     routines = routines.filterNot { it.id == id },

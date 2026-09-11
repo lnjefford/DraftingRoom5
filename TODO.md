@@ -30,68 +30,14 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
 
 ## Phase 3 — Unified routines and recurring schedules
 
-- [ ] **DR5-014 — Implement the recurring Schedule tab**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-013
-  - Work: Implement weekday counts without dates, selected-day items, recovery, artwork cards, reorder and accessible alternatives, Edit/Delete overflow, Add scheduled item, and save confirmation. Do not add Week at a glance, dots, start actions, or switches.
-  - Done when: count, ordering, delete, and persistence tests pass.
-
-- [ ] **DR5-015 — Implement the unified Routines tab**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-014
-  - Work: List every guided and linked-app routine with routine-owned identity/art/type, metadata, weekday summary, edit, rename/delete, cascade confirmation, empty state, and Add routine. Do not distinguish built-in/custom.
-  - Done when: all routine types behave consistently and cascade tests cover schedules and partial sessions.
-
-- [ ] **DR5-016 — Implement Add routine and installed-app selection**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-015
-  - Work: Implement the Guided versus Linked-app chooser and searchable installed-app picker. Query only launchable apps using narrow Android visibility, show accessible labels/icons, and persist only after valid editor save.
-  - Done when: chooser, search, empty, cancel, API-level, and selection tests pass.
-
-- [ ] **DR5-017 — Implement linked-app editing and launch recovery**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-016
-  - Work: Build editable name, curated artwork, app replacement, validation, save/cancel, and delete. Centralize Dashboard launching. On missing/uninstalled/invalid targets, keep the user in DraftingRoom5 and offer replacement or store recovery without broad package visibility.
-  - Done when: persistence and launch success/failure/recovery tests pass.
-
-- [ ] **DR5-018 — Implement guided-routine and exercise editors**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-017
-  - Work: Build routine name/art picker, ordered exercise rows, thumbnails, bottom Add exercise, reorder/accessibility alternatives, edit/delete, save/cancel, and routine deletion. Build exercise fields for name, notes, positive set count, target, optional timer, and one paired-artwork choice with generic fallback. Do not allow arbitrary photos.
-  - Done when: create/edit/reorder/delete/cancel, validation, artwork-pair, fallback, and persistence tests pass.
-
-- [ ] **DR5-019 — Implement the recurring schedule-entry editor**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-018
-  - Work: Implement routine selection, repeat shortcuts, authoritative weekday set, recurrence preview, explicit Add/Save, and cancel-safe Back. Resolve all identity/art/type data from the routine; store no dates or duplicated routine fields.
-  - Done when: Weekly/Weekdays/Daily/Custom, validation, preview, add/edit/cancel, and persistence tests pass.
-
-- [ ] **DR5-020 — Finish deletion, reset, and referential integrity**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-019
-  - Work: Make mutations atomic. Schedule deletion removes only the recurrence; routine deletion removes references and partial progress after confirmation; reset installs clean defaults. Ensure Dashboard updates immediately.
-  - Done when: tests prove no dangling routine IDs or orphan progress and reset contains no legacy data.
-
-- [ ] **DR5-021 — Audit planning and app-link flows**
-  - Model: `gpt-6-astra`
-  - Push: `NO`
-  - Depends on: DR5-020
-  - Work: Review the entire create/edit/schedule/rename/re-artwork/reorder/launch/delete flow for ownership drift, recurrence, Android visibility/security, accidental saves, destructive clarity, responsiveness, and accessibility. Fix high-impact defects.
-  - Done when: no record duplicates routine identity, app failures recover safely, and no critical/high-severity issue remains.
-
-- [ ] **DR5-022 — Release the planning milestone**
+- [x] **DR5-022 — Release the planning milestone**
+  - Claimed: 2026-09-11T17:58:22.2523948-05:00 by gpt-5.6-sol
   - Model: `gpt-5.6-sol`
   - Push: `YES`
   - Depends on: DR5-021
   - Work: Resolve findings, update README, run the full gate, and inspect all Schedule/Routines/editor flows on compact and tall layouts.
   - Done when: users can create, rename, illustrate, edit, schedule, reorder, launch, and delete both routine types, and the tagged release APK is published.
+  - Completed: 2026-09-11 by gpt-5.6-sol. Released the accumulated Phase 3 planning system with recurring Schedule and unified Routines management, guided/linked creation and editors, paired exercise artwork, snapshot-safe saved-session handling, accessible reorder controls, and linked-app recovery; removed the retired workout label and refreshed README/design status. All 147 unit tests in 29 suites, 30 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed; debug APK 66,977,861 bytes. Inspected all 18 planning/editor compact, tall, and 2x-font references. ADB/device interaction checks remain unavailable on this host and are recorded in `docs/reviews/DR5-021-planning-audit.md`. Release delivery: v0.21.0.
 
 ## Phase 4 — Durable guided sessions
 
@@ -161,6 +107,31 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
   - Done when: the clean app implements the approved design, checks pass, the tagged release succeeds, and its signed APK is published.
 
 ## Completed implementation dependencies
+
+- [x] **DR5-021 — Audit planning and app-link flows**
+  - Completed: 2026-09-11 by gpt-6-astra. Fixed exercise draft identity/recreation, new-routine and drag revisions, no-op edits, failed-save input retention, app-picker cancellation and explicit recovery saves, saved-session editing/deletion/reassignment disclosures, snapshot routing, safe launcher/deep-link filtering, reorder callbacks/keyboard controls, weekday targets and responsive editor layouts. Added a dedicated exercise builder and eight PlanningAuditTest regressions. All 147 unit tests in 29 suites, 30 reviewed screenshot comparisons, lintDebug (0 errors), and assembleDebug passed; APK 68,916,050 bytes. Review and device-only checklist: docs/reviews/DR5-021-planning-audit.md. Push: NO; accumulated Phase 3 changes remain local for DR5-022.
+
+
+- [x] **DR5-020 — Finish deletion, reset, and referential integrity**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Routed schedule deletion through a typed atomic repository mutation that preserves its routine, history, preferences, and partial progress; hardened routine cascade deletion against missing IDs and verified failed writes publish neither half of the cascade. Added Dashboard Saved sessions for off-date and removed-recurrence partials using immutable routine snapshots, plus exact current-default reset coverage with no legacy fields. All 139 unit tests in 28 suites, 27 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed; APK size 61,068,461 bytes. Push: NO; accumulated planning changes remain local for DR5-022.
+
+- [x] **DR5-019 — Implement the recurring schedule-entry editor**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Replaced the planning dialog/placeholder route with a dedicated saved-state schedule editor using existing routine identity and artwork, routine selection, Weekly/Weekdays/Every day/Custom shortcuts, an authoritative weekday set, localized plain-language recurrence preview, explicit Add/Save actions, validation, and dirty-draft Back confirmation. Added route anchor persistence, `ScheduleEditorTest`, and compact/tall/2x-font screenshot coverage. All 134 unit tests in 28 suites, 27 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed; APK size 66,912,325 bytes. Push: NO; accumulated planning work remains local for the milestone.
+
+- [x] **DR5-018 — Implement guided-routine and exercise editors**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Replaced the legacy action-cluster editor with a responsive guided-routine editor using a wrapping editorial header, curated routine artwork, one ordered artwork-backed exercise list, long-press drag plus accessible move actions, stable focus, row Edit/Delete menus, bottom Add exercise, explicit transient-draft save/discard, and cascade-aware routine deletion. Added a dedicated exercise builder for name, notes, positive sets, target, optional positive timer, and a single curated paired-artwork choice with generic fallback; Cancel never mutates canonical data. Added `GuidedRoutineEditorTest` and compact/tall/2x-font screenshot coverage. All 128 unit tests in 27 suites, 24 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed; APK size 66,879,557 bytes. Push: NO; accumulated planning work remains local for the milestone.
+
+- [x] **DR5-017 — Implement linked-app editing and launch recovery**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Added an explicit save/cancel linked-app editor for existing and new routines with editable names, curated artwork, installed-app replacement, connection state, test launch, deletion, schedule summary, and discard protection. Centralized deep-link-first launching with validated targets, safe launcher fallback, and in-app replacement/store recovery without broad package visibility. Added persistence and launch regressions plus compact/tall/2x-font screenshot coverage. All 121 unit tests in 26 suites, 21 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed; APK size 66,715,717 bytes. Push: NO; accumulated planning work remains local for the milestone.
+
+- [x] **DR5-016 — Implement Add routine and installed-app selection**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Replaced immediate placeholder persistence with the approved Guided/Linked-app chooser, transient saveable drafts, and a searchable installed-app screen with localized labels, real icons, explicit Installed state, empty/error/retry states, accessible rows, and API-aware launcher-only package queries backed by narrow `MAIN`/`LAUNCHER` visibility. Linked selections remain transient until an explicit valid Save routine action; cancel/discard writes nothing. Added `RoutineCreationTest` coverage for chooser, search/empty, normalization, cancellation semantics, API 28–36 paths, selection, and valid-save conversion. All 116 unit tests in 25 suites, `lintDebug` (0 errors), and `assembleDebug` passed; APK size 66,568,261 bytes. Push: NO; changes remain local for the planning milestone.
+
+- [x] **DR5-015 — Implement the unified Routines tab**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Replaced the placeholder routine controls with one artwork-backed list for guided and linked-app routines, routine-owned type/item/app metadata, deduplicated recurring-weekday summaries, row editing, Rename/Delete overflow, cascade-aware confirmation for schedules and partial sessions, a guided/linked empty state, and one Add routine action. Routed rename and delete through current-document repository operations, added `RoutineManagementSupportTest`, strengthened repository cascade coverage, and added compact/tall/2x-font Routines references. All 110 unit tests in 24 suites, 18 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed. Push: NO; changes remain local for the planning milestone.
+
+- [x] **DR5-014 — Implement the recurring Schedule tab**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Replaced the dated seven-timeline management UI with saved Schedule/Routines tabs, a compact count-only weekday selector, selected-day recovery and artwork-card states, six-dot drag plus accessible move actions, Edit/Delete overflow, named delete confirmation, Add scheduled item, reset overflow, and automatic-save feedback. Added count, boundary reorder, delete, current-store persistence, and compact/tall/2x-font visual regressions. All 107 unit tests in 23 suites, 15 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed. Push: NO; changes remain local for the planning milestone.
 
 - [x] **DR5-013 — Release the core-shell milestone**
   - Completed: 2026-09-11 by gpt-5.6-sol. Resolved the core-shell audit, removed superseded metric-row UI and the unused legacy session image, completed the artwork ledger/status, refreshed README, and aligned release defaults to 0.20.0/20002. Inspected the 12 compact/tall/2x-font native references and circle/rounded-square/squircle/tight launcher-mask sheet; real-device checks remain explicitly unavailable because ADB is absent. All 103 unit tests in 23 suites, screenshot validation, `lintDebug` (0 errors), and `assembleDebug` passed; release delivery is v0.20.0.

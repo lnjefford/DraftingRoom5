@@ -7,7 +7,9 @@ DraftingRoom5 is a native Android health dashboard. It combines a day-focused tr
 - Native Android app built with Kotlin and Jetpack Compose.
 - Health Connect permission flow for body mass, body-fat percentage, lean body mass, exercise sessions, and distance.
 - Today-focused training cards resolve their name, artwork, type, and launch behavior from one persistent routine model.
-- Persistent schedule and routine management with weekday ordering, recurrence controls, editing, deletion, and reset-to-default behavior.
+- Persistent schedule and routine management with weekday ordering, recurrence controls, drag and accessible reordering, editing, deletion, and reset-to-default behavior.
+- Unified guided and linked-app routine creation with rename, curated artwork, installed-app selection, launch testing and recovery, and explicit save/discard behavior.
+- Guided-routine exercise editing with ordered exercises, positive set counts, targets, notes, optional timers, and paired list/session artwork.
 - Persistent dashboard customization: show, hide, reorder, and reset metric and training cards.
 - Per-metric Health Connect sync time, source app, stale-data warning, and distinct missing/unavailable states.
 - A responsive Health Connect snapshot for weight, body fat, lean mass, workouts, and distance, with dedicated detail screens.
@@ -26,11 +28,11 @@ DraftingRoom5 is a native Android health dashboard. It combines a day-focused tr
 
 Open the project in Android Studio with Android SDK 36 and Java 17 installed, then run `./gradlew testDebugUnitTest lintDebug assembleDebug`.
 
-Open **Settings → Customize dashboard** to choose which training and metric sections appear, move them into the exact order you want, or restore the default layout. At least one section always remains visible. Open **Settings → Schedules & routines** to manage the current weekly plan. Entries can launch a linked app or a guided routine, and changes persist on-device across restarts.
+Open **Settings → Customize dashboard** to choose which training and metric sections appear, move them into the exact order you want, or restore the default layout. At least one section always remains visible. Open **Settings → Schedules & routines** to manage recurring weekday entries and both routine types. You can create, rename, illustrate, edit, schedule, reorder, launch, and delete guided and linked-app routines; changes persist on-device across restarts. Linked-app launch failures offer change-app and store recovery instead of a dead action.
 
 The dashboard opens on today’s training, supports selecting nearby dates, and presents one clear Start or Resume action for each session. Its health snapshot follows the saved dashboard order. Tap a metric to choose a time range and inspect recorded readings or activity totals without crowding the dashboard.
 
-Open **Settings → Workout feedback** to turn workout haptics on or off. Custom workouts include a per-exercise set counter; completing a set produces one short cue, while timer and workout milestones use distinct cues. Duplicate taps of the same event are throttled, and the app stays silent when Android system haptics are disabled or the phone has no vibrator.
+Open **Settings → Workout feedback** to turn workout haptics on or off. Guided sessions include a per-exercise set counter; completing a set produces one short cue, while timer and workout milestones use distinct cues. Duplicate taps of the same event are throttled, and the app stays silent when Android system haptics are disabled or the phone has no vibrator.
 
 The same **Workout feedback** section includes a voice-announcement mute switch and rate control. Announcements use the phone's default Android text-to-speech voice. If no compatible voice service or language is installed, DraftingRoom5 shows that status and keeps timers and haptics working without interruption.
 

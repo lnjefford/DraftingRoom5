@@ -137,8 +137,14 @@ internal class AppRepository(private val store: DocumentStorage) {
     }
 
     fun deleteRoutine(expectedGeneration: Long, routineId: String) = update(expectedGeneration) {
+        require(it.plan.routines.any { routine -> routine.id == routineId }) { "Routine does not exist." }
         it.copy(plan = it.plan.removeRoutine(routineId),
             partialSessions = it.partialSessions.filterNot { session -> session.routineId == routineId })
+    }
+
+    fun deleteScheduleEntry(expectedGeneration: Long, scheduleEntryId: String) = update(expectedGeneration) {
+        require(it.plan.schedule.any { entry -> entry.id == scheduleEntryId }) { "Scheduled item does not exist." }
+        it.copy(plan = it.plan.removeScheduleEntry(scheduleEntryId))
     }
 
     fun resetPlan(expectedGeneration: Long) = update(expectedGeneration) {

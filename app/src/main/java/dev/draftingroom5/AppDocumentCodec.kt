@@ -71,7 +71,7 @@ private fun decodePlan(value: JSONObject): TrainingPlan {
     )
 }
 
-private fun encodeRoutine(routine: Routine) = JSONObject().apply {
+internal fun encodeRoutine(routine: Routine) = JSONObject().apply {
     put("id", routine.id); put("revision", routine.revision); put("name", routine.name); put("artworkId", routine.artworkId)
     put("execution", routine.execution.name)
     put("appLink", routine.appLink?.let { JSONObject().apply { put("packageName", it.packageName); put("deepLink", it.deepLink ?: JSONObject.NULL) } } ?: JSONObject.NULL)
@@ -83,7 +83,7 @@ private fun encodeRoutine(routine: Routine) = JSONObject().apply {
     } })
 }
 
-private fun decodeRoutine(value: JSONObject): Routine {
+internal fun decodeRoutine(value: JSONObject): Routine {
     value.exact("id", "revision", "name", "artworkId", "execution", "appLink", "exercises")
     return Routine(
         id = value.strictString("id"), revision = value.strictLong("revision"), name = value.strictString("name"),

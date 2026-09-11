@@ -11,6 +11,7 @@ internal data class DashboardSession(
     val action: SessionAction,
     val completedExerciseCount: Int = 0,
     val totalExerciseCount: Int = routine.exercises.size,
+    val savedOriginDate: LocalDate? = null,
 ) {
     val actionLabel: String
         get() = when (action) {
@@ -35,26 +36,57 @@ internal fun dashboardSessions(
     date: LocalDate,
 ): List<DashboardSession> {
     val partialByOccurrence = partialSessions.associateBy { it.occurrence }
-    val completedOccurrences = history.mapTo(hashSetOf()) { it.occurrence }
+    val completedByOccurrence = history.associateBy { it.occurrence }
     return plan.forDay(date.dayOfWeek).map { entry ->
-        val routine = plan.routineFor(entry)
+        val liveRoutine = plan.routineFor(entry)
         val occurrence = OccurrenceKey(entry.id, date)
         val partial = partialByOccurrence[occurrence]
         val action = when {
-            occurrence in completedOccurrences -> SessionAction.DONE
-            routine.execution == RoutineExecution.GUIDED && partial != null -> SessionAction.RESUME
+            occurrence in completedByOccurrence -> SessionAction.DONE
+            partial != null -> SessionAction.RESUME
             else -> SessionAction.START
         }
         DashboardSession(
-            scheduleEntry = entry,
-            routine = routine,
+            scheduleEntry = if (partial != null) entry.copy(routineId = partial.routineId) else entry,
+            routine = completedByOccurrence[occurrence]?.snapshot ?: partial?.snapshot ?: liveRoutine,
             action = action,
             completedExerciseCount = partial?.snapshot?.exercises?.count { exercise ->
                 partial.completedSets.getValue(exercise.id) == exercise.setCount
             } ?: 0,
-            totalExerciseCount = partial?.snapshot?.exercises?.size ?: routine.exercises.size,
+            totalExerciseCount = partial?.snapshot?.exercises?.size ?: liveRoutine.exercises.size,
         )
     }
+}
+
+internal fun savedDashboardSessions(
+    plan: TrainingPlan,
+    partialSessions: List<GuidedSession>,
+    selectedDate: LocalDate,
+): List<DashboardSession> {
+    val representedOccurrences = plan.forDay(selectedDate.dayOfWeek)
+        .mapTo(hashSetOf()) { OccurrenceKey(it.id, selectedDate) }
+    val liveRoutineIds = plan.routines.mapTo(hashSetOf()) { it.id }
+    return partialSessions
+        .asSequence()
+        .filter { it.routineId in liveRoutineIds && it.occurrence !in representedOccurrences }
+        .sortedByDescending(GuidedSession::updatedAtMillis)
+        .map { partial ->
+            DashboardSession(
+                scheduleEntry = ScheduleEntry(
+                    id = partial.occurrence.scheduleEntryId,
+                    routineId = partial.routineId,
+                    days = setOf(partial.occurrence.scheduledDate.dayOfWeek),
+                ),
+                routine = partial.snapshot,
+                action = SessionAction.RESUME,
+                completedExerciseCount = partial.snapshot.exercises.count { exercise ->
+                    partial.completedSets.getValue(exercise.id) == exercise.setCount
+                },
+                totalExerciseCount = partial.snapshot.exercises.size,
+                savedOriginDate = partial.occurrence.scheduledDate,
+            )
+        }
+        .toList()
 }
 
 internal fun dashboardWeek(today: LocalDate): List<LocalDate> {

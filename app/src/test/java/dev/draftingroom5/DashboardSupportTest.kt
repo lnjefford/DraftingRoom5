@@ -3,6 +3,7 @@ package dev.draftingroom5
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DashboardSupportTest {
@@ -65,5 +66,30 @@ class DashboardSupportTest {
         assertEquals(LocalDate.of(2026, 9, 7), week.first())
         assertEquals(LocalDate.of(2026, 9, 13), week.last())
         assertEquals(0, dashboardSessions(plan, emptyList(), emptyList(), week.last()).size)
+    }
+
+    @Test
+    fun removedAndOffDateOccurrencesRemainAvailableAsSavedSessions() {
+        val older = partialFixture().copy(updatedAtMillis = 3)
+        val removedPlan = plan.removeScheduleEntry(older.occurrence.scheduleEntryId)
+        val newer = older.copy(
+            id = "newer",
+            occurrence = OccurrenceKey("removed-entry", saturday.minusWeeks(1)),
+            updatedAtMillis = 4,
+        )
+
+        val saved = savedDashboardSessions(removedPlan, listOf(older, newer), saturday)
+
+        assertEquals(listOf(newer.occurrence.scheduledDate, older.occurrence.scheduledDate), saved.map { it.savedOriginDate })
+        assertTrue(saved.all { it.action == SessionAction.RESUME })
+        assertTrue(saved.all { it.routine == older.snapshot })
+    }
+
+    @Test
+    fun selectedDateOccurrenceIsNotDuplicatedInSavedSessions() {
+        val partial = partialFixture()
+
+        assertTrue(savedDashboardSessions(plan, listOf(partial), saturday).isEmpty())
+        assertEquals(1, dashboardSessions(plan, listOf(partial), emptyList(), saturday).size)
     }
 }

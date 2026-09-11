@@ -1,6 +1,6 @@
 # DraftingRoom5 fitness UI final design review
 
-Status: screen-flow design approved and internally reconciled. This is an implementation-readiness review, not a claim that the Compose app already matches the mockups.
+Status: screen-flow design approved and internally reconciled. The Dashboard, metric details, Settings, customization, recurring Schedule, unified Routines, and routine/editor flows are implemented through the Phase 3 planning milestone. Durable guided-session behavior remains Phase 4 work.
 
 ## Outcome
 
