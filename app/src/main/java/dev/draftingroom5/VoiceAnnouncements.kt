@@ -29,28 +29,6 @@ internal sealed interface VoiceCue {
     data object WorkoutCompleted : VoiceCue
 }
 
-internal class VoiceAnnouncementSettingsStore(context: Context) {
-    private val preferences = context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-
-    fun load(): VoiceAnnouncementSettings = VoiceAnnouncementSettings(
-        enabled = preferences.getBoolean(KEY_ENABLED, true),
-        rate = normalizedVoiceRate(preferences.getFloat(KEY_RATE, DEFAULT_VOICE_RATE)),
-    )
-
-    fun save(settings: VoiceAnnouncementSettings) {
-        preferences.edit()
-            .putBoolean(KEY_ENABLED, settings.enabled)
-            .putFloat(KEY_RATE, normalizedVoiceRate(settings.rate))
-            .apply()
-    }
-
-    companion object {
-        private const val PREFERENCES = "voice-announcements"
-        private const val KEY_ENABLED = "enabled"
-        private const val KEY_RATE = "rate"
-    }
-}
-
 internal class WorkoutVoiceAnnouncements(
     context: Context,
     private val onAvailabilityChanged: (VoiceAvailability) -> Unit,
@@ -100,7 +78,8 @@ internal const val DEFAULT_VOICE_RATE = 1.0f
 internal const val MIN_VOICE_RATE = 0.75f
 internal const val MAX_VOICE_RATE = 1.5f
 
-internal fun normalizedVoiceRate(rate: Float): Float = rate.coerceIn(MIN_VOICE_RATE, MAX_VOICE_RATE)
+internal fun normalizedVoiceRate(rate: Float): Float =
+    if (rate.isFinite()) rate.coerceIn(MIN_VOICE_RATE, MAX_VOICE_RATE) else DEFAULT_VOICE_RATE
 
 internal fun voiceRateLabel(rate: Float): String = when {
     rate < 0.9f -> "Slow"

@@ -15,9 +15,4 @@ class HapticFeedbackTest {
         assertTrue(gate.allow(HapticCue.SET_COMPLETE, 1_500))
     }
 
-    @Test
-    fun setCountUsesLeadingNumberAndFallsBackSafely() {
-        assertTrue(exerciseSetCount(Exercise("id", "name", "", "4 sets", "10 reps")) == 4)
-        assertTrue(exerciseSetCount(Exercise("id", "name", "", "AMRAP", "10 reps")) == 1)
-    }
 }

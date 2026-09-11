@@ -15,21 +15,6 @@ internal enum class HapticCue {
     WORKOUT_COMPLETE,
 }
 
-internal class HapticSettingsStore(context: Context) {
-    private val preferences = context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-
-    fun isEnabled(): Boolean = preferences.getBoolean(KEY_ENABLED, true)
-
-    fun saveEnabled(enabled: Boolean) {
-        preferences.edit().putBoolean(KEY_ENABLED, enabled).apply()
-    }
-
-    companion object {
-        private const val PREFERENCES = "haptic-feedback"
-        private const val KEY_ENABLED = "enabled"
-    }
-}
-
 internal class HapticEventGate(private val minimumIntervalMillis: Long = 500L) {
     private val lastPlayedAt = mutableMapOf<HapticCue, Long>()
 
@@ -75,6 +60,11 @@ internal class WorkoutHaptics(context: Context) {
         }
         vibrator.vibrate(effect)
     }
+
+    fun settingsPresentation(): HapticSettingsPresentation = hapticSettingsPresentation(
+        hasVibrator = vibrator?.hasVibrator() == true,
+        systemEnabled = systemHapticsEnabled(),
+    )
 
     private fun systemHapticsEnabled(): Boolean = Settings.System.getInt(
         appContext.contentResolver,

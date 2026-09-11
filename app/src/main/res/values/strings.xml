@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="routine_artwork_generic">General training</string>
+    <string name="routine_artwork_dumbbell">Dumbbell</string>
+    <string name="routine_artwork_grip_trainer">Grip trainer</string>
+    <string name="routine_artwork_running_shoe">Running shoe</string>
+    <string name="routine_artwork_kettlebell">Kettlebell</string>
+    <string name="routine_artwork_leg_day">Leg day</string>
+    <string name="routine_artwork_full_body">Full body</string>
+    <string name="routine_artwork_push_day">Push day</string>
+    <string name="routine_artwork_pull_day">Pull day</string>
+    <string name="routine_artwork_jump_rope">Jump rope</string>
+    <string name="routine_artwork_stopwatch">Stopwatch</string>
+    <string name="exercise_artwork_generic">General exercise</string>
+    <string name="exercise_artwork_dead_hang">Dead hang</string>
+    <string name="exercise_artwork_farmers_walk">Farmer’s walk</string>
+    <string name="exercise_artwork_grip_hold">Grip hold</string>
+    <string name="exercise_artwork_wrist_curl">Wrist curl</string>
+    <string name="exercise_artwork_reverse_wrist_curl">Reverse wrist curl</string>
+    <string name="exercise_artwork_finger_extension">Finger extension</string>
+    <string name="exercise_artwork_wrist_rotation">Wrist rotation</string>
+</resources>

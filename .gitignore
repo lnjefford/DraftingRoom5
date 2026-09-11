@@ -1,4 +1,6 @@
 .gradle/
+.gradle-user-home/
+.tooling/
 .kotlin/
 build/
 **/build/

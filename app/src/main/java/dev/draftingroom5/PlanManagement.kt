@@ -47,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -64,24 +65,20 @@ import java.time.DayOfWeek
 internal fun PlanManagementScreen(
     plan: TrainingPlan,
     onChange: (TrainingPlan) -> Unit,
+    onReset: () -> Unit,
     onEditRoutine: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    var editingSchedule by remember { mutableStateOf<ScheduledItem?>(null) }
-    var addingSchedule by remember { mutableStateOf(false) }
-    var addingRoutine by remember { mutableStateOf(false) }
-    var resetRequested by remember { mutableStateOf(false) }
+    var editingScheduleId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingSchedule = plan.schedule.firstOrNull { it.id == editingScheduleId }
+    var addingSchedule by rememberSaveable { mutableStateOf(false) }
+    var addingRoutine by rememberSaveable { mutableStateOf(false) }
+    var resetRequested by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
-        topBar = {
-            TopAppBar(
-                title = { Text("Schedules & routines", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
-        },
+        topBar = { SecondaryTopBar("Schedules & routines", onBack) },
         containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
@@ -101,17 +98,15 @@ internal fun PlanManagementScreen(
                 item(key = "timeline-${day.name}") {
                     WeeklyTimelineDay(
                         day = day,
-                        items = plan.schedule.filter { day in it.activeDays() },
-                        onEnabledChange = { item, enabled ->
-                            onChange(plan.copy(schedule = plan.schedule.map { if (it.id == item.id) item.copy(enabled = enabled) else it }))
-                        },
+                        items = plan.forDay(day),
+                        routineFor = plan::routineFor,
                         onMove = { item, offset ->
-                            onChange(plan.copy(schedule = move(plan.schedule, plan.schedule.indexOfFirst { it.id == item.id }, offset)))
+                            onChange(plan.moveScheduleOnDay(day, item.id, offset))
                         },
-                        onEdit = { editingSchedule = it },
+                        onEdit = { editingScheduleId = it.id },
                         onDelete = { item -> onChange(plan.copy(schedule = plan.schedule.filterNot { it.id == item.id })) },
-                        canMoveUp = { plan.schedule.indexOfFirst { scheduled -> scheduled.id == it.id } > 0 },
-                        canMoveDown = { plan.schedule.indexOfFirst { scheduled -> scheduled.id == it.id } in 0..<plan.schedule.lastIndex },
+                        canMoveUp = { plan.forDay(day).indexOfFirst { scheduled -> scheduled.id == it.id } > 0 },
+                        canMoveDown = { plan.forDay(day).indexOfFirst { scheduled -> scheduled.id == it.id } in 0..<plan.forDay(day).lastIndex },
                     )
                 }
             }
@@ -152,12 +147,12 @@ internal fun PlanManagementScreen(
         ScheduleEditorDialog(
             original = editingSchedule,
             routines = plan.routines,
-            onDismiss = { addingSchedule = false; editingSchedule = null },
+            onDismiss = { addingSchedule = false; editingScheduleId = null },
             onSave = { saved ->
                 val schedule = if (editingSchedule == null) plan.schedule + saved else plan.schedule.map { if (it.id == saved.id) saved else it }
                 onChange(plan.copy(schedule = schedule))
                 addingSchedule = false
-                editingSchedule = null
+                editingScheduleId = null
             },
         )
     }
@@ -167,7 +162,11 @@ internal fun PlanManagementScreen(
             initial = "",
             onDismiss = { addingRoutine = false },
             onSave = { name ->
-                val routine = CustomRoutine(newId(), name, emptyList())
+                val routine = Routine(
+                    id = newId(), revision = 1, name = name, artworkId = "generic",
+                    execution = RoutineExecution.GUIDED, appLink = null,
+                    exercises = listOf(Exercise(newId(), "New exercise", "", 1, "1 rep", null, "generic")),
+                )
                 onChange(plan.copy(routines = plan.routines + routine))
                 addingRoutine = false
                 onEditRoutine(routine.id)
@@ -178,8 +177,8 @@ internal fun PlanManagementScreen(
         AlertDialog(
             onDismissRequest = { resetRequested = false },
             title = { Text("Reset schedules and routines?") },
-            text = { Text("This replaces all custom changes with the built-in weekly plan and Forearm & Grip routine.") },
-            confirmButton = { TextButton(onClick = { onChange(defaultTrainingPlan()); resetRequested = false }) { Text("Reset") } },
+            text = { Text("This restores the default routines and schedule, and deletes all saved sessions and workout history. Your other settings stay unchanged.") },
+            confirmButton = { TextButton(onClick = { onReset(); resetRequested = false }) { Text("Reset") } },
             dismissButton = { TextButton(onClick = { resetRequested = false }) { Text("Cancel") } },
         )
     }
@@ -188,13 +187,13 @@ internal fun PlanManagementScreen(
 @Composable
 private fun WeeklyTimelineDay(
     day: DayOfWeek,
-    items: List<ScheduledItem>,
-    onEnabledChange: (ScheduledItem, Boolean) -> Unit,
-    onMove: (ScheduledItem, Int) -> Unit,
-    onEdit: (ScheduledItem) -> Unit,
-    onDelete: (ScheduledItem) -> Unit,
-    canMoveUp: (ScheduledItem) -> Boolean,
-    canMoveDown: (ScheduledItem) -> Boolean,
+    items: List<ScheduleEntry>,
+    routineFor: (ScheduleEntry) -> Routine,
+    onMove: (ScheduleEntry, Int) -> Unit,
+    onEdit: (ScheduleEntry) -> Unit,
+    onDelete: (ScheduleEntry) -> Unit,
+    canMoveUp: (ScheduleEntry) -> Boolean,
+    canMoveDown: (ScheduleEntry) -> Boolean,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -210,18 +209,18 @@ private fun WeeklyTimelineDay(
                 Text("Recovery day", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
             items.forEach { item ->
-                BrandedCard(Modifier.fillMaxWidth(), containerColor = if (item.enabled) AppSurface else AppSurface.copy(alpha = 0.62f)) {
+                val routine = routineFor(item)
+                BrandedCard(Modifier.fillMaxWidth(), containerColor = AppSurface) {
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(item.title, fontWeight = FontWeight.Bold)
+                                Text(routine.name, fontWeight = FontWeight.Bold)
                                 Text(
-                                    "${item.destination.displayName()}${if (item.subtitle.isBlank()) "" else " · ${item.subtitle}"}",
+                                    if (routine.execution == RoutineExecution.GUIDED) "Guided routine" else "Linked app",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }
-                            Switch(item.enabled, { onEnabledChange(item, it) })
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                             IconButton(onClick = { onMove(item, -1) }, enabled = canMoveUp(item)) { Icon(Icons.Default.KeyboardArrowUp, "Move up") }
@@ -239,23 +238,21 @@ private fun WeeklyTimelineDay(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun RoutineEditorScreen(
-    routine: CustomRoutine,
-    onChange: (CustomRoutine) -> Unit,
+    routine: Routine,
+    onChange: (Routine) -> Unit,
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    var editingExercise by remember { mutableStateOf<Exercise?>(null) }
-    var addingExercise by remember { mutableStateOf(false) }
-    var renaming by remember { mutableStateOf(false) }
+    var editingExerciseId by rememberSaveable { mutableStateOf<String?>(null) }
+    val editingExercise = routine.exercises.firstOrNull { it.id == editingExerciseId }
+    var addingExercise by rememberSaveable { mutableStateOf(false) }
+    var renaming by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
-            TopAppBar(
-                title = { Text(routine.name, fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                actions = { IconButton(onClick = { renaming = true }) { Icon(Icons.Default.Edit, "Rename routine") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
+            SecondaryTopBar(routine.name, onBack) {
+                IconButton(onClick = { renaming = true }) { Icon(Icons.Default.Edit, "Rename routine") }
+            }
         },
         containerColor = Color.Transparent,
     ) { padding ->
@@ -276,17 +273,20 @@ internal fun RoutineEditorScreen(
                 BrandedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
                         Text(exercise.name, fontWeight = FontWeight.Bold)
-                        Text("${exercise.sets} · ${exercise.target}${exercise.timerSeconds?.let { " · ${it}s timer" } ?: ""}", color = AppBlue)
+                        Text("${exercise.setCount} sets · ${exercise.target}${exercise.timerSeconds?.let { " · ${it}s timer" } ?: ""}", color = AppBlue)
                         if (exercise.notes.isNotBlank()) Text(exercise.notes, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            IconButton(onClick = { onChange(routine.copy(exercises = move(routine.exercises, index, -1))) }, enabled = index > 0) {
+                            IconButton(onClick = { onChange(routine.copy(revision = routine.revision + 1, exercises = move(routine.exercises, index, -1))) }, enabled = index > 0) {
                                 Icon(Icons.Default.KeyboardArrowUp, "Move up")
                             }
-                            IconButton(onClick = { onChange(routine.copy(exercises = move(routine.exercises, index, 1))) }, enabled = index < routine.exercises.lastIndex) {
+                            IconButton(onClick = { onChange(routine.copy(revision = routine.revision + 1, exercises = move(routine.exercises, index, 1))) }, enabled = index < routine.exercises.lastIndex) {
                                 Icon(Icons.Default.KeyboardArrowDown, "Move down")
                             }
-                            IconButton(onClick = { editingExercise = exercise }) { Icon(Icons.Default.Edit, "Edit exercise") }
-                            IconButton(onClick = { onChange(routine.copy(exercises = routine.exercises.filterNot { it.id == exercise.id })) }) {
+                            IconButton(onClick = { editingExerciseId = exercise.id }) { Icon(Icons.Default.Edit, "Edit exercise") }
+                            IconButton(
+                                onClick = { onChange(routine.copy(revision = routine.revision + 1, exercises = routine.exercises.filterNot { it.id == exercise.id })) },
+                                enabled = routine.exercises.size > 1,
+                            ) {
                                 Icon(Icons.Default.Delete, "Delete exercise")
                             }
                         }
@@ -299,39 +299,37 @@ internal fun RoutineEditorScreen(
     if (addingExercise || editingExercise != null) {
         ExerciseEditorDialog(
             original = editingExercise,
-            onDismiss = { addingExercise = false; editingExercise = null },
+            onDismiss = { addingExercise = false; editingExerciseId = null },
             onSave = { saved ->
                 val exercises = if (editingExercise == null) routine.exercises + saved else routine.exercises.map { if (it.id == saved.id) saved else it }
-                onChange(routine.copy(exercises = exercises))
+                onChange(routine.copy(revision = routine.revision + 1, exercises = exercises))
                 addingExercise = false
-                editingExercise = null
+                editingExerciseId = null
             },
         )
     }
-    if (renaming) NameDialog("Rename routine", routine.name, { renaming = false }) { onChange(routine.copy(name = it)); renaming = false }
+    if (renaming) NameDialog("Rename routine", routine.name, { renaming = false }) {
+        if (it != routine.name) onChange(routine.copy(revision = routine.revision + 1, name = it))
+        renaming = false
+    }
 }
 
 @Composable
 private fun ScheduleEditorDialog(
-    original: ScheduledItem?,
-    routines: List<CustomRoutine>,
+    original: ScheduleEntry?,
+    routines: List<Routine>,
     onDismiss: () -> Unit,
-    onSave: (ScheduledItem) -> Unit,
+    onSave: (ScheduleEntry) -> Unit,
 ) {
-    var title by remember(original) { mutableStateOf(original?.title.orEmpty()) }
-    var subtitle by remember(original) { mutableStateOf(original?.subtitle.orEmpty()) }
-    var selectedDays by remember(original) { mutableStateOf(original?.activeDays() ?: setOf(DayOfWeek.MONDAY)) }
-    var repeat by remember(original) { mutableStateOf(repeatPattern(selectedDays)) }
-    var destination by remember(original) { mutableStateOf(original?.destination ?: Destination.FITBOD) }
-    var routineId by remember(original, routines) { mutableStateOf(original?.routineId ?: routines.firstOrNull()?.id) }
+    var selectedDays by rememberSaveable(original?.id) { mutableStateOf(original?.days ?: setOf(DayOfWeek.MONDAY)) }
+    var repeat by rememberSaveable(original?.id) { mutableStateOf(repeatPattern(selectedDays)) }
+    var routineId by rememberSaveable(original?.id) { mutableStateOf(original?.routineId ?: routines.firstOrNull()?.id) }
     val selectedRoutine = routines.firstOrNull { it.id == routineId }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (original == null) "Add scheduled item" else "Edit scheduled item") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(title, { title = it }, label = { Text("Title") }, singleLine = true)
-                OutlinedTextField(subtitle, { subtitle = it }, label = { Text("Subtitle") }, singleLine = true)
                 Text("Repeat", style = MaterialTheme.typography.labelLarge)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(ScheduleRepeat.entries) { option ->
@@ -353,7 +351,7 @@ private fun ScheduleEditorDialog(
                             onClick = {
                                 val updated = if (repeat == ScheduleRepeat.WEEKLY) {
                                     setOf(option)
-                                } else if (option in selectedDays && selectedDays.size > 1) {
+                                } else if (option in selectedDays) {
                                     selectedDays - option
                                 } else {
                                     selectedDays + option
@@ -365,18 +363,8 @@ private fun ScheduleEditorDialog(
                         )
                     }
                 }
-                Text("Opens", style = MaterialTheme.typography.labelLarge)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(Destination.entries) { option ->
-                        FilterChip(
-                            selected = destination == option,
-                            onClick = { destination = option },
-                            label = { Text(option.displayName()) },
-                        )
-                    }
-                }
-                if (destination == Destination.CUSTOM) {
-                    OutlinedButton(
+                Text("Routine", style = MaterialTheme.typography.labelLarge)
+                OutlinedButton(
                         onClick = {
                             if (routines.isNotEmpty()) {
                                 val index = routines.indexOfFirst { it.id == routineId }.coerceAtLeast(0)
@@ -385,12 +373,11 @@ private fun ScheduleEditorDialog(
                         },
                         enabled = routines.isNotEmpty(),
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text(selectedRoutine?.let { "Routine: ${it.name}" } ?: "Create a routine first") }
-                }
+                    ) { Text(selectedRoutine?.name ?: "Create a routine first") }
                 BrandedCard(Modifier.fillMaxWidth(), containerColor = AppSurfaceRaised) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("WEEKLY PREVIEW", color = AppMint, style = MaterialTheme.typography.labelMedium)
-                        Text(title.ifBlank { "Your scheduled item" }, fontWeight = FontWeight.Bold)
+                        Text(selectedRoutine?.name ?: "Choose a routine", fontWeight = FontWeight.Bold)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             DayOfWeek.entries.forEach { previewDay ->
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -410,19 +397,14 @@ private fun ScheduleEditorDialog(
             TextButton(
                 onClick = {
                     onSave(
-                        ScheduledItem(
+                        ScheduleEntry(
                             id = original?.id ?: newId(),
-                            title = title.trim(),
-                            subtitle = subtitle.trim(),
-                            day = selectedDays.minByOrNull(DayOfWeek::getValue) ?: DayOfWeek.MONDAY,
-                            destination = destination,
-                            routineId = if (destination == Destination.CUSTOM) routineId else null,
-                            enabled = original?.enabled ?: true,
-                            repeatDays = selectedDays,
+                            routineId = checkNotNull(routineId),
+                            days = selectedDays,
                         ),
                     )
                 },
-                enabled = title.isNotBlank() && (destination != Destination.CUSTOM || selectedRoutine != null),
+                enabled = selectedRoutine != null && selectedDays.isNotEmpty(),
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
@@ -431,12 +413,12 @@ private fun ScheduleEditorDialog(
 
 @Composable
 private fun ExerciseEditorDialog(original: Exercise?, onDismiss: () -> Unit, onSave: (Exercise) -> Unit) {
-    var name by remember(original) { mutableStateOf(original?.name.orEmpty()) }
-    var notes by remember(original) { mutableStateOf(original?.notes.orEmpty()) }
-    var sets by remember(original) { mutableStateOf(original?.sets.orEmpty()) }
-    var target by remember(original) { mutableStateOf(original?.target.orEmpty()) }
-    var timed by remember(original) { mutableStateOf(original?.timerSeconds != null) }
-    var seconds by remember(original) { mutableStateOf(original?.timerSeconds?.toString() ?: "20") }
+    var name by rememberSaveable(original?.id) { mutableStateOf(original?.name.orEmpty()) }
+    var notes by rememberSaveable(original?.id) { mutableStateOf(original?.notes.orEmpty()) }
+    var sets by rememberSaveable(original?.id) { mutableStateOf(original?.setCount?.toString().orEmpty()) }
+    var target by rememberSaveable(original?.id) { mutableStateOf(original?.target.orEmpty()) }
+    var timed by rememberSaveable(original?.id) { mutableStateOf(original?.timerSeconds != null) }
+    var seconds by rememberSaveable(original?.id) { mutableStateOf(original?.timerSeconds?.toString() ?: "20") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (original == null) "Add exercise" else "Edit exercise") },
@@ -461,8 +443,8 @@ private fun ExerciseEditorDialog(original: Exercise?, onDismiss: () -> Unit, onS
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(Exercise(original?.id ?: newId(), name.trim(), notes.trim(), sets.trim(), target.trim(), if (timed) seconds.toIntOrNull() else null)) },
-                enabled = name.isNotBlank() && sets.isNotBlank() && target.isNotBlank() && (!timed || (seconds.toIntOrNull() ?: 0) > 0),
+                onClick = { onSave(Exercise(original?.id ?: newId(), name.trim(), notes.trim(), sets.toInt(), target.trim(), if (timed) seconds.toIntOrNull() else null, original?.artworkId ?: "generic")) },
+                enabled = name.isNotBlank() && (sets.toIntOrNull() ?: 0) > 0 && target.isNotBlank() && (!timed || (seconds.toIntOrNull() ?: 0) > 0),
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
@@ -471,7 +453,7 @@ private fun ExerciseEditorDialog(original: Exercise?, onDismiss: () -> Unit, onS
 
 @Composable
 private fun NameDialog(title: String, initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
-    var name by remember(initial) { mutableStateOf(initial) }
+    var name by rememberSaveable(initial) { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -494,9 +476,4 @@ private fun Set<DayOfWeek>.summary(): String = when (repeatPattern(this)) {
     ScheduleRepeat.WEEKDAYS -> "Every weekday"
     ScheduleRepeat.DAILY -> "Every day"
     ScheduleRepeat.CUSTOM -> sortedBy(DayOfWeek::getValue).joinToString(" · ") { it.shortName() }
-}
-private fun Destination.displayName() = when (this) {
-    Destination.FITBOD -> "Fitbod"
-    Destination.JUSTRUN -> "JustRun"
-    Destination.CUSTOM -> "Custom routine"
 }

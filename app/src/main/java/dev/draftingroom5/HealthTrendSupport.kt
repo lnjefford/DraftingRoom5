@@ -12,13 +12,22 @@ internal data class TimedHealthValue(
 internal data class HealthTrendPoint(
     val date: LocalDate,
     val value: Double?,
+    val recordedAt: Instant? = null,
 )
 
 internal enum class HealthTrendDirection { UP, DOWN, NEUTRAL }
 
+internal data class HealthTrendSummary(
+    val high: Double,
+    val average: Double,
+    val low: Double,
+    val first: Double,
+    val last: Double,
+)
+
 internal fun Double.toPounds() = this * 2.2046226218
 
-internal fun dailyHealthTrend(
+internal fun measurementHealthTrend(
     samples: List<TimedHealthValue>,
     startDate: LocalDate,
     endDate: LocalDate,
@@ -26,15 +35,10 @@ internal fun dailyHealthTrend(
 ): List<HealthTrendPoint> {
     if (endDate.isBefore(startDate)) return emptyList()
 
-    val latestByDate = samples
-        .map { sample -> sample.recordedAt.atZone(zoneId).toLocalDate() to sample }
-        .filter { (date, _) -> !date.isBefore(startDate) && !date.isAfter(endDate) }
-        .groupBy({ it.first }, { it.second })
-        .mapValues { (_, dailySamples) -> dailySamples.maxBy { it.recordedAt }.value }
-
-    return generateSequence(startDate) { date ->
-        date.plusDays(1).takeUnless { it.isAfter(endDate) }
-    }.map { date -> HealthTrendPoint(date, latestByDate[date]) }.toList()
+    return samples.filter { it.value.isFinite() }
+        .sortedBy { it.recordedAt }
+        .map { HealthTrendPoint(it.recordedAt.atZone(zoneId).toLocalDate(), it.value, it.recordedAt) }
+        .filter { it.date in startDate..endDate }
 }
 
 internal fun dailyHealthTotals(
@@ -56,15 +60,21 @@ internal fun dailyHealthTotals(
 }
 
 internal fun healthTrendDirection(points: List<HealthTrendPoint>): HealthTrendDirection {
-    val values = points.mapNotNull { it.value }
+    val values = orderedNumericPoints(points).map { checkNotNull(it.value) }
     if (values.size < 2) return HealthTrendDirection.NEUTRAL
-    val midpoint = values.size / 2
-    val earlier = values.take(midpoint).average()
-    val later = values.drop(midpoint).average()
-    val tolerance = maxOf(kotlin.math.abs(values.average()) * 0.001, 0.01)
     return when {
-        later - earlier > tolerance -> HealthTrendDirection.UP
-        earlier - later > tolerance -> HealthTrendDirection.DOWN
+        values.last() > values.first() -> HealthTrendDirection.UP
+        values.last() < values.first() -> HealthTrendDirection.DOWN
         else -> HealthTrendDirection.NEUTRAL
     }
 }
+
+internal fun healthTrendSummary(points: List<HealthTrendPoint>): HealthTrendSummary? {
+    val values = orderedNumericPoints(points).map { checkNotNull(it.value) }
+    if (values.isEmpty()) return null
+    return HealthTrendSummary(values.max(), values.average(), values.min(), values.first(), values.last())
+}
+
+internal fun orderedNumericPoints(points: List<HealthTrendPoint>): List<HealthTrendPoint> =
+    points.filter { it.value?.isFinite() == true }
+        .sortedWith(compareBy<HealthTrendPoint> { it.date }.thenBy { it.recordedAt })

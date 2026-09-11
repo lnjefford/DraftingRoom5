@@ -1,0 +1,39 @@
+# DR5-012 — Core-shell review
+
+Review date: 2026-09-11. Scope: the accumulated DR5-004–011 implementation against DesignReview.md, Dashboard.md, MetricDetails.md, Settings.md, DashboardCustomization.md, and TechnicalDesign.md. Push: NO; release delivery belongs to DR5-013.
+
+## Corrections
+
+- Health charts now retain every recorded body measurement, including timestamps for multiple readings on one day. History requests use each metric's newest accessible reading rather than truncating older readings to today's interval. Activity totals use the same endpoint-date attribution and selected range as their charts, and paged records are deduplicated by record ID.
+- Range projections sort readings, exclude nonfinite values, and use endpoint deltas consistently for direction and copy. Empty/single-point charts no longer imply a steady comparison. Plot spacing reflects elapsed time; endpoints have inset space. Numeric output uses the device locale. Freshness uses calendar dates instead of labeling every sync less than 48 hours old as yesterday.
+- Read failures have retry states distinct from permission loss. Failed latest reads retain the previous successful reading and sync timestamp with an error; revoked permissions clear it. History failures have a local explanation instead of looking like an empty successful history.
+- Dashboard training visibility now includes its hero, and destination-local saveable state survives navigation to another screen. Metric grids reflow at narrow widths and larger fonts. Weekday targets retain 48 dp width with horizontal scrolling. Resume progress counts use the saved routine snapshot.
+- Secondary app bars grow for wrapped titles. Section headings, metric summaries, source footers, Settings switches, and customization rows reflow for large text. Switches and update/connection buttons have complete accessibility labels; drag handles retain their full 48 dp region. Customization supports Ctrl+Up/Down as well as semantic move actions, and a new drag resets its accumulated distance.
+- Manual backup remains available when automatic backups are disabled. Restore requires explicit replacement confirmation. A failed date-range save no longer starts a provider request for an unsaved selection.
+- Update busy state follows live work instead of restoring a permanently busy flag. Background update checks run on IO and propagate cancellation. Downloads are serialized across Activity recreation. Cached APKs are rechecked for package, increasing version, and signer before installer launch, including after the permission round trip.
+- Added narrow MAIN/LAUNCHER package visibility for dashboard linked-app launches. Missing/unavailable apps stay in DraftingRoom5 with an explicit store-recovery option; a missing browser or store no longer throws out of the launch callback.
+- Render inspection found the measured-five numeral intersecting its lower frame. Identical optical scale/offset in the color and monochrome vectors now separates it from the complete frame. Session artwork uses a contained crop and a scrim sized to the card.
+
+## Validation and visual evidence
+
+Completed: no known critical/high-severity defect remains in the reviewed core-shell scope. Final `updateDebugScreenshotTest testDebugUnitTest lintDebug assembleDebug` passed offline (1m 56s), followed by `validateDebugScreenshotTest` (41s). All 103 unit tests in 23 suites passed with zero failures/errors; all 12 native screenshot cases rendered and their reference comparison passed. Lint reported 0 errors and 32 warnings (toolchain/version, style, unused resources, and base adaptive-icon monochrome advice; API-33 icon resources contain the monochrome layer). The debug APK is 69,857,438 bytes, contains all 49 catalog WebPs, and contains no selected design-reference screenshots. `git diff --check` passed.
+
+Added `CoreShellAuditTest` and expanded the health-trend and dashboard regressions. These cover contradictory endpoint directions, missing/nonfinite/old readings, same-day chronology, elapsed-time chart spacing, failed refresh versus revoked access, calendar freshness, snapshot-based progress, and cached-update identity rejection.
+
+Native Compose screenshot tests cover Dashboard, Weight, Settings, and customization at 320 dp compact width, 412 dp tall width, and 360 dp with 2x text. Fixtures use a fixed review clock. References live in `app/src/screenshotTestDebug/reference`; they are actual host-rendered Compose UI, not recreated mockups. The first render exposed clipped secondary titles and squeezed large-text columns, which were corrected before updating the references.
+
+Host rendering uses Google's [Compose Preview Screenshot Testing](https://developer.android.com/studio/preview/compose-screenshot-testing) plugin, pinned to 0.0.1-alpha15. The screenshot fixture compile classpath retains Kotlin 2.0.21; the renderer's newer runtime is independent. The production compiler, AGP, Compose BOM, and release defaults were not upgraded. Initial builds encountered old build/signing-directory locks and damaged workspace-cache metadata. The successful setup uses Java 17, the established user dependency cache, a dedicated Android user directory, and build output under the system temporary directory outside OneDrive.
+
+`DR5-012/icon-mask-review.png` renders the production vector paths under circle, rounded-square, squircle-like, and tighter-corner masks at 32/48/72/96/144/192 pixels. Frame and notches were inspected. Both existing catalog contact sheets were reviewed: 33 routine variants and 16 exercise variants decode with alpha, retain identifiable silhouettes, and use stable catalog fallbacks. These synthetic mask checks do not certify every OEM launcher transformation.
+
+## Physical-device checks and remaining milestone work
+
+ADB reported no attached devices. Host screenshots do not verify touch dispatch, TalkBack, hardware, Android transport, or platform activity-result behavior. Keep these checks explicit at DR5-013 and later milestones:
+
+1. On compact and tall phones, scroll the entire Dashboard, metric details, Settings (including expanded backup controls), and customization at 1x/1.5x/2x text and landscape. Check cutouts, safe insets, keyboard navigation, weekday scrolling, drag cancellation/edge scrolling, focus retention, and last-visible/reset announcements with TalkBack.
+2. Verify real Withings/Health Connect grants, partial grants, history access, stale measurements, provider errors, empty activity intervals, and return-from-settings refresh. Confirm individual same-day records and older anchors against the provider's actual data.
+3. Exercise linked-app launch, uninstall between lookup and launch, unavailable deep links, and absent browser/store recovery. The full replacement-app editor is DR5-017 work.
+4. Rotate or recreate during update download and install permission; try a canceled installer, stale cached APK, and genuine signed update. Check TTS and haptics with Android settings disabled. Confirm manual backup with scheduling off and cancel/confirm restore.
+5. Inspect real adaptive/themed launcher masks and notification presentation. Complete the hero/legacy session-image provenance ledger before publishing; the routine/exercise ledgers are present, but those earlier PNGs were not documented there. Remove replaced dead UI and finish README/version defaults in DR5-013.
+
+The current MainActivity still contains substantial orchestration and synchronous repository/backup entry points. Destination/package extraction and device latency profiling remain architectural cleanup; this audit does not claim the entire target package map has been implemented. Durable guided-session state, full planning editors, app replacement, and process-death session behavior remain the explicitly queued later phases.

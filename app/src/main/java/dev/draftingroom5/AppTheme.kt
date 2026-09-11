@@ -6,7 +6,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
@@ -26,11 +27,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -76,10 +79,14 @@ private val AppShapes = Shapes(
     extraLarge = RoundedCornerShape(30.dp),
 )
 
+internal val EditorialSerif = FontFamily(Font(R.font.dm_serif_display_regular, FontWeight.Normal))
+
 private val AppTypography = Typography().run {
     copy(
-        displayMedium = displayMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
-        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
+        displayLarge = displayLarge.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-1).sp),
+        displayMedium = displayMedium.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-1).sp),
+        headlineLarge = headlineLarge.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-0.5).sp),
+        headlineMedium = headlineMedium.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-0.5).sp),
         headlineSmall = headlineSmall.copy(fontWeight = FontWeight.Bold),
         titleLarge = titleLarge.copy(fontWeight = FontWeight.Bold),
         titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -88,13 +95,16 @@ private val AppTypography = Typography().run {
     )
 }
 
-internal fun Modifier.appScreenBackground(): Modifier = background(
-    Brush.verticalGradient(
-        0f to Color(0xFF0C1B2E),
-        0.42f to AppBackground,
-        1f to AppBackgroundDeep,
-    ),
-)
+internal fun Modifier.appScreenBackground(): Modifier = background(AppBackground)
+
+@Composable
+internal fun MeasuredFiveMark(modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource(R.drawable.measured_five_foreground),
+        contentDescription = null,
+        modifier = modifier.size(46.dp),
+    )
+}
 
 @Composable
 internal fun BrandedCard(
@@ -140,15 +150,7 @@ internal fun BrandTitle(
         },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(Brush.linearGradient(listOf(AppBlueStrong, AppMint))),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("5", color = Color(0xFF041424), fontWeight = FontWeight.Black, fontSize = 20.sp)
-        }
+        MeasuredFiveMark()
         Spacer(Modifier.width(10.dp))
         Text(title, style = MaterialTheme.typography.titleLarge)
     }
@@ -181,3 +183,39 @@ internal fun DraftingRoom5Theme(content: @Composable () -> Unit) {
         content = content,
     )
 }
+
+@Composable
+private fun VisualFoundationPreview() {
+    DraftingRoom5Theme {
+        androidx.compose.foundation.layout.Column(
+            Modifier.appScreenBackground().padding(20.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+        ) {
+            BrandTitle("DraftingRoom5")
+            EditorialHeading("Visual foundation", "Measured, calm, and ready to train.", "Current system")
+            AppSurfaceCard {
+                androidx.compose.foundation.layout.Column(
+                    Modifier.padding(18.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("Raised navy surface", style = MaterialTheme.typography.titleMedium)
+                    Text("Ivory hierarchy, blue action, mint completion, and restrained gold detail.")
+                    Button(onClick = {}) { Text("Primary action") }
+                    Button(onClick = {}, enabled = false) { Text("Unavailable action") }
+                }
+            }
+        }
+    }
+}
+
+@Preview(name = "Visual foundation compact", widthDp = 320, heightDp = 568)
+@Composable
+private fun VisualFoundationCompactPreview() = VisualFoundationPreview()
+
+@Preview(name = "Visual foundation tall", widthDp = 411, heightDp = 891)
+@Composable
+private fun VisualFoundationTallPreview() = VisualFoundationPreview()
+
+@Preview(name = "Visual foundation large font", widthDp = 360, heightDp = 800, fontScale = 2f)
+@Composable
+private fun VisualFoundationLargeFontPreview() = VisualFoundationPreview()

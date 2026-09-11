@@ -7,66 +7,40 @@ import org.junit.Test
 import java.time.DayOfWeek
 
 class ScheduleDataTest {
-    @Test
-    fun defaultPlan_preservesBuiltInWeekAndRoutine() {
+    @Test fun defaultsHaveSharedRoutineIdentityAndSevenOccurrences() {
         val plan = defaultTrainingPlan()
-
-        assertEquals(7, plan.schedule.size)
-        assertEquals(1, plan.routines.size)
-        assertEquals(7, plan.routines.single().exercises.size)
+        assertEquals(3, plan.routines.size)
+        assertEquals(3, plan.schedule.size)
+        assertEquals(7, DayOfWeek.entries.sumOf { plan.forDay(it).size })
         assertEquals(2, plan.forDay(DayOfWeek.MONDAY).size)
-        assertEquals("Forearm & Grip Conditioning", plan.forDay(DayOfWeek.SATURDAY).single().title)
+        assertEquals("Forearm & Grip Conditioning", plan.routineFor(plan.forDay(DayOfWeek.SATURDAY).single()).name)
         assertTrue(plan.forDay(DayOfWeek.SUNDAY).isEmpty())
+        assertEquals(3, plan.routines.single { it.id == "routine-forearm" }.exercises.single { it.id == "exercise-finger-extension" }.setCount)
     }
 
-    @Test
-    fun disabledItems_areHiddenFromToday() {
+    @Test fun removingRoutineCascadesOnlyItsLiveScheduleReferences() {
         val plan = defaultTrainingPlan()
-        val disabled = plan.schedule.first().copy(enabled = false)
-        val updated = plan.copy(schedule = listOf(disabled) + plan.schedule.drop(1))
-
-        assertEquals(1, updated.forDay(DayOfWeek.MONDAY).size)
-        assertFalse(updated.forDay(DayOfWeek.MONDAY).any { it.id == disabled.id })
+        val updated = plan.removeRoutine("routine-forearm")
+        assertFalse(updated.routines.any { it.id == "routine-forearm" })
+        assertFalse(updated.schedule.any { it.routineId == "routine-forearm" })
+        assertEquals(2, updated.routines.size)
     }
 
-    @Test
-    fun move_reordersWithoutDroppingItems() {
-        assertEquals(listOf("b", "a", "c"), move(listOf("a", "b", "c"), 0, 1))
-        assertEquals(listOf("a", "b", "c"), move(listOf("a", "b", "c"), 0, -1))
-    }
-
-    @Test
-    fun removingRoutine_removesSchedulesThatReferenceIt() {
-        val plan = defaultTrainingPlan()
-        val updated = plan.removeRoutine("forearm")
-
-        assertTrue(updated.routines.isEmpty())
-        assertFalse(updated.schedule.any { it.destination == Destination.CUSTOM })
-    }
-
-    @Test
-    fun repeatPresetsCreateExpectedWeeklyDays() {
+    @Test fun recurrencePresetsDoNotRepairAnEmptyCustomSelection() {
         assertEquals(setOf(DayOfWeek.THURSDAY), repeatDays(ScheduleRepeat.WEEKLY, DayOfWeek.THURSDAY, emptySet()))
         assertEquals(DayOfWeek.entries.take(5).toSet(), repeatDays(ScheduleRepeat.WEEKDAYS, DayOfWeek.SUNDAY, emptySet()))
         assertEquals(DayOfWeek.entries.toSet(), repeatDays(ScheduleRepeat.DAILY, DayOfWeek.MONDAY, emptySet()))
+        assertTrue(repeatDays(ScheduleRepeat.CUSTOM, DayOfWeek.MONDAY, emptySet()).isEmpty())
     }
 
-    @Test
-    fun repeatedScheduleAppearsOnEachSelectedDay() {
-        val item = ScheduledItem(
-            "repeat", "Mobility", "", DayOfWeek.MONDAY, Destination.CUSTOM,
-            repeatDays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY),
-        )
-        val plan = TrainingPlan(listOf(item), emptyList())
-
-        assertEquals(listOf(item), plan.forDay(DayOfWeek.WEDNESDAY))
-        assertTrue(plan.forDay(DayOfWeek.TUESDAY).isEmpty())
-    }
-
-    @Test
-    fun olderSavedPlansDefaultToTheirSingleAssignedDay() {
-        val legacyJson = """{"schedule":[{"id":"one","title":"Workout","subtitle":"","day":"TUESDAY","destination":"FITBOD","routineId":null,"enabled":true}],"routines":[]}"""
-
-        assertEquals(setOf(DayOfWeek.TUESDAY), decodePlan(legacyJson).schedule.single().activeDays())
+    @Test fun filteredDayReorderWritesBackIntoOccupiedGlobalSlots() {
+        val routine = defaultTrainingPlan().routines.first()
+        val a = ScheduleEntry("a", routine.id, setOf(DayOfWeek.MONDAY))
+        val x = ScheduleEntry("x", routine.id, setOf(DayOfWeek.TUESDAY))
+        val b = ScheduleEntry("b", routine.id, setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY))
+        val plan = TrainingPlan(listOf(routine), listOf(a, x, b))
+        val moved = plan.moveScheduleOnDay(DayOfWeek.MONDAY, "b", -1)
+        assertEquals(listOf("b", "x", "a"), moved.schedule.map { it.id })
+        assertEquals(listOf("b", "x"), moved.forDay(DayOfWeek.TUESDAY).map { it.id })
     }
 }

@@ -1,6 +1,5 @@
 package dev.draftingroom5
 
-import android.content.Context
 import java.time.LocalDate
 
 internal enum class HealthDateRange(
@@ -16,20 +15,4 @@ internal enum class HealthDateRange(
     ;
 
     fun startDate(endDate: LocalDate): LocalDate = endDate.minusDays(days - 1)
-}
-
-internal class HealthDateRangeStore(context: Context) {
-    private val preferences = context.getSharedPreferences("health-date-range", Context.MODE_PRIVATE)
-
-    fun load(): HealthDateRange = preferences.getString(KEY, null)
-        ?.let { saved -> HealthDateRange.entries.firstOrNull { it.name == saved } }
-        ?: HealthDateRange.MONTH
-
-    fun save(range: HealthDateRange) {
-        preferences.edit().putString(KEY, range.name).apply()
-    }
-
-    companion object {
-        private const val KEY = "selected-range-v1"
-    }
 }

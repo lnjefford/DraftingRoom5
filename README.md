@@ -1,39 +1,40 @@
 # DraftingRoom5
 
-DraftingRoom5 is an Android workspace designed to grow by modules. Its first module, Fitness Tracker, shows the day’s workout schedule, reads personal fitness data through Health Connect, opens Fitbod and Just Run, and hosts a custom Saturday forearm and grip routine.
+DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
 ## Current scope
 
 - Native Android app built with Kotlin and Jetpack Compose.
 - Health Connect permission flow for body mass, body-fat percentage, lean body mass, exercise sessions, and distance.
-- Persistent schedule and custom-routine management with a visual weekly timeline, repeat presets, multi-day scheduling, create/edit/reorder controls, and reset-to-default behavior.
+- Today-focused training cards resolve their name, artwork, type, and launch behavior from one persistent routine model.
+- Persistent schedule and routine management with weekday ordering, recurrence controls, editing, deletion, and reset-to-default behavior.
 - Persistent dashboard customization: show, hide, reorder, and reset metric and training cards.
 - Per-metric Health Connect sync time, source app, stale-data warning, and distinct missing/unavailable states.
-- Compact dashboard stats with 30-day direction indicators and dedicated drilldowns for body measurements, workouts, and distance.
-- Persistent 1-day, 7-day, 30-day, 3-month, and 1-year drilldown controls, with line charts connecting recorded points and daily activity totals.
+- A responsive Health Connect snapshot for weight, body fat, lean mass, workouts, and distance, with dedicated detail screens.
+- Persistent 1-day, 1-week, 1-month, 3-month, and 1-year detail ranges with elapsed-time charts, endpoint deltas, summaries, source attribution, and local error recovery.
 - Automatic offline recovery snapshots of app settings, schedules, routines, and workout history, with encrypted Android/Google device backup eligibility.
 - Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
 - Configurable workout haptics mark timer starts, countdown and timer completion, each completed set, and workout completion while respecting the phone's system haptic setting.
 - Optional text-to-speech announces the final countdown, timer start and completion, set transitions, and workout completion with an adjustable voice rate.
 - Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
-- Branded dark-only interface with layered navy depth, blue/mint accents, elevated cards, strong visual hierarchy, and consistent system-bar styling.
+- Branded navy interface with ivory typography, blue/mint/gold accents, responsive cards, bundled DM Serif Display, and edge-to-edge system bars.
 - A short first-launch brand-title animation that never blocks navigation and follows Android's reduced-motion setting.
 - Opens Fitbod (`com.fitbod.fitbod`) and Just Run (`com.jupli.run`) when installed.
 - MIT licensed.
 
 ## Local build
 
-Open the project in Android Studio with Android SDK 36 installed, then run `assembleDebug`.
+Open the project in Android Studio with Android SDK 36 and Java 17 installed, then run `./gradlew testDebugUnitTest lintDebug assembleDebug`.
 
-Open **Settings → Customize dashboard** to choose which metric and training cards appear, move them into your preferred order, or restore the default layout. Open **Settings → Manage schedules & routines** to customize the weekly dashboard plan on a day-by-day timeline. The schedule editor offers weekly, weekday, daily, and custom repeat patterns, polished day controls, and a live preview before saving. Entries can launch Fitbod, JustRun, or a selected custom routine. Changes are stored on-device across restarts; **Reset built-in plan** restores the original weekly schedule and Forearm & Grip routine.
+Open **Settings → Customize dashboard** to choose which training and metric sections appear, move them into the exact order you want, or restore the default layout. At least one section always remains visible. Open **Settings → Schedules & routines** to manage the current weekly plan. Entries can launch a linked app or a guided routine, and changes persist on-device across restarts.
 
-The dashboard keeps health stats in a compact header above a visually separate activity schedule. Each stat shows an up, down, or steady indicator based on the last 30 days. Tap a stat to open its detail view, choose a time range, and inspect the connected line graph without crowding the dashboard.
+The dashboard opens on today’s training, supports selecting nearby dates, and presents one clear Start or Resume action for each session. Its health snapshot follows the saved dashboard order. Tap a metric to choose a time range and inspect recorded readings or activity totals without crowding the dashboard.
 
 Open **Settings → Workout feedback** to turn workout haptics on or off. Custom workouts include a per-exercise set counter; completing a set produces one short cue, while timer and workout milestones use distinct cues. Duplicate taps of the same event are throttled, and the app stays silent when Android system haptics are disabled or the phone has no vibrator.
 
 The same **Workout feedback** section includes a voice-announcement mute switch and rate control. Announcements use the phone's default Android text-to-speech voice. If no compatible voice service or language is installed, DraftingRoom5 shows that status and keeps timers and haptics working without interruption.
 
-Open **Settings → Automatic backups** to see the last successful snapshot, back up immediately, restore the latest snapshot, or turn automatic backups off. DraftingRoom5 saves a recovery snapshot after changes and every day, retries temporary failures with exponential backoff, and keeps the latest two copies on the device. Snapshots include dashboard/date-range settings, schedules, custom routines, and persistent workout completion history, so local recovery works without a network connection. Android can also encrypt and copy the snapshot to the Google account selected in system backup settings, then restore it during device setup or a fresh install. Changing the system backup account affects future cloud copies; Android owns account sign-in and transport timing. Health Connect measurements, permissions, downloads, and update files are never included.
+Expand **Settings → Automatic backups** to see the last successful snapshot, back up immediately, restore with explicit confirmation, or turn automatic backups off. Manual backup remains available while scheduling is off. DraftingRoom5 keeps the latest two current-format recovery copies on the device and can participate in encrypted Android cloud backup. Health Connect measurements and permissions, downloads, and update files are never included.
 
 DraftingRoom5 checks the latest public GitHub release twice daily when a network is available. When an update is ready, a small gold update indicator appears beside Settings on the dashboard; tapping it downloads the APK and opens Android's installer. The same action remains available under **Settings → App updates**. On first use, allow DraftingRoom5 to install apps when Android asks. Updates verify the package, version code, and signing certificate before installation. Network and installation errors appear in the update card.
 

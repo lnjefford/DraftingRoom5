@@ -3,17 +3,6 @@ package dev.draftingroom5
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -26,6 +15,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -78,8 +70,9 @@ internal class AppUpdateManager(context: Context) {
         )
     }
 
-    suspend fun checkNow(nowMillis: Long = System.currentTimeMillis()): Result<AppUpdateStatus> = runCatching {
+    suspend fun checkNow(nowMillis: Long = System.currentTimeMillis()): Result<AppUpdateStatus> = withContext(Dispatchers.IO) { runCatching {
         val releaseVersion = fetchLatestRelease().first
+        coroutineContext.ensureActive()
         val available = releaseVersion.takeIf { compareReleaseVersions(it, BuildConfig.VERSION_NAME) > 0 }
         preferences.edit()
             .putLong(KEY_LAST_CHECKED, nowMillis)
@@ -90,8 +83,9 @@ internal class AppUpdateManager(context: Context) {
             .commit()
         status()
     }.onFailure { error ->
+        if (error is CancellationException) throw error
         preferences.edit().putString(KEY_LAST_ERROR, error.message ?: "Update check failed.").apply()
-    }
+    } }
 
     fun clearAvailable() {
         preferences.edit().remove(KEY_AVAILABLE_VERSION).apply()
@@ -114,32 +108,12 @@ internal class AppUpdateCheckWorker(appContext: Context, parameters: WorkerParam
         if (AppUpdateManager(applicationContext).checkNow().isSuccess) Result.success() else Result.retry()
 }
 
-@Composable
-internal fun AppUpdateCard(
-    status: AppUpdateStatus,
-    busy: Boolean,
-    actionMessage: String?,
-    onCheckAndInstall: () -> Unit,
-) {
-    val detail = actionMessage ?: when {
-        status.availableVersion != null -> "Version ${status.availableVersion} is ready to download and install."
-        status.lastCheckedMillis != null -> "Automatic checks are active. You're running the latest version."
-        else -> "Automatic checks run twice daily when a network is available."
-    }
-    BrandedCard(Modifier.fillMaxWidth(), containerColor = AppSurfaceRaised) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("App updates · ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.Bold)
-            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(enabled = !busy, onClick = onCheckAndInstall) {
-                Text(if (busy) "Please wait…" else if (status.availableVersion != null) "Download & install update" else "Check & install update")
-            }
-        }
-    }
-}
-
-internal fun openDownloadedUpdateInstaller(context: Context) {
+internal suspend fun openDownloadedUpdateInstaller(context: Context) {
     val apk = File(context.cacheDir, "updates/latest.apk")
-    check(apk.isFile) { "Download the update again." }
+    withContext(Dispatchers.IO) {
+        check(apk.isFile && apk.length() in 1..200L * 1024 * 1024) { "Download the update again." }
+        verifyUpdateApk(context, apk)
+    }
     context.startActivity(Intent(Intent.ACTION_VIEW).apply {
         setDataAndType(
             FileProvider.getUriForFile(context, "${context.packageName}.updates", apk),
@@ -148,6 +122,30 @@ internal fun openDownloadedUpdateInstaller(context: Context) {
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     })
 }
+
+internal fun <T> validateUpdateIdentity(
+    candidatePackage: String,
+    installedPackage: String,
+    candidateVersion: Long,
+    installedVersion: Long,
+    candidateSigners: Set<T>?,
+    installedSigners: Set<T>?,
+) {
+    check(candidatePackage == installedPackage) { "The update is for a different app." }
+    check(candidateVersion > installedVersion) { "The update is no longer newer. Check for updates again." }
+    check(!installedSigners.isNullOrEmpty() && candidateSigners == installedSigners) { "The update uses a different signing key." }
+}
+
+private fun verifyUpdateApk(context: Context, apk: File) {
+    val manager = context.packageManager
+    val candidate = manager.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
+        ?: error("The downloaded APK is invalid.")
+    val installed = manager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+    validateUpdateIdentity(candidate.packageName, context.packageName, candidate.longVersionCode,
+        installed.longVersionCode, candidate.signingInfo?.apkContentsSigners?.toSet(), installed.signingInfo?.apkContentsSigners?.toSet())
+}
+
+private val updateDownloadMutex = Mutex()
 
 private fun connection(url: String): HttpURLConnection {
     require(url.startsWith("https://")) { "The update URL must use HTTPS." }
@@ -182,7 +180,7 @@ internal fun compareReleaseVersions(left: String, right: String): Int {
         } ?: 0
 }
 
-internal suspend fun downloadUpdate(context: Context, status: suspend (String) -> Unit): Boolean = withContext(Dispatchers.IO) {
+internal suspend fun downloadUpdate(context: Context, status: suspend (String) -> Unit): Boolean = updateDownloadMutex.withLock { withContext(Dispatchers.IO) {
     val (tag, release) = fetchLatestRelease()
     if (compareReleaseVersions(tag, BuildConfig.VERSION_NAME) <= 0) return@withContext false
     val assets = release.getJSONArray("assets")
@@ -212,20 +210,11 @@ internal suspend fun downloadUpdate(context: Context, status: suspend (String) -
                 check(total == asset.getLong("size")) { "Download was incomplete. Try again." }
             }
         }
-        val manager = context.packageManager
-        val candidate = manager.getPackageArchiveInfo(partial.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
-            ?: error("The downloaded APK is invalid.")
-        val installed = manager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        check(candidate.packageName == context.packageName) { "The update is for a different app." }
-        if (candidate.longVersionCode <= installed.longVersionCode) return@withContext false
-        val currentSigners = installed.signingInfo?.apkContentsSigners?.toSet()
-        check(!currentSigners.isNullOrEmpty() && candidate.signingInfo?.apkContentsSigners?.toSet() == currentSigners) {
-            "This release uses a different signing key. A one-time manual installation is required before in-app updates can work."
-        }
+        verifyUpdateApk(context, partial)
         partial.copyTo(File(directory, "latest.apk"), overwrite = true)
         true
     } finally {
         download.disconnect()
         partial.delete()
     }
-}
+} }

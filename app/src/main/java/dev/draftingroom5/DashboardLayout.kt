@@ -1,9 +1,5 @@
 package dev.draftingroom5
 
-import android.content.Context
-import org.json.JSONArray
-import org.json.JSONObject
-
 internal enum class DashboardCard(val title: String, val description: String) {
     WEIGHT("Weight", "Latest weight from Health Connect"),
     BODY_FAT("Body fat", "Latest body-fat percentage"),
@@ -25,58 +21,57 @@ internal data class DashboardLayout(
         get() = cards.filter { it.visible }.map { it.card }
 }
 
+internal sealed interface DashboardSection {
+    data object Training : DashboardSection
+    data class Metrics(val cards: List<DashboardCard>) : DashboardSection
+}
+
 internal fun defaultDashboardCards(): List<DashboardCardPreference> =
-    DashboardCard.entries.map { DashboardCardPreference(it) }
+    listOf(
+        DashboardCardPreference(DashboardCard.TODAY),
+        DashboardCardPreference(DashboardCard.WEIGHT),
+        DashboardCardPreference(DashboardCard.BODY_FAT),
+        DashboardCardPreference(DashboardCard.DISTANCE),
+        DashboardCardPreference(DashboardCard.LEAN_MASS),
+        DashboardCardPreference(DashboardCard.WORKOUTS, visible = false),
+    )
 
 internal fun normalizeDashboardCards(cards: List<DashboardCardPreference>): List<DashboardCardPreference> {
     val known = cards.distinctBy { it.card }
-    return known + DashboardCard.entries
-        .filterNot { candidate -> known.any { it.card == candidate } }
-        .map { DashboardCardPreference(it) }
+    val completed = known + defaultDashboardCards()
+        .filterNot { candidate -> known.any { it.card == candidate.card } }
+    return if (completed.any { it.visible }) completed else defaultDashboardCards()
 }
 
 internal fun DashboardLayout.moveCard(index: Int, offset: Int): DashboardLayout =
     copy(cards = move(cards, index, offset))
 
-internal fun DashboardLayout.setVisible(card: DashboardCard, visible: Boolean): DashboardLayout =
-    copy(cards = cards.map { if (it.card == card) it.copy(visible = visible) else it })
-
-internal class DashboardLayoutStore(context: Context) {
-    private val preferences = context.getSharedPreferences("dashboard-layout", Context.MODE_PRIVATE)
-
-    fun load(): DashboardLayout {
-        val value = preferences.getString(KEY, null) ?: return DashboardLayout()
-        return runCatching { decodeDashboardLayout(value) }.getOrElse { DashboardLayout() }
-    }
-
-    fun save(layout: DashboardLayout) {
-        preferences.edit().putString(KEY, encodeDashboardLayout(layout)).apply()
-    }
-
-    companion object {
-        private const val KEY = "layout-v1"
-    }
+internal fun DashboardLayout.moveCard(card: DashboardCard, targetIndex: Int): DashboardLayout {
+    val from = cards.indexOfFirst { it.card == card }
+    if (from !in cards.indices || targetIndex !in cards.indices || from == targetIndex) return this
+    return copy(cards = cards.toMutableList().apply { add(targetIndex, removeAt(from)) })
 }
 
-internal fun encodeDashboardLayout(layout: DashboardLayout): String = JSONObject().apply {
-    put("cards", JSONArray().apply {
-        layout.cards.forEach { preference ->
-            put(JSONObject().apply {
-                put("card", preference.card.name)
-                put("visible", preference.visible)
-            })
-        }
-    })
-}.toString()
+internal fun DashboardLayout.setVisible(card: DashboardCard, visible: Boolean): DashboardLayout =
+    if (!visible && visibleCards.size == 1 && card in visibleCards) this
+    else copy(cards = cards.map { if (it.card == card) it.copy(visible = visible) else it })
 
-internal fun decodeDashboardLayout(value: String): DashboardLayout {
-    val cardsJson = JSONObject(value).getJSONArray("cards")
-    val cards = buildList {
-        repeat(cardsJson.length()) { index ->
-            val item = cardsJson.getJSONObject(index)
-            val card = runCatching { DashboardCard.valueOf(item.getString("card")) }.getOrNull()
-            if (card != null) add(DashboardCardPreference(card, item.optBoolean("visible", true)))
+/** Keeps every saved card in order while retaining compact metric grids between training sections. */
+internal fun DashboardLayout.dashboardSections(): List<DashboardSection> = buildList {
+    val metrics = mutableListOf<DashboardCard>()
+    fun flushMetrics() {
+        if (metrics.isNotEmpty()) {
+            add(DashboardSection.Metrics(metrics.toList()))
+            metrics.clear()
         }
     }
-    return DashboardLayout(normalizeDashboardCards(cards))
+    visibleCards.forEach { card ->
+        if (card == DashboardCard.TODAY) {
+            flushMetrics()
+            add(DashboardSection.Training)
+        } else {
+            metrics += card
+        }
+    }
+    flushMetrics()
 }

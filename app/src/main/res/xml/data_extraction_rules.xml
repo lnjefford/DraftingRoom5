@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup disableIfNoEncryptionCapabilities="true">
-        <include domain="file" path="automatic-backups/latest.json" />
-        <include domain="file" path="automatic-backups/previous.json" />
-        <include domain="sharedpref" path="automatic-backup.xml" />
+        <include domain="file" path="recovery-current/latest.json" />
+        <include domain="file" path="recovery-current/previous.json" />
+        <include domain="sharedpref" path="backup-status-current.xml" />
     </cloud-backup>
     <device-transfer>
-        <include domain="file" path="automatic-backups/latest.json" />
-        <include domain="file" path="automatic-backups/previous.json" />
-        <include domain="sharedpref" path="automatic-backup.xml" />
+        <include domain="file" path="recovery-current/latest.json" />
+        <include domain="file" path="recovery-current/previous.json" />
+        <include domain="sharedpref" path="backup-status-current.xml" />
     </device-transfer>
 </data-extraction-rules>

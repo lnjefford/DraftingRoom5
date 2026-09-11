@@ -4,7 +4,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import kotlinx.coroutines.CancellationException
 import java.time.Instant
 
-internal enum class HealthReadOutcome { SUCCESS, MISSING, UNAVAILABLE }
+internal enum class HealthReadOutcome { SUCCESS, MISSING, UNAVAILABLE, ERROR }
 
 internal data class HealthReadResult<T>(
     val value: T? = null,
@@ -33,7 +33,7 @@ internal suspend fun <T> readHealthValue(
     } catch (_: SecurityException) {
         HealthReadResult(issue = "Health Connect denied access. Check this app's permissions and the entry date.")
     } catch (error: Exception) {
-        HealthReadResult(issue = "Read failed (${error.javaClass.simpleName}). Tap Refresh to retry.")
+        HealthReadResult(issue = "Read failed (${error.javaClass.simpleName}). Tap Refresh to retry.", outcome = HealthReadOutcome.ERROR)
     }
 }
 

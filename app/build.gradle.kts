@@ -2,9 +2,16 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.android.compose.screenshot") version "0.0.1-alpha15"
+}
+
+// The host renderer uses Kotlin 2.2 at runtime; source fixtures use the app's 2.0 compiler.
+configurations.matching { it.name.endsWith("ScreenshotTestCompileClasspath") }.configureEach {
+    resolutionStrategy.force("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
 }
 
 android {
+    experimentalProperties["android.experimental.enableScreenshotTest"] = true
     namespace = "dev.draftingroom5"
     compileSdk = 36
 
@@ -12,8 +19,8 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 28
         targetSdk = 35
-        versionCode = providers.gradleProperty("appVersionCode").orElse("19000").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.19.0").get()
+        versionCode = providers.gradleProperty("appVersionCode").orElse("20002").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.20.0").get()
     }
 
     signingConfigs {
@@ -40,6 +47,10 @@ android {
 }
 
 dependencies {
+    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha15") {
+        exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+    }
+    screenshotTestImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     implementation(libs.androidx.core.ktx)
