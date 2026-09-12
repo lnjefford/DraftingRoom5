@@ -1,6 +1,6 @@
 # Routine editor redesign specification
 
-Status: approved visual direction for future implementation.
+Status: implemented and audited through DR5-030 for guided routines, linked-app routines, installed-app selection, exercises, and curated artwork.
 
 ## Selected references
 

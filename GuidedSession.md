@@ -1,6 +1,6 @@
 # Guided routine session specification
 
-Status: approved visual direction for future implementation.
+Status: implemented and resilience-audited through DR5-030, including durable progress, elapsed-clock timers, feedback ownership, recovery, and atomic completion.
 
 ## Selected reference
 

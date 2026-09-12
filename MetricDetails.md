@@ -1,6 +1,6 @@
 # Metric detail redesign specification
 
-Status: approved visual direction for future implementation. The Weight screen is the reference implementation for the shared metric-detail family.
+Status: implemented and audited through DR5-030. Weight remains the visual reference for the shared native metric-detail family.
 
 ## Selected reference
 
@@ -165,4 +165,3 @@ Keep chart-domain calculation, daily aggregation, summary statistics, and displa
 - No synthetic values are shown when data is absent or unavailable.
 - Source and freshness information remain visible.
 - The screen is recognizably part of the approved Dashboard design language.
-

@@ -39,8 +39,12 @@ internal interface DocumentStorage {
     @Throws(IOException::class) fun write(value: String)
 }
 
-internal class AppDocumentStore(context: Context) : DocumentStorage {
-    private val file = AtomicFile(File(context.filesDir, "training-current/document.json"))
+internal class AppDocumentStore(context: Context) : DocumentStorage by AtomicJsonStorage(
+    File(context.filesDir, "training-current/document.json"),
+)
+
+internal class AtomicJsonStorage(baseFile: File) : DocumentStorage {
+    private val file = AtomicFile(baseFile)
 
     override fun exists(): Boolean = file.baseFile.exists() || File(file.baseFile.path + ".bak").exists()
 

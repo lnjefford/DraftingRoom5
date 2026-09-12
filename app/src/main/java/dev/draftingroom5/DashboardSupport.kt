@@ -94,6 +94,10 @@ internal fun dashboardWeek(today: LocalDate): List<LocalDate> {
     return (0L..6L).map(monday::plusDays)
 }
 
+/** Follow today across midnight, but preserve an explicitly selected day in the visible week. */
+internal fun resolveDashboardDate(selected: LocalDate, previousToday: LocalDate, today: LocalDate): LocalDate =
+    if (selected == previousToday || selected !in dashboardWeek(today)) today else selected
+
 internal fun linkedAppDisplayName(packageName: String): String = when (packageName) {
     "com.fitbod.fitbod" -> "FITBOD"
     "com.jupli.run" -> "JUST RUN"

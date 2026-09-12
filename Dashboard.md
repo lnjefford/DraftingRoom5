@@ -1,6 +1,6 @@
 # Dashboard redesign specification
 
-Status: approved visual direction for future implementation. This document is a design handoff, not an indication that the current Compose dashboard has been changed.
+Status: implemented and audited through DR5-030. This remains the approved design handoff; the production UI is native Jetpack Compose and does not embed the reference mockups.
 
 ## Selected references
 

@@ -2,6 +2,8 @@
 
 DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
+The current production release is v0.23.0. Its source and host-rendered UI passed the whole-product review and full Android build gate. Physical-device checks that require Health Connect/Withings, TalkBack, external apps, process termination, real timers/feedback, Android backup/installation, or OEM icon masks remain explicitly device-dependent; use the prioritized checklist in `docs/reviews/DR5-030-final-product-review.md` rather than treating host screenshots as device certification.
+
 ## Current scope
 
 - Native Android app built with Kotlin and Jetpack Compose.

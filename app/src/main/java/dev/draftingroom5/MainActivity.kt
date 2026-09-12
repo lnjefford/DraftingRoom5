@@ -618,7 +618,7 @@ private fun DraftingRoom5App() {
                     val result = backupManager.createBackup()
                     if (result.isFailure) backupManager.requestBackup()
                     backupStatus = backupManager.status()
-                    backupActionMessage = if (result.isSuccess) "Recovery snapshot saved." else "Backup failed and will retry automatically."
+                    backupActionMessage = if (result.isSuccess) "Recovery snapshot saved." else backupFailureMessage(backupStatus.enabled)
                 },
                 onRestoreLatest = {
                     backupManager.restoreLatest().onSuccess {
@@ -930,10 +930,6 @@ private fun DraftingRoom5App() {
                     onReturnToDashboard = navigation::dashboard,
                 )
             }
-            is AppRoute.ExerciseEditor -> FoundationDestinationScreen(
-                route = screen,
-                onBack = { navigation.back() },
-            )
         }
         }
     }
@@ -957,9 +953,26 @@ private fun Dashboard(
     onOpenCustom: (ScheduleEntry, LocalDate) -> Unit,
     onLaunchExternal: (ScheduleEntry) -> Unit,
 ) {
-    val today = (LocalReviewTime.current ?: Instant.now()).atZone(ZoneId.systemDefault()).toLocalDate()
+    val reviewTime = LocalReviewTime.current
+    val focused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
+    var today by remember { mutableStateOf((reviewTime ?: Instant.now()).atZone(ZoneId.systemDefault()).toLocalDate()) }
+    LaunchedEffect(reviewTime, focused) {
+        if (reviewTime != null) {
+            today = reviewTime.atZone(ZoneId.systemDefault()).toLocalDate()
+        } else if (focused) {
+            while (true) {
+                today = LocalDate.now(ZoneId.systemDefault())
+                delay(30_000)
+            }
+        }
+    }
     var selectedEpochDay by rememberSaveable { mutableStateOf(today.toEpochDay()) }
-    val selectedDate = LocalDate.ofEpochDay(selectedEpochDay)
+    var previousTodayEpochDay by rememberSaveable { mutableStateOf(today.toEpochDay()) }
+    val selectedDate = resolveDashboardDate(LocalDate.ofEpochDay(selectedEpochDay), LocalDate.ofEpochDay(previousTodayEpochDay), today)
+    LaunchedEffect(today) {
+        selectedEpochDay = selectedDate.toEpochDay()
+        previousTodayEpochDay = today.toEpochDay()
+    }
     val week = dashboardWeek(today)
     val sessions = dashboardSessions(trainingPlan, partialSessions, workoutHistory, selectedDate)
     val savedSessions = savedDashboardSessions(trainingPlan, partialSessions, selectedDate)
@@ -1488,6 +1501,7 @@ private fun SettingsScreen(
     updateBusy: Boolean,
     updateActionMessage: String?,
     onCheckAndInstallUpdate: () -> Unit,
+    reviewSection: String? = null,
 ) {
     BackHandler(onBack = onBack)
     var backupExpanded by rememberSaveable { mutableStateOf(false) }
@@ -1518,14 +1532,14 @@ private fun SettingsScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            item {
+            if (reviewSection == null || reviewSection == "TRAINING") item {
                 SettingsSection("TRAINING") {
                     SettingsNavigationRow(Icons.Default.Settings, "Customize dashboard", "Choose and reorder dashboard sections", "$visibleDashboardCount visible", onClick = onCustomizeDashboard)
                     SettingsDivider()
                     SettingsNavigationRow(Icons.Default.FitnessCenter, "Schedules & routines", "Plan the week and edit routines", "$enabledSessionCount sessions", onClick = onManagePlan)
                 }
             }
-            item {
+            if (reviewSection == null || reviewSection == "WORKOUT FEEDBACK") item {
                 SettingsSection("WORKOUT FEEDBACK") {
                     SettingsToggleRow(
                         Icons.Default.Timer,
@@ -1564,10 +1578,17 @@ private fun SettingsScreen(
                         )
                     }
                     SettingsDivider()
-                    SettingsToggleRow(Icons.Default.FitnessCenter, "Haptic feedback", hapticPresentation.detail, hapticsEnabled, true, onHapticsEnabledChange)
+                    SettingsToggleRow(
+                        Icons.Default.FitnessCenter,
+                        "Haptic feedback",
+                        hapticPresentation.detail,
+                        hapticsEnabled,
+                        hapticPresentation.available,
+                        onHapticsEnabledChange,
+                    )
                 }
             }
-            item {
+            if (reviewSection == null || reviewSection == "CONNECTIONS & DATA") item {
                 SettingsSection("CONNECTIONS & DATA") {
                     SettingsActionRow(
                         icon = Icons.Default.FitnessCenter,
@@ -1612,7 +1633,7 @@ private fun SettingsScreen(
                     }
                 }
             }
-            item {
+            if (reviewSection == null || reviewSection == "APP") item {
                 SettingsSection("APP") {
                     SettingsActionRow(
                         icon = Icons.Default.SystemUpdate,
@@ -2234,6 +2255,7 @@ private fun DashboardSessionPreviewContent(sessions: List<DashboardSession>) {
 internal fun CoreShellReviewPreview(screen: String) {
     CompositionLocalProvider(LocalReviewTime provides Instant.parse("2026-09-10T18:00:00Z")) {
     when (screen) {
+        in HardeningState.entries.map { it.fixtureName } -> HardeningStateReviewPreview(checkNotNull(hardeningStateForFixture(screen)))
         "Session idle", "Session ready", "Session running", "Session finished" -> GuidedSessionReviewPreview(screen)
         "Session completion" -> SessionCompletionReviewPreview()
         "Settings" -> SettingsScreenPreview()
@@ -2313,6 +2335,155 @@ internal fun CoreShellReviewPreview(screen: String) {
             )
         }
     }
+    }
+}
+
+@Composable
+private fun HardeningStateReviewPreview(state: HardeningState) {
+    when (state) {
+        HardeningState.LOADING -> MetricDetailPreview("Loading")
+        HardeningState.EMPTY -> MetricDetailPreview("No data")
+        HardeningState.APP_PICKER_LOADING,
+        HardeningState.APP_PICKER_EMPTY,
+        HardeningState.APP_PICKER_FAILURE -> DraftingRoom5Theme {
+            val pickerState = when (state) {
+                HardeningState.APP_PICKER_LOADING -> InstalledAppLoadState.Loading
+                HardeningState.APP_PICKER_EMPTY -> InstalledAppLoadState.Ready(emptyList())
+                else -> InstalledAppLoadState.Failed("Android could not list launchable apps.")
+            }
+            InstalledAppPickerContent(pickerState, "", {}, {}, {}, {})
+        }
+        HardeningState.HEALTH_PERMISSION -> MetricDetailPreview("Permission")
+        HardeningState.HEALTH_UNAVAILABLE -> MetricDetailPreview("Unavailable")
+        HardeningState.HEALTH_UPDATE_REQUIRED -> MetricDetailPreview("Provider update")
+        HardeningState.TTS_UNAVAILABLE,
+        HardeningState.BACKUP_FAILURE,
+        HardeningState.UPDATE_FAILURE -> SettingsHardeningPreview(state)
+        HardeningState.LINKED_APP_UNINSTALLED -> DraftingRoom5Theme {
+            val routine = defaultTrainingPlan().routines.first { it.execution == RoutineExecution.LINKED_APP }
+                .copy(appLink = AppLink("dev.draftingroom5.missing", null))
+            LinkedAppRoutineEditorScreen(
+                routine = routine,
+                replacement = null,
+                scheduleSummary = "Scheduled Mon · Thu",
+                onChooseApp = {},
+                onSave = { true },
+                onDelete = {},
+                onTestLink = { LinkedAppLaunchResult.Failed(LinkedAppLaunchFailure.UNAVAILABLE) },
+                onBack = {},
+            )
+        }
+        HardeningState.MISSING_ARTWORK -> DraftingRoom5Theme {
+            val plan = defaultTrainingPlan().let { current ->
+                current.copy(routines = current.routines.map { it.copy(artworkId = "missing-artwork") })
+            }
+            Dashboard(
+                healthUi = HealthUiState(HealthConnection.CONNECTED),
+                dashboardLayout = DashboardLayout(),
+                healthDateRange = HealthDateRange.MONTH,
+                trainingPlan = plan,
+                partialSessions = emptyList(),
+                workoutHistory = emptyList(),
+                animateBrandOnEntry = false,
+                onBrandAnimationFinished = {},
+                onOpenSettings = {},
+                updateAvailableVersion = null,
+                onInstallUpdate = {},
+                onOpenMetric = {},
+                onOpenCustom = { _, _ -> },
+                onLaunchExternal = {},
+            )
+        }
+        HardeningState.NO_ROUTINES -> PlanHardeningPreview(emptyPlan = true, routinesTab = true)
+        HardeningState.RECOVERY_DAY -> PlanHardeningPreview(emptyPlan = false, routinesTab = false)
+        HardeningState.CORRUPT_CURRENT_DATA -> HardeningMessagePreview(
+            title = "App data needs attention",
+            message = "The current app data is damaged. Restore a recovery snapshot from Settings, or explicitly reset to current defaults.",
+            action = "Open Settings",
+        )
+        HardeningState.PERSISTENCE_FAILURE -> HardeningMessagePreview(
+            title = "Couldn’t save changes",
+            message = "Your draft is still shown. Retry after storage becomes available.",
+            action = "Retry",
+        )
+        HardeningState.DESTRUCTIVE_CONFIRMATION -> DraftingRoom5Theme {
+            Box(Modifier.fillMaxSize().appScreenBackground()) {
+                AppConfirmationDialog(
+                    title = "Reset app data?",
+                    message = "This removes routines, schedules, saved sessions, and history. Health Connect data is not changed.",
+                    confirmLabel = "Reset",
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsHardeningPreview(state: HardeningState) {
+    val now = (LocalReviewTime.current ?: Instant.now()).toEpochMilli()
+    val voiceAvailability = if (state == HardeningState.TTS_UNAVAILABLE) VoiceAvailability.UNAVAILABLE else VoiceAvailability.READY
+    val backupStatus = if (state == HardeningState.BACKUP_FAILURE) {
+        AutomaticBackupStatus(lastSuccessfulMillis = now - 86_400_000L, lastFailureMillis = now, lastFailureMessage = "Storage unavailable", hasRecoverySnapshot = true)
+    } else AutomaticBackupStatus(lastSuccessfulMillis = now, hasRecoverySnapshot = true)
+    val updateStatus = if (state == HardeningState.UPDATE_FAILURE) AppUpdateStatus(lastError = "Network unavailable. Check your connection and try again.")
+        else AppUpdateStatus(lastCheckedMillis = now)
+    DraftingRoom5Theme {
+        SettingsScreen(
+            healthUi = HealthUiState(connection = HealthConnection.CONNECTED),
+            visibleDashboardCount = 5,
+            enabledSessionCount = 7,
+            onBack = {}, onConnectHealth = {}, onOpenHealthSettings = {}, onManagePlan = {}, onCustomizeDashboard = {},
+            hapticsEnabled = true,
+            hapticPresentation = HapticSettingsPresentation("Tactile cues during guided sessions", true),
+            onHapticsEnabledChange = {},
+            voiceSettings = VoiceAnnouncementSettings(),
+            voiceAvailability = voiceAvailability,
+            onVoiceSettingsChange = {},
+            backupStatus = backupStatus,
+            backupActionMessage = if (state == HardeningState.BACKUP_FAILURE) "Backup failed: storage is unavailable. Existing snapshots were kept." else null,
+            onAutomaticBackupChange = {}, onBackUpNow = {}, onRestoreLatest = {}, onOpenBackupSettings = {},
+            updateStatus = updateStatus,
+            updateBusy = false,
+            updateActionMessage = null,
+            onCheckAndInstallUpdate = {},
+            reviewSection = when (state) {
+                HardeningState.TTS_UNAVAILABLE -> "WORKOUT FEEDBACK"
+                HardeningState.BACKUP_FAILURE -> "CONNECTIONS & DATA"
+                HardeningState.UPDATE_FAILURE -> "APP"
+                else -> null
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlanHardeningPreview(emptyPlan: Boolean, routinesTab: Boolean) {
+    val plan = if (emptyPlan) TrainingPlan(emptyList(), emptyList()) else defaultTrainingPlan().copy(schedule = emptyList())
+    DraftingRoom5Theme {
+        PlanManagementScreen(
+            plan = plan,
+            partialSessionCounts = emptyMap(),
+            onChange = { true }, onReset = {}, onEditRoutine = {}, onAddGuidedRoutine = {}, onAddLinkedRoutine = {},
+            onRenameRoutine = { _, _ -> }, onDeleteRoutine = {}, onDeleteSchedule = {}, onAddSchedule = {}, onEditSchedule = {}, onBack = {},
+            initialTab = if (routinesTab) 1 else 0,
+        )
+    }
+}
+
+@Composable
+private fun HardeningMessagePreview(title: String, message: String, action: String) {
+    DraftingRoom5Theme {
+        Scaffold(
+            modifier = Modifier.fillMaxSize().appScreenBackground(),
+            topBar = { SecondaryTopBar("Recovery", {}) },
+            containerColor = Color.Transparent,
+        ) { padding ->
+            Column(Modifier.fillMaxSize().padding(padding).padding(20.dp)) {
+                InlineErrorState(title, message, action)
+            }
+        }
     }
 }
 

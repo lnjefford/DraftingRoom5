@@ -19,8 +19,6 @@ class AppRouteTest {
             AppRoute.ScheduleEditor(null, "draft-1", java.time.DayOfWeek.THURSDAY),
             AppRoute.ScheduleEditor("schedule-1", "draft-2", java.time.DayOfWeek.MONDAY),
             AppRoute.InstalledAppPicker("draft-3"),
-            AppRoute.ExerciseEditor("draft-4", null),
-            AppRoute.ExerciseEditor("draft-4", "exercise-1"),
             AppRoute.GuidedSession("routine-2", "schedule-2", java.time.LocalDate.of(2026, 9, 10)),
             AppRoute.Completion("history-1"),
         )

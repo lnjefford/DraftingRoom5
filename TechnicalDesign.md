@@ -1,6 +1,6 @@
 # DraftingRoom5 clean-app technical design
 
-Status: foundation design DR5-001 and guided-session state-machine design DR5-023 are complete. Planning is implemented through DR5-022, and the durable guided-session contract is implemented and audited through DR5-028. The Phase 4 milestone shipped in v0.22.0 after the DR5-027 resilience review.
+Status: implemented and audited through the DR5-030 whole-product review. The clean current-schema app, recurring planning, durable guided sessions, exceptional-state coverage, recovery, and release automation ship together in v0.23.0; unavailable physical-device checks remain recorded in the final review.
 
 ## Authority and implementation boundaries
 
@@ -312,7 +312,7 @@ Use current voice/haptic preferences and availability/system haptic gating at di
 
 ### Implementation and deterministic acceptance vectors
 
-DR5-024 implements the reducer, session repository operations, injected clock/runtime lease, current codec validation and focused fake-clock/storage tests. DR5-025 wires the sole feedback controller and native UI/lifecycle ownership; DR5-026 completes exit/resume/history/backup navigation integration. Existing generic `update` always increments generation, so session no-op detection must happen before calling it. Existing restore clears timers but does not yet revoke command leases. Existing timer validation accepts unrestricted watermarks/phase observations; tighten it without retaining old-format readers. These are implementation requirements, not claims about current runtime behavior.
+DR5-024 implemented the reducer, session repository operations, injected clock/runtime lease, current codec validation, and focused fake-clock/storage tests. DR5-025 wired the sole feedback controller and native UI/lifecycle ownership; DR5-026 completed exit/resume/history/backup navigation integration; DR5-027 then audited resilience. Generic `update` still increments generation, so session no-op detection occurs before calling it. Restore clears timers and revokes command leases, and current validation strictly bounds timer watermarks and phase observations without old-format readers.
 
 Use fixture F: occurrence (`schedule-test`, 2026-09-12), guided snapshot exercises A (2 sets, 20-second timer), B (1 untimed set), C (1 set, 1-second timer); ID S, initial revision 0, counts (0,0,0), focus A, boot 7, elapsed 100000, wall 200000. Timer start at that sample has ready deadline 110000 and active deadline 130000. Unless a vector specifies otherwise, issue the latest revision/lease, assume successful storage, and assert the entire resulting state, history, write count and output list. Table rows are independent; explicitly named sequences share state. This is the test oracle, not an implemented test suite.
 
@@ -412,7 +412,7 @@ The following inventory covers every production Kotlin source present during DR5
 | `docs/design/**/*.png`, eight approved handoffs | Keep as design references only; update implementation status at milestones honestly. Add TechnicalDesign.md and AssetLedger.md; do not copy mockup UI into runtime resources. |
 | `README.md`, `LICENSE`, `AGENTS.md`, `TODO.md` | Keep license/delivery authority; update README for delivered clean capabilities and retire obsolete terminology. Remove completed queue work block, retaining compact checked dependency ledger. |
 | `app/build.gradle.kts`, root Gradle scripts, version catalog, wrapper/properties | Keep toolchain; add narrowly needed lifecycle/test dependencies and consistent version defaults at release milestones. No arbitrary upgrades in model/UI replacement. |
-| `.github/workflows/commit-build.yml`, `release.yml`, `dependabot-automerge.yml`, `.github/dependabot.yml` | Preserve verification, tag release and guarded patch auto-merge. Release defaults must equal the tag name and code formula `major*1,000,000 + minor*1,000 + patch + 2`; the Phase 4 milestone defaults are 0.22.0/22002. |
+| `.github/workflows/commit-build.yml`, `release.yml`, `dependabot-automerge.yml`, `.github/dependabot.yml` | Preserve verification, tag release and guarded patch auto-merge. Release defaults must equal the tag name and code formula `major*1,000,000 + minor*1,000 + patch + 2`; the production release defaults are 0.23.0/23002. |
 | `.gitignore`, `.tooling/`, `.gradle-user-home/`, build/cache/local files | Preserve ignores; never commit toolchains/caches/generated APKs/signing files. Add missing ignore rules only as part of the relevant implementation cleanup. |
 
 Retired storage is explicitly `training-plan/plan-v1`, `workout-history/history-v1`, `dashboard-layout/layout-v1`, `health-date-range/selected-range-v1`, `haptic-feedback`, `voice-announcements`, `automatic-backup`, and `automatic-backups/*`. Delete their source readers/writers; leave old device files unobserved until Android clears app data. App-update status/cache is independent transient maintenance data and may remain, never a plan-format bridge.

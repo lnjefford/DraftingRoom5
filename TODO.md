@@ -52,28 +52,29 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
 
 ## Phase 5 — Whole-product hardening
 
-- [ ] **DR5-029 — Complete exceptional states and accessibility**
+- [x] **DR5-029 — Complete exceptional states and accessibility**
+  - Claimed: 2026-09-12T00:10:56.5246738-05:00 by gpt-5.6-sol
   - Model: `gpt-5.6-sol`
   - Push: `NO`
   - Depends on: DR5-028
   - Work: Cover every loading, empty, corrupt-current-data, permission, Health Connect unavailable/update, uninstalled app, TTS unavailable, backup/update failure, missing artwork, no-routine, recovery-day, and destructive state. Verify 48 dp targets, TalkBack order/actions, non-color cues, keyboard/D-pad, reorder alternatives, focus restoration, reduced motion, contrast, insets, compact/tall/large-font layouts, and landscape where supported.
   - Done when: every handoff state has a fixture/test, every error has safe recovery or explanation, and no essential control clips or has duplicate semantics.
+  - Completed: 2026-09-12 UTC by gpt-5.6-sol. Added an 18-state hardening matrix and 72 compact/tall/2x-font/landscape native references covering Health Connect, installed-app discovery, corrupt data, linked-app uninstall, TTS, backup/update, artwork fallback, no-routine/recovery, destructive, and failed-save states. Added explicit empty-picker recovery, unavailable-haptic disabling, live loading semantics, and 48 dp shared error/confirmation actions. All 180 unit tests in 33 suites and 132 screenshot comparisons passed; `lintDebug` reported 0 errors and `assembleDebug` produced a 67,305,529-byte APK. Visual/device checklist: `docs/reviews/DR5-029-exceptional-accessibility.md`. Push: NO; changes remain local for the final Astra review and release milestone.
 
-- [ ] **DR5-030 — Perform the final Astra product review**
-  - Model: `gpt-6-astra`
-  - Push: `NO`
-  - Depends on: DR5-029
-  - Work: Review the complete diff and running product against every handoff criterion: architecture simplicity, obsolete-code removal, state ownership, privacy/security, lifecycle, storage, Health Connect, app launch, updates, backup, performance, accessibility, visuals, tests, and release readiness. Fix high-confidence issues and record a prioritized physical-device checklist.
-  - Done when: every criterion is verified or explicitly device-only and no critical/high-severity defect remains.
-
-- [ ] **DR5-031 — Final cleanup and production release**
+- [x] **DR5-031 — Final cleanup and production release**
+  - Claimed: 2026-09-12T02:11:50.8907492-05:00 by gpt-5.6-sol
   - Model: `gpt-5.6-sol`
   - Push: `YES`
   - Depends on: DR5-030
   - Work: Resolve the review; delete retired models/screens/helpers/resources/tests; update README and design status; confirm no migration/compatibility code remains; run the full gate; and perform available device checks for Withings/Health Connect, app launching, process-death restore, TalkBack, timers/voice/haptics, backup, icon masks, update install, and compact/large-font layouts. Record unavailable device checks honestly.
   - Done when: the clean app implements the approved design, checks pass, the tagged release succeeds, and its signed APK is published.
+  - Completed: 2026-09-12 UTC by gpt-5.6-sol. Integrated the DR5-029/030 hardening and review fixes, removed the audited obsolete route/screen paths, confirmed no migration or compatibility identifiers remain, reconciled README and every handoff/design status, and aligned defaults to 0.23.0/23002. The full Java 17 gate passed 187 unit tests in 33 suites, 136 native screenshot comparisons, `lintDebug` with 0 errors, and `assembleDebug`; the 67,305,529-byte debug APK contains all 49 catalog WebPs and no mockups. ADB found no attached device, so the physical checklist remains explicitly unavailable in `docs/reviews/DR5-031-production-release.md`. Release delivery: v0.23.0.
 
 ## Completed implementation dependencies
+
+- [x] **DR5-030 — Perform the final Astra product review**
+  - Completed: 2026-09-12 UTC by gpt-6-astra. Reviewed all eight handoffs, current architecture/integrations, accumulated hardening diff, native views, artwork/masks, and release readiness. Fixed atomic backup rotation/corrupt-fallback preservation, manual-backup retry copy, Dashboard midnight/week rollover, scrollable Health Connect privacy, obsolete placeholder routing, and the Dependabot verified-commit merge race. Added seven unit regressions and four privacy references. Final offline gate passed 187 tests in 33 suites, lintDebug (0 errors), assembleDebug, and 136 screenshot comparisons; APK 67,305,529 bytes with all 49 catalog WebPs and no mockups. Review and prioritized device-only checklist: docs/reviews/DR5-030-final-product-review.md. ADB has no attached device. Push: NO; accumulated changes remain local for DR5-031.
+
 
 - [x] **DR5-027 — Audit guided-session resilience**
   - Completed: 2026-09-12 UTC by gpt-6-astra. Fixed backup-triggered repository reload/lease revocation, silent timer recovery after write failures, elapsed-regression tracking, fresh timer IDs, exact saved-session identity, recoverable stale routes, IO dispatch and foreground/canonical feedback guards, completion speech, partial-set undo, overflow-safe progress, bounded indicators, dialog restoration/errors, serialized backups, completion contrast and stable timer spacing. Added eight unit regressions and 15 control-panel references. Final gate passed all 177 unit tests in 32 suites, 60 screenshot comparisons, lintDebug (0 errors), and assembleDebug; APK 69,422,578 bytes with 49 catalog WebPs and no mockups. Audit and device-only checklist: docs/reviews/DR5-027-session-resilience-audit.md. ADB has no attached device. Push: NO; accumulated work remains local for DR5-028.

@@ -21,9 +21,7 @@ internal sealed interface AppRoute {
     data class RoutineEditor(val routineId: String) : AppRoute
     data class ScheduleEditor(val entryId: String?, val draftId: String, val anchor: DayOfWeek) : AppRoute
     data class InstalledAppPicker(val ownerDraftId: String) : AppRoute
-    data class ExerciseEditor(val ownerDraftId: String, val exerciseId: String?) : AppRoute
-
-    // DR5-024 replaces these transitional routine/occurrence keys with a durable session id.
+    // The destination binds a durable session id after resolving this exact occurrence.
     data class GuidedSession(val routineId: String, val scheduleEntryId: String, val scheduledDate: LocalDate) : AppRoute
     data class Completion(val historyId: String) : AppRoute
 }
@@ -86,7 +84,6 @@ internal fun encodeAppRoute(route: AppRoute): String = when (route) {
     is AppRoute.RoutineEditor -> "routine:${route.routineId}"
     is AppRoute.ScheduleEditor -> "schedule:${route.entryId.orEmpty()}:${route.draftId}:${route.anchor.name}"
     is AppRoute.InstalledAppPicker -> "apps:${route.ownerDraftId}"
-    is AppRoute.ExerciseEditor -> "exercise:${route.ownerDraftId}:${route.exerciseId.orEmpty()}"
     is AppRoute.GuidedSession -> "session:${route.routineId}:${route.scheduleEntryId}:${route.scheduledDate}"
     is AppRoute.Completion -> "completion:${route.historyId}"
 }
@@ -106,7 +103,6 @@ internal fun decodeAppRoute(value: String): AppRoute? {
             }
         } else null
         "apps" -> parts.getOrNull(1)?.takeIf(String::isNotBlank)?.let { AppRoute.InstalledAppPicker(it) }
-        "exercise" -> if (parts.size == 3 && parts[1].isNotBlank()) AppRoute.ExerciseEditor(parts[1], parts[2].ifBlank { null }) else null
         "session" -> if (parts.size == 4 && parts[1].isNotBlank() && parts[2].isNotBlank()) {
             runCatching { LocalDate.parse(parts[3]) }.getOrNull()?.let { AppRoute.GuidedSession(parts[1], parts[2], it) }
         } else null

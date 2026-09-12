@@ -8,6 +8,67 @@ import org.json.JSONObject
 import java.time.ZoneId
 
 class BackupSupportTest {
+    @Test fun manualFailureDoesNotPromiseAutomaticRetryWhenBackupsAreOff() {
+        assertTrue(backupFailureMessage(false).contains("use Back up now to retry"))
+        assertTrue(backupFailureMessage(true).contains("will retry automatically"))
+    }
+
+    private class SnapshotMemory(var value: String? = null) : DocumentStorage {
+        var failWrites = false
+        override fun exists() = value != null
+        override fun read(): String = value ?: throw java.io.FileNotFoundException()
+        override fun write(value: String) {
+            if (failWrites) throw java.io.IOException("Storage full")
+            this.value = value
+        }
+    }
+
+    @Test fun failedRotationPreservesLatestAndPreviousSnapshots() {
+        val older = BackupSnapshot(1, defaultAppDocument())
+        val current = BackupSnapshot(2, defaultAppDocument())
+        val latest = SnapshotMemory(encodeBackupSnapshot(current))
+        val previous = SnapshotMemory(encodeBackupSnapshot(older)).apply { failWrites = true }
+        val store = RecoverySnapshotStore(latest, previous)
+        assertThrows(java.io.IOException::class.java) { store.write(BackupSnapshot(3, defaultAppDocument())) }
+        assertEquals(current, store.read())
+        assertEquals(older, decodeBackupSnapshot(previous.read()))
+    }
+
+    @Test fun failedLatestWriteKeepsTheLastCommittedSnapshotRecoverable() {
+        val current = BackupSnapshot(2, defaultAppDocument())
+        val latest = SnapshotMemory(encodeBackupSnapshot(current)).apply { failWrites = true }
+        val previous = SnapshotMemory()
+        val store = RecoverySnapshotStore(latest, previous)
+        assertThrows(java.io.IOException::class.java) { store.write(BackupSnapshot(3, defaultAppDocument())) }
+        assertEquals(current, store.read())
+        latest.value = "broken"
+        assertEquals(current, store.read())
+    }
+
+    @Test fun corruptLatestNeverOverwritesGoodFallbackEvenWhenNextWriteFails() {
+        val fallback = BackupSnapshot(1, defaultAppDocument())
+        val latest = SnapshotMemory("broken").apply { failWrites = true }
+        val previous = SnapshotMemory(encodeBackupSnapshot(fallback))
+        val store = RecoverySnapshotStore(latest, previous)
+        assertThrows(java.io.IOException::class.java) { store.write(BackupSnapshot(3, defaultAppDocument())) }
+        assertEquals(fallback, store.read())
+        latest.failWrites = false
+        val next = BackupSnapshot(4, defaultAppDocument())
+        store.write(next)
+        assertEquals(next, store.read())
+        assertEquals(fallback, decodeBackupSnapshot(previous.read()))
+    }
+
+    @Test fun invalidNewSnapshotDoesNotTouchEitherRecoveryCopy() {
+        val original = BackupSnapshot(1, defaultAppDocument())
+        val latest = SnapshotMemory(encodeBackupSnapshot(original))
+        val previous = SnapshotMemory()
+        val store = RecoverySnapshotStore(latest, previous)
+        assertThrows(IllegalArgumentException::class.java) { store.write(BackupSnapshot(-1, defaultAppDocument())) }
+        assertEquals(original, store.read())
+        assertEquals(null, previous.value)
+    }
+
     @Test fun backupRejectsNestedDuplicateKeysAndNegativeTimestamps() {
         val valid = encodeBackupSnapshot(BackupSnapshot(1, defaultAppDocument()))
         val duplicate = valid.replaceFirst("\"generation\":", "\"generation\":1,\"generation\":")

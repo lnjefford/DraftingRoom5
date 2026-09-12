@@ -1,6 +1,6 @@
 # Dashboard customization redesign specification
 
-Status: approved visual direction for future implementation.
+Status: implemented and audited through DR5-030 with pointer, accessibility, and keyboard reorder paths.
 
 ## Selected reference
 
@@ -146,4 +146,3 @@ Keep reorder mechanics separate from persistence and `DashboardLayout` transform
 - No permanent up/down arrow cluster appears in the row UI.
 - Changes persist automatically and reset remains recoverable through confirmation.
 - The screen is visually consistent with the approved Settings design.
-

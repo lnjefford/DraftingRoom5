@@ -47,6 +47,7 @@ jobs:
               owner,
               repo,
               pull_number: pull.number,
+              sha,
               merge_method: "squash"
             });
             if (!result.data.merged) {

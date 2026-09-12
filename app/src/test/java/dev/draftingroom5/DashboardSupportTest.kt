@@ -7,6 +7,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DashboardSupportTest {
+    @Test fun todaySelectionFollowsMidnightAndWeekRollover() {
+        val sunday = LocalDate.of(2026, 9, 13)
+        assertEquals(saturday, resolveDashboardDate(saturday.minusDays(1), saturday.minusDays(1), saturday))
+        assertEquals(sunday.plusDays(1), resolveDashboardDate(saturday, sunday, sunday.plusDays(1)))
+    }
+
+    @Test fun explicitlySelectedDaySurvivesReturningWithinTheSameWeek() {
+        val friday = saturday.minusDays(1)
+        assertEquals(friday, resolveDashboardDate(friday, saturday, saturday.plusDays(1)))
+        assertEquals(friday, resolveDashboardDate(friday, saturday, saturday))
+    }
+
     private val saturday = LocalDate.of(2026, 9, 12)
     private val plan = defaultTrainingPlan()
     private val entry = plan.forDay(saturday.dayOfWeek).single()

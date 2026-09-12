@@ -1,6 +1,6 @@
 # Settings redesign specification
 
-Status: approved visual direction for future implementation.
+Status: implemented and audited through DR5-030, including Health Connect, workout feedback, local recovery, verified updates, and responsive exceptional states.
 
 ## Selected reference
 

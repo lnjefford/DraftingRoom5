@@ -185,7 +185,7 @@ internal fun AddRoutineChooserSheet(
     }
 }
 
-private sealed interface InstalledAppLoadState {
+internal sealed interface InstalledAppLoadState {
     data object Loading : InstalledAppLoadState
     data class Ready(val apps: List<InstalledAppOption>) : InstalledAppLoadState
     data class Failed(val message: String) : InstalledAppLoadState
@@ -214,6 +214,18 @@ internal fun InstalledAppPickerScreen(
             InstalledAppLoadState.Failed(error.message ?: "Android could not list launchable apps.")
         }
     }
+    InstalledAppPickerContent(state, query, { query = it }, { refreshKey += 1 }, onSelect, onBack)
+}
+
+@Composable
+internal fun InstalledAppPickerContent(
+    state: InstalledAppLoadState,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onSelect: (InstalledAppOption) -> Unit,
+    onBack: () -> Unit,
+) {
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = { SecondaryTopBar("Choose app", onBack) },
@@ -234,14 +246,14 @@ internal fun InstalledAppPickerScreen(
             item {
                 OutlinedTextField(
                     value = query,
-                    onValueChange = { query = it },
+                    onValueChange = onQueryChange,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = { Text("Search apps") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = if (query.isNotEmpty()) {
                         {
-                        IconButton(onClick = { query = "" }) { Icon(Icons.Default.Close, "Clear search") }
+                        IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Default.Close, "Clear search") }
                         }
                     } else null,
                 )
@@ -249,7 +261,7 @@ internal fun InstalledAppPickerScreen(
             when (val current = state) {
                 InstalledAppLoadState.Loading -> item { InlineLoadingState("Finding apps you can open…") }
                 is InstalledAppLoadState.Failed -> item {
-                    InlineErrorState("Couldn’t load apps", current.message, "Try again", onAction = { refreshKey += 1 })
+                    InlineErrorState("Couldn’t load apps", current.message, "Try again", onAction = onRefresh)
                 }
                 is InstalledAppLoadState.Ready -> {
                     val visible = filterInstalledApps(current.apps, query)
@@ -261,6 +273,11 @@ internal fun InstalledAppPickerScreen(
                                     if (query.isBlank()) "Install an app with a standard launcher, then try again." else "Try another app name.",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (query.isBlank()) {
+                                    AppActionPill("Check again", onRefresh, Modifier.fillMaxWidth())
+                                } else {
+                                    AppActionPill("Clear search", { onQueryChange("") }, Modifier.fillMaxWidth())
+                                }
                             }
                         }
                     } else items(visible, key = { it.packageName }) { app ->

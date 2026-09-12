@@ -1,6 +1,6 @@
 # Schedules and routines redesign specification
 
-Status: approved visual direction for future implementation. Both tabs now have selected references.
+Status: implemented and audited through DR5-030. Both recurring Schedule and unified Routines tabs follow the selected references.
 
 ## Selected reference
 

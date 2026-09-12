@@ -30,21 +30,47 @@ internal data class AutomaticBackupStatus(
 
 internal data class BackupSnapshot(val createdAtMillis: Long, val document: AppDocument)
 
+/** Each storage write is atomic; rotation never replaces a good fallback with corrupt data. */
+internal class RecoverySnapshotStore(
+    private val latest: DocumentStorage,
+    private val previous: DocumentStorage,
+) {
+    fun exists(): Boolean = latest.exists() || previous.exists()
+
+    fun write(snapshot: BackupSnapshot) {
+        val encoded = encodeBackupSnapshot(snapshot)
+        val readableLatest = if (latest.exists()) runCatching {
+            latest.read().also { decodeBackupSnapshot(it) }
+        }.getOrNull() else null
+        if (readableLatest != null) previous.write(readableLatest)
+        latest.write(encoded)
+    }
+
+    fun read(): BackupSnapshot {
+        check(exists()) { "No recovery snapshot is available yet." }
+        return listOf(latest, previous).firstNotNullOfOrNull { storage ->
+            runCatching { decodeBackupSnapshot(storage.read()) }.getOrNull()
+        } ?: error("The available recovery snapshots could not be read.")
+    }
+}
+
 internal class AutomaticBackupManager(context: Context) {
     private val appContext = context.applicationContext
     private val documentExistedAtStartup = AppDocumentStore(appContext).exists()
     private val repository = AppRepository.get(appContext).also { it.ensureLoaded() }
     private val statusPreferences = appContext.getSharedPreferences("current-backup-status", Context.MODE_PRIVATE)
     private val backupDirectory = File(appContext.filesDir, "current-backups")
-    private val latestFile = File(backupDirectory, "latest.json")
-    private val previousFile = File(backupDirectory, "previous.json")
+    private val snapshots = RecoverySnapshotStore(
+        AtomicJsonStorage(File(backupDirectory, "latest.json")),
+        AtomicJsonStorage(File(backupDirectory, "previous.json")),
+    )
 
     fun status(): AutomaticBackupStatus = AutomaticBackupStatus(
         enabled = currentDocument().preferences.automaticBackupsEnabled,
         lastSuccessfulMillis = statusPreferences.getLong("last-success", 0L).takeIf { it > 0L },
         lastFailureMillis = statusPreferences.getLong("last-failure", 0L).takeIf { it > 0L },
         lastFailureMessage = statusPreferences.getString("last-failure-message", null),
-        hasRecoverySnapshot = latestFile.isFile || previousFile.isFile,
+        hasRecoverySnapshot = snapshots.exists(),
     )
 
     fun setEnabled(enabled: Boolean) {
@@ -81,11 +107,7 @@ internal class AutomaticBackupManager(context: Context) {
         return synchronized(snapshotLock) { runCatching {
             check(backupDirectory.exists() || backupDirectory.mkdirs()) { "Could not create the backup directory." }
             val snapshot = BackupSnapshot(nowMillis, requireCurrentDocument())
-            val temporary = File(backupDirectory, "latest.tmp")
-            temporary.writeText(encodeBackupSnapshot(snapshot), Charsets.UTF_8)
-            if (latestFile.exists()) latestFile.copyTo(previousFile, overwrite = true)
-            check(!latestFile.exists() || latestFile.delete()) { "Could not rotate the previous recovery snapshot." }
-            check(temporary.renameTo(latestFile)) { "Could not finalize the recovery snapshot." }
+            snapshots.write(snapshot)
             statusPreferences.edit().putLong("last-success", nowMillis).remove("last-failure")
                 .remove("last-failure-message").commit()
             BackupManager(appContext).dataChanged()
@@ -97,10 +119,7 @@ internal class AutomaticBackupManager(context: Context) {
     }
 
     fun restoreLatest(): Result<BackupSnapshot> = synchronized(snapshotLock) { runCatching {
-        val candidates = listOf(latestFile, previousFile).filter { it.isFile }
-        check(candidates.isNotEmpty()) { "No recovery snapshot is available yet." }
-        val snapshot = candidates.firstNotNullOfOrNull { runCatching { decodeBackupSnapshot(it.inputStream().use(::readBoundedCurrentJson)) }.getOrNull() }
-            ?: error("The available recovery snapshots could not be read.")
+        val snapshot = snapshots.read()
         check(repository.restore(snapshot.document) is RepositoryResult.Success) { "Could not restore app data." }
         snapshot
     } }
@@ -159,6 +178,10 @@ internal fun backupStatusDetail(status: AutomaticBackupStatus, zoneId: ZoneId = 
     }.orEmpty()
     return "$successful$failure Backups run after changes and daily, including while offline."
 }
+
+internal fun backupFailureMessage(automaticBackupsEnabled: Boolean): String =
+    if (automaticBackupsEnabled) "Backup failed and will retry automatically."
+    else "Backup failed. Automatic backups are off; use Back up now to retry."
 
 private fun formatBackupTime(millis: Long, zoneId: ZoneId): String =
     DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a").format(Instant.ofEpochMilli(millis).atZone(zoneId))

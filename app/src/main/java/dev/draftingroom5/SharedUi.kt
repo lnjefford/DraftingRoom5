@@ -1,6 +1,5 @@
 package dev.draftingroom5
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,9 +17,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -34,7 +31,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -43,6 +39,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -109,7 +109,10 @@ internal fun AppActionPill(label: String, onClick: () -> Unit, modifier: Modifie
 @Composable
 internal fun InlineLoadingState(message: String, modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 16.dp).semantics {
+            liveRegion = LiveRegionMode.Polite
+            stateDescription = message
+        },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -130,7 +133,7 @@ internal fun InlineErrorState(
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
             Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            actionLabel?.let { AppActionPill(it, onAction) }
+            actionLabel?.let { AppActionPill(it, onAction, Modifier.fillMaxWidth()) }
         }
     }
 }
@@ -148,33 +151,9 @@ internal fun AppConfirmationDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(message) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel) } },
+        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.heightIn(min = 48.dp)) { Text(confirmLabel) } },
+        dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(dismissLabel) } },
     )
-}
-
-/** Safe shell for routes whose full product UI is delivered by a later queue item. */
-@Composable
-internal fun FoundationDestinationScreen(route: AppRoute, onBack: () -> Unit) {
-    BackHandler(onBack = onBack)
-    val title = when (route) {
-        is AppRoute.InstalledAppPicker -> "Choose app"
-        is AppRoute.ExerciseEditor -> if (route.exerciseId == null) "Add exercise" else "Edit exercise"
-        is AppRoute.Completion -> "Session complete"
-        else -> "DraftingRoom5"
-    }
-    Scaffold(
-        modifier = Modifier.fillMaxSize().appScreenBackground(),
-        topBar = { SecondaryTopBar(title, onBack) },
-        containerColor = Color.Transparent,
-    ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            EditorialHeading("In progress", title, "This destination is ready for its focused implementation slice.")
-        }
-    }
 }
 
 @Preview(widthDp = 320, heightDp = 640)
