@@ -41,47 +41,14 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
 
 ## Phase 4 — Durable guided sessions
 
-- [ ] **DR5-023 — Finalize the guided-session state-machine design**
-  - Model: `gpt-6-astra`
-  - Push: `NO`
-  - Depends on: DR5-022
-  - Work: Update `TechnicalDesign.md` with deterministic new/resumed/completed transitions, focused exercise, completed-set invariants, readiness/active clocks, background/process-death reconciliation, ordinary-exit save, restart/reset, occurrence history, concurrency, and test vectors. Timer completion must never complete a set.
-  - Done when: every event/restoration case has one defined state and output.
-
-- [ ] **DR5-024 — Implement durable session state and persistence**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-023
-  - Work: Implement the state machine, repository, current-format store, clock abstraction, partial lookup, atomic set completion, focus, exit save, resume, restart/reset, and completion-to-history. Add exhaustive fake-clock tests.
-  - Done when: recreation, background time, duplicate events, boundaries, partial progress, completion, and reset tests pass deterministically.
-
-- [ ] **DR5-025 — Implement the focused session and timer UI**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-024
-  - Work: Build paired-art current-exercise header, metadata, set progress/action, Up next list, focus changes, and exit. Implement idle, faded Get ready countdown, running, completed, and restart timer states; reconcile elapsed time and respect reduced motion. Connect voice/haptics once.
-  - Done when: progress survives recreation, fake-clock/UI tests pass, and readiness is visually distinct from the timer.
-
-- [ ] **DR5-026 — Implement save/resume/completion and current-schema backup**
-  - Model: `gpt-5.6-sol`
-  - Push: `NO`
-  - Depends on: DR5-025
-  - Work: Implement ordinary exit save, Dashboard Resume progress, resumed focus, destructive restart confirmation, completion screen, dated occurrence history, and Dashboard Done. Update backup/restore for only current routines, schedules, partial state, history, preferences, voice, and haptics; exclude Health Connect data/permissions and remove old backup readers.
-  - Done when: start → partial → recreation → resume → complete, restart/cancel, backup round-trip, and feedback tests pass without inferred completion or duplicate cues.
-
-- [ ] **DR5-027 — Audit guided-session resilience**
-  - Model: `gpt-6-astra`
-  - Push: `NO`
-  - Depends on: DR5-026
-  - Work: Review for double completion, lost progress, bad clock use, races, stale edits, orphan state, wrong occurrences, lifecycle leaks, backup errors, and accessibility. Fix high-impact issues and strengthen tests.
-  - Done when: no critical/high-severity session issue remains and lifecycle/fake-clock tests pass.
-
-- [ ] **DR5-028 — Release the guided-session milestone**
+- [x] **DR5-028 — Release the guided-session milestone**
+  - Claimed: 2026-09-11T22:18:00-05:00 by gpt-5.6-sol
   - Model: `gpt-5.6-sol`
   - Push: `YES`
   - Depends on: DR5-027
   - Work: Resolve findings, update README, run the full gate, and inspect new, partial, timer, resumed, and completed sessions at compact/tall/large-font sizes.
   - Done when: the guided workout is durable from Dashboard start through completion and the tagged release APK is published.
+  - Completed: 2026-09-12 UTC by gpt-5.6-sol. Released the audited durable guided-session flow with exact occurrence start/resume, automatic checkpoints, partial-set correction, elapsed-clock timer recovery, foreground-only feedback, save-and-exit/restart confirmations, completion history, and current-schema backup/restore. Updated README/design status and release defaults to 0.22.0/22002. All 177 unit tests in 32 suites, 60 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed; debug APK 67,239,993 bytes. Inspected idle/readiness/running/finished/completion and large-set controls at compact, tall, and 2x font. ADB/device interaction checks remain unavailable and are recorded in `docs/reviews/DR5-028-guided-session-release.md`. Release delivery: v0.22.0.
 
 ## Phase 5 — Whole-product hardening
 
@@ -107,6 +74,22 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
   - Done when: the clean app implements the approved design, checks pass, the tagged release succeeds, and its signed APK is published.
 
 ## Completed implementation dependencies
+
+- [x] **DR5-027 — Audit guided-session resilience**
+  - Completed: 2026-09-12 UTC by gpt-6-astra. Fixed backup-triggered repository reload/lease revocation, silent timer recovery after write failures, elapsed-regression tracking, fresh timer IDs, exact saved-session identity, recoverable stale routes, IO dispatch and foreground/canonical feedback guards, completion speech, partial-set undo, overflow-safe progress, bounded indicators, dialog restoration/errors, serialized backups, completion contrast and stable timer spacing. Added eight unit regressions and 15 control-panel references. Final gate passed all 177 unit tests in 32 suites, 60 screenshot comparisons, lintDebug (0 errors), and assembleDebug; APK 69,422,578 bytes with 49 catalog WebPs and no mockups. Audit and device-only checklist: docs/reviews/DR5-027-session-resilience-audit.md. ADB has no attached device. Push: NO; accumulated work remains local for DR5-028.
+
+
+- [x] **DR5-026 — Implement save/resume/completion and current-schema backup**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Added confirmed ordinary exit with durable checkpoint failure retention, resumable focus/progress, confirmed latest-routine restart, one-time completion feedback, a saved native completion destination whose Close/Back/action replace the session stack with Dashboard, and dated history-backed Done routing. Aligned the strict current-only backup envelope, files, Android allowlists, and round-trip coverage for routines, schedules, partials, history, dashboard/range preferences, voice, haptics, and backup preference while excluding Health Connect data/permissions. All 169 unit tests in 32 suites, 45 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed; debug APK 69,315,678 bytes. Push: NO; accumulated guided-session changes remain local for DR5-027/DR5-028.
+
+- [x] **DR5-025 — Implement the focused session and timer UI**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Replaced the ephemeral all-exercise workout with a repository-backed focused session destination using paired header/list artwork, saved position/set progress, current metadata, accessible correction/focus controls, scrollable Up next rows, automatic checkpointed exit, and durable finish routing. Added fixed-state idle/Get ready/running/finished timer presentation, elapsed-clock reconciliation, motion-safe rendering, and a single foreground feedback controller that deduplicates timer/set voice and haptic cues by durable identity. Added `GuidedSessionUiTest` recreation, fake-clock presentation and at-most-once feedback coverage plus 12 compact/tall/2x-font references. All 167 unit tests in 31 suites, 42 screenshot comparisons, `lintDebug` (0 errors), and `assembleDebug` passed; debug APK 67,141,701 bytes. Push: NO; guided-session changes remain local for DR5-028.
+
+- [x] **DR5-024 — Implement durable session state and persistence**
+  - Completed: 2026-09-11 by gpt-5.6-sol. Added the pure durable guided-session reducer, injected elapsed/wall/boot clock, strict timer phase/cue validation, runtime document leases, atomic open/resume/focus/set/undo/timer/checkpoint/restart/finish repository operations, idempotent occurrence/history lookup, process-death reconciliation, and one-time unverifiable-timer recovery output. Added `GuidedSessionStateTest` fake-clock/storage coverage for duplicate events, focus/wrap/undo, readiness and active boundaries, skipped cues, cancellation, process restoration, monotone audit time, strict corruption rejection, atomic completion, write failures, restart confirmation, and lease revocation. All 161 unit tests in 30 suites, `lintDebug` (0 errors, 43 warnings), and `assembleDebug` passed; debug APK 67,043,397 bytes. Push: NO; changes remain local for the guided-session milestone.
+
+- [x] **DR5-023 — Finalize the guided-session state-machine design**
+  - Completed: 2026-09-12 UTC by gpt-6-astra. Expanded TechnicalDesign.md with exhaustive entry/progress/exit/restart/completion rules, strict timer invariants, command ordering and restore leases, elapsed-clock reconciliation, foreground-only at-most-once feedback, fixed occurrence/history semantics, and 32 deterministic acceptance vectors for DR5-024–026. Validated local handoff links, JSON example, vector IDs/table structure, queue dependencies and changed-document whitespace; no production code or Android runtime tests in this documentation-only task. Push: NO; changes remain local for the guided-session milestone.
 
 - [x] **DR5-021 — Audit planning and app-link flows**
   - Completed: 2026-09-11 by gpt-6-astra. Fixed exercise draft identity/recreation, new-routine and drag revisions, no-op edits, failed-save input retention, app-picker cancellation and explicit recovery saves, saved-session editing/deletion/reassignment disclosures, snapshot routing, safe launcher/deep-link filtering, reorder callbacks/keyboard controls, weekday targets and responsive editor layouts. Added a dedicated exercise builder and eight PlanningAuditTest regressions. All 147 unit tests in 29 suites, 30 reviewed screenshot comparisons, lintDebug (0 errors), and assembleDebug passed; APK 68,916,050 bytes. Review and device-only checklist: docs/reviews/DR5-021-planning-audit.md. Push: NO; accumulated Phase 3 changes remain local for DR5-022.

@@ -7,7 +7,11 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.android.tools.screenshot.PreviewTest
 
 class CoreShellScreens : PreviewParameterProvider<String> {
-    override val values = sequenceOf("Dashboard", "Weight", "Settings", "Customization", "Schedule", "Routines", "Guided editor", "Linked editor", "Schedule editor", "Exercise builder")
+    override val values = sequenceOf(
+        "Dashboard", "Weight", "Settings", "Customization", "Schedule", "Routines", "Guided editor", "Linked editor",
+        "Schedule editor", "Exercise builder", "Session idle", "Session ready", "Session running", "Session finished",
+        "Session completion",
+    )
 }
 
 @PreviewTest
@@ -17,4 +21,17 @@ class CoreShellScreens : PreviewParameterProvider<String> {
 @Composable
 fun CoreShellScreenshots(@PreviewParameter(CoreShellScreens::class) screen: String) {
     CoreShellReviewPreview(screen)
+}
+
+class SessionControlStates : PreviewParameterProvider<String> {
+    override val values = sequenceOf("Session idle", "Session ready", "Session running", "Session finished", "Session many sets")
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Composable
+fun SessionControlsScreenshots(@PreviewParameter(SessionControlStates::class) state: String) {
+    GuidedSessionReviewPreview(state, controlsOnly = true)
 }

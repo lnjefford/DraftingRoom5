@@ -33,9 +33,9 @@ internal data class BackupSnapshot(val createdAtMillis: Long, val document: AppD
 internal class AutomaticBackupManager(context: Context) {
     private val appContext = context.applicationContext
     private val documentExistedAtStartup = AppDocumentStore(appContext).exists()
-    private val repository = AppRepository.get(appContext).also { it.load() }
-    private val statusPreferences = appContext.getSharedPreferences("backup-status-current", Context.MODE_PRIVATE)
-    private val backupDirectory = File(appContext.filesDir, "recovery-current")
+    private val repository = AppRepository.get(appContext).also { it.ensureLoaded() }
+    private val statusPreferences = appContext.getSharedPreferences("current-backup-status", Context.MODE_PRIVATE)
+    private val backupDirectory = File(appContext.filesDir, "current-backups")
     private val latestFile = File(backupDirectory, "latest.json")
     private val previousFile = File(backupDirectory, "previous.json")
 
@@ -78,7 +78,7 @@ internal class AutomaticBackupManager(context: Context) {
     }
 
     fun createBackup(nowMillis: Long = System.currentTimeMillis()): Result<AutomaticBackupStatus> {
-        return runCatching {
+        return synchronized(snapshotLock) { runCatching {
             check(backupDirectory.exists() || backupDirectory.mkdirs()) { "Could not create the backup directory." }
             val snapshot = BackupSnapshot(nowMillis, requireCurrentDocument())
             val temporary = File(backupDirectory, "latest.tmp")
@@ -93,17 +93,17 @@ internal class AutomaticBackupManager(context: Context) {
         }.onFailure { error ->
             statusPreferences.edit().putLong("last-failure", nowMillis)
                 .putString("last-failure-message", error.message ?: "Unknown backup error").apply()
-        }
+        } }
     }
 
-    fun restoreLatest(): Result<BackupSnapshot> = runCatching {
+    fun restoreLatest(): Result<BackupSnapshot> = synchronized(snapshotLock) { runCatching {
         val candidates = listOf(latestFile, previousFile).filter { it.isFile }
         check(candidates.isNotEmpty()) { "No recovery snapshot is available yet." }
         val snapshot = candidates.firstNotNullOfOrNull { runCatching { decodeBackupSnapshot(it.inputStream().use(::readBoundedCurrentJson)) }.getOrNull() }
             ?: error("The available recovery snapshots could not be read.")
         check(repository.restore(snapshot.document) is RepositoryResult.Success) { "Could not restore app data." }
         snapshot
-    }
+    } }
 
     fun restoreAfterAndroidTransferIfNeeded(): BackupSnapshot? {
         if (documentExistedAtStartup || !status().hasRecoverySnapshot) return null
@@ -111,10 +111,14 @@ internal class AutomaticBackupManager(context: Context) {
     }
 
     private fun currentDocument(): AppDocument =
-        (repository.load() as? LoadState.Ready)?.value ?: repository.currentOrDefaults()
+        (repository.ensureLoaded() as? LoadState.Ready)?.value ?: defaultAppDocument()
 
     private fun requireCurrentDocument(): AppDocument =
-        checkNotNull((repository.load() as? LoadState.Ready)?.value) { "App data must be readable before creating a backup." }
+        checkNotNull((repository.ensureLoaded() as? LoadState.Ready)?.value) { "App data must be readable before creating a backup." }
+
+    private companion object {
+        val snapshotLock = Any()
+    }
 }
 
 internal class AutomaticBackupWorker(appContext: Context, parameters: WorkerParameters) : CoroutineWorker(appContext, parameters) {
@@ -126,7 +130,7 @@ internal class AutomaticBackupWorker(appContext: Context, parameters: WorkerPara
 }
 
 internal fun encodeBackupSnapshot(snapshot: BackupSnapshot): String = JSONObject().apply {
-    put("format", "draftingroom5.backup-current")
+    put("format", "draftingroom5.backup.current")
     put("createdAtMillis", snapshot.createdAtMillis)
     put("document", JSONObject(encodeAppDocument(snapshot.document)))
 }.toString().also {
@@ -138,7 +142,7 @@ internal fun decodeBackupSnapshot(value: String): BackupSnapshot {
     inspectJsonStructure(value)
     val root = JSONObject(value)
     require(root.keys().asSequence().toSet() == setOf("format", "createdAtMillis", "document"))
-    require(root.get("format") == "draftingroom5.backup-current") { "Unsupported backup format." }
+    require(root.get("format") == "draftingroom5.backup.current") { "Unsupported backup format." }
     val created = root.get("createdAtMillis")
     require(created is Int || created is Long) { "Backup timestamp must be an integer." }
     require((created as Number).toLong() >= 0) { "Backup timestamp must be nonnegative." }

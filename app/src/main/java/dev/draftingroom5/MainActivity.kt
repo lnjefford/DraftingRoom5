@@ -95,8 +95,6 @@ import kotlinx.coroutines.Job
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -216,6 +214,7 @@ private fun DraftingRoom5App() {
     val appRepository = remember { AppRepository.get(context) }
     val workoutHaptics = remember { WorkoutHaptics(context) }
     var voiceAvailability by remember { mutableStateOf(VoiceAvailability.INITIALIZING) }
+    var pendingCompletionCue by remember { mutableStateOf<String?>(null) }
     val workoutVoice = remember { WorkoutVoiceAnnouncements(context) { voiceAvailability = it } }
     var appDocument by remember { mutableStateOf(appRepository.currentOrDefaults()) }
     var documentError by remember { mutableStateOf<String?>(
@@ -291,21 +290,6 @@ private fun DraftingRoom5App() {
     }
     val updateTrainingPlan: (TrainingPlan) -> Boolean = { updated ->
         acceptDocumentResult(appRepository.replacePlan(appDocument.generation, updated)).also { if (it) requestAutomaticBackup() }
-    }
-    val recordWorkoutCompletion: (String, Routine, LocalDate) -> Boolean = { scheduleId, routine, scheduledDate ->
-        val completedIds = completedScheduleIdsForDate(workoutHistory, scheduledDate)
-        if (scheduleId !in completedIds) {
-            val entry = WorkoutHistoryEntry(
-                id = newId(),
-                occurrence = OccurrenceKey(scheduleId, scheduledDate),
-                snapshot = routine,
-                startedAtMillis = System.currentTimeMillis(),
-                completedAtMillis = System.currentTimeMillis(),
-            )
-            val saved = persistDocument { it.copy(history = it.history + entry) }
-            if (saved) requestAutomaticBackup()
-            saved
-        } else true
     }
     val coroutineScope = rememberCoroutineScope()
     val installDownloadedUpdate: () -> Unit = {
@@ -484,6 +468,7 @@ private fun DraftingRoom5App() {
                 delay(2000)
             }
         } else {
+            workoutVoice.stop()
             healthRefreshJob?.cancel()
             healthUi = healthUi.copy(isLoading = false)
         }
@@ -888,20 +873,29 @@ private fun DraftingRoom5App() {
             is AppRoute.GuidedSession -> {
                 val workout = screen
                 val routine = trainingPlan.routines.firstOrNull { it.id == workout.routineId }
-                if (routine == null) navigation.dashboard() else GuidedWorkout(
+                if (routine == null) navigation.dashboard() else GuidedSessionDestination(
+                    repository = appRepository,
                     routine = routine,
+                    scheduleEntryId = workout.scheduleEntryId,
+                    scheduledDate = workout.scheduledDate,
+                    isForeground = windowFocused,
+                    onDocumentChanged = { updated ->
+                        appDocument = updated
+                        trainingPlan = updated.plan
+                        dashboardLayout = updated.preferences.dashboardLayout
+                        healthDateRange = updated.preferences.healthDateRange
+                        workoutHistory = updated.history
+                        hapticsEnabled = updated.preferences.hapticsEnabled
+                        voiceSettings = updated.preferences.voice
+                    },
                     onHapticCue = { workoutHaptics.perform(it, hapticsEnabled) },
                     onVoiceCue = { workoutVoice.announce(it, voiceSettings) },
-                    onBack = {
-                        workoutVoice.stop()
-                        navigation.dashboard()
-                    },
-                    onComplete = {
-                        if (recordWorkoutCompletion(workout.scheduleEntryId, routine, workout.scheduledDate)) {
-                            workoutHaptics.perform(HapticCue.WORKOUT_COMPLETE, hapticsEnabled)
-                            workoutVoice.announce(VoiceCue.WorkoutCompleted, voiceSettings)
-                            navigation.dashboard()
-                        }
+                    onStopVoice = workoutVoice::stop,
+                    onBackupRequested = requestAutomaticBackup,
+                    onExit = { navigation.back() },
+                    onCompleted = { historyId, newlyCompleted ->
+                        pendingCompletionCue = historyId.takeIf { newlyCompleted }
+                        navigation.navigate(AppRoute.Completion(historyId))
                     },
                 )
             }
@@ -921,8 +915,22 @@ private fun DraftingRoom5App() {
                     onBack = { navigation.back() },
                 )
             }
-            is AppRoute.ExerciseEditor,
-            is AppRoute.Completion -> FoundationDestinationScreen(
+            is AppRoute.Completion -> {
+                val history = workoutHistory.firstOrNull { it.id == screen.historyId }
+                LaunchedEffect(screen.historyId) {
+                    val emit = pendingCompletionCue == history?.id && pendingCompletionCue != null
+                    pendingCompletionCue = null
+                    if (emit && windowFocused) {
+                        workoutHaptics.perform(HapticCue.WORKOUT_COMPLETE, hapticsEnabled)
+                        workoutVoice.announce(VoiceCue.WorkoutCompleted, voiceSettings)
+                    }
+                }
+                if (history == null) navigation.dashboard() else SessionCompletionScreen(
+                    history = history,
+                    onReturnToDashboard = navigation::dashboard,
+                )
+            }
+            is AppRoute.ExerciseEditor -> FoundationDestinationScreen(
                 route = screen,
                 onBack = { navigation.back() },
             )
@@ -2226,6 +2234,8 @@ private fun DashboardSessionPreviewContent(sessions: List<DashboardSession>) {
 internal fun CoreShellReviewPreview(screen: String) {
     CompositionLocalProvider(LocalReviewTime provides Instant.parse("2026-09-10T18:00:00Z")) {
     when (screen) {
+        "Session idle", "Session ready", "Session running", "Session finished" -> GuidedSessionReviewPreview(screen)
+        "Session completion" -> SessionCompletionReviewPreview()
         "Settings" -> SettingsScreenPreview()
         "Customization" -> DashboardCustomizationPreview()
         "Schedule", "Routines" -> DraftingRoom5Theme {
@@ -2345,172 +2355,6 @@ private fun DashboardHeroFallbackPreview() {
     DraftingRoom5Theme {
         Box(Modifier.fillMaxSize().appScreenBackground().padding(horizontal = 20.dp)) {
             TrainingHero(LocalDate.of(2026, 9, 10), emptyList(), showArtwork = false)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-private fun GuidedWorkout(
-    routine: Routine,
-    onHapticCue: (HapticCue) -> Unit,
-    onVoiceCue: (VoiceCue) -> Unit,
-    onBack: () -> Unit,
-    onComplete: () -> Unit,
-) {
-    BackHandler(onBack = onBack)
-    var activeExercise by remember { mutableStateOf<Exercise?>(null) }
-    var timerSeconds by remember { mutableIntStateOf(0) }
-    var graceSeconds by remember { mutableIntStateOf(0) }
-    var isRunning by remember { mutableStateOf(false) }
-    var timerStartAnnounced by remember { mutableStateOf(false) }
-    val completedSets = remember(routine.id) { mutableStateMapOf<String, Int>() }
-
-    LaunchedEffect(isRunning, graceSeconds, timerSeconds) {
-        if (!isRunning) return@LaunchedEffect
-        if (graceSeconds > 0) {
-            delay(1000)
-            if (graceSeconds in 1..3) onVoiceCue(VoiceCue.CountdownTick(graceSeconds))
-            if (graceSeconds == 1) {
-                onHapticCue(HapticCue.COUNTDOWN_COMPLETE)
-            }
-            graceSeconds--
-        } else if (timerSeconds > 0) {
-            if (!timerStartAnnounced) {
-                activeExercise?.let { onVoiceCue(VoiceCue.TimerStarted(it.name, timedSeconds(it))) }
-                timerStartAnnounced = true
-            }
-            delay(1000)
-            if (timerSeconds == 1) {
-                onHapticCue(HapticCue.TIMER_COMPLETE)
-                activeExercise?.let { onVoiceCue(VoiceCue.TimerCompleted(it.name)) }
-            }
-            timerSeconds--
-        }
-        else isRunning = false
-    }
-
-    Scaffold(
-        modifier = Modifier.fillMaxSize().appScreenBackground(),
-        topBar = {
-            TopAppBar(
-                title = { Text(routine.name, fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
-        },
-        containerColor = Color.Transparent,
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                SectionHeader("Guided session", "10-second readiness period before every timer. No rest timer.", "Focus mode")
-            }
-            if (activeExercise != null) {
-                item {
-                    TimerPanel(
-                        exercise = activeExercise!!,
-                        timerSeconds = timerSeconds,
-                        graceSeconds = graceSeconds,
-                        isRunning = isRunning,
-                        onStart = {
-                            graceSeconds = 10
-                            timerSeconds = timedSeconds(activeExercise!!)
-                            isRunning = true
-                            timerStartAnnounced = false
-                            onHapticCue(HapticCue.TIMER_START)
-                            onVoiceCue(VoiceCue.CountdownStarted)
-                        },
-                    )
-                }
-            }
-            items(routine.exercises, key = { it.id }) { exercise ->
-                val setCount = exercise.setCount
-                ExerciseCard(exercise, onStartTimer = {
-                    activeExercise = exercise
-                    graceSeconds = 10
-                    timerSeconds = timedSeconds(exercise)
-                    isRunning = true
-                    timerStartAnnounced = false
-                    onHapticCue(HapticCue.TIMER_START)
-                    onVoiceCue(VoiceCue.CountdownStarted)
-                }, completedSets = completedSets[exercise.id] ?: 0, onCompleteSet = {
-                    val current = completedSets[exercise.id] ?: 0
-                    if (current < setCount) {
-                        val updated = current + 1
-                        completedSets[exercise.id] = updated
-                        onHapticCue(HapticCue.SET_COMPLETE)
-                        val nextExercise = if (updated == setCount) {
-                            routine.exercises.getOrNull(routine.exercises.indexOf(exercise) + 1)?.name
-                        } else null
-                        onVoiceCue(VoiceCue.SetCompleted(exercise.name, updated, setCount, nextExercise))
-                    }
-                })
-            }
-            item {
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = onComplete, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Check, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Complete workout")
-                }
-                Spacer(Modifier.height(22.dp))
-            }
-        }
-    }
-}
-
-private fun timedSeconds(exercise: Exercise) = exercise.timerSeconds ?: 20
-
-@Composable
-private fun TimerPanel(exercise: Exercise, timerSeconds: Int, graceSeconds: Int, isRunning: Boolean, onStart: () -> Unit) {
-    BrandedCard(
-        Modifier.fillMaxWidth(),
-        containerColor = Color(0xFF142F4D),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(exercise.name, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            val label = if (graceSeconds > 0) "Get ready: $graceSeconds" else "%02d:%02d".format(timerSeconds / 60, timerSeconds % 60)
-            Text(label, color = AppMint, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                if (isRunning) if (graceSeconds > 0) "Timer starts after the countdown" else "Timer running" else "Timer finished",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(10.dp))
-            TextButton(onClick = onStart) { Text("Restart") }
-        }
-    }
-}
-
-@Composable
-private fun ExerciseCard(
-    exercise: Exercise,
-    onStartTimer: () -> Unit,
-    completedSets: Int,
-    onCompleteSet: () -> Unit,
-) {
-    val setCount = exercise.setCount
-    BrandedCard(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(exercise.name, fontWeight = FontWeight.Bold)
-                if (exercise.notes.isNotBlank()) Text(exercise.notes, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(4.dp))
-                Text("${exercise.setCount} sets  •  ${exercise.target}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                if (exercise.timerSeconds != null) {
-                    IconButton(onClick = onStartTimer) { Icon(Icons.Default.Timer, "Start timer", tint = AppBlue) }
-                }
-                Text("$completedSets/$setCount sets", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                TextButton(onClick = onCompleteSet, enabled = completedSets < setCount) {
-                    Text(if (completedSets == setCount) "Sets done" else "Complete set")
-                }
-            }
         }
     }
 }

@@ -22,10 +22,50 @@ class BackupSupportTest {
         assertTrue(status.contains("including while offline"))
     }
 
-    @Test fun currentSnapshotRoundTripIncludesTheWholeDocument() {
-        val document = defaultAppDocument().copy(preferences = AppPreferences(healthDateRange = HealthDateRange.YEAR, hapticsEnabled = false))
+    @Test fun currentSnapshotRoundTripIncludesPlanSessionsHistoryAndAllAppPreferences() {
+        val base = defaultAppDocument()
+        val routine = base.plan.routines.first { it.execution == RoutineExecution.GUIDED }
+        val occurrence = OccurrenceKey(
+            base.plan.schedule.first { it.routineId == routine.id }.id,
+            java.time.LocalDate.of(2026, 9, 12),
+        )
+        val partial = GuidedSession(
+            "partial",
+            occurrence,
+            routine.id,
+            routine,
+            routine.exercises.first().id,
+            routine.exercises.associate { it.id to 0 },
+            SessionTimer(),
+            10,
+            20,
+            0,
+        )
+        val history = WorkoutHistoryEntry(
+            "complete",
+            occurrence.copy(scheduledDate = occurrence.scheduledDate.minusWeeks(1)),
+            routine,
+            1,
+            2,
+        )
+        val document = base.copy(
+            preferences = AppPreferences(
+                healthDateRange = HealthDateRange.YEAR,
+                hapticsEnabled = false,
+                voice = VoiceAnnouncementSettings(enabled = false, rate = 1.25f),
+                automaticBackupsEnabled = false,
+            ),
+            partialSessions = listOf(partial),
+            history = listOf(history),
+        )
         val snapshot = BackupSnapshot(1_780_272_000_000L, document)
         assertEquals(snapshot, decodeBackupSnapshot(encodeBackupSnapshot(snapshot)))
+    }
+
+    @Test fun backupRejectsTheSupersededEnvelopeName() {
+        val root = JSONObject(encodeBackupSnapshot(BackupSnapshot(1L, defaultAppDocument())))
+        root.put("format", "draftingroom5.backup-current")
+        assertThrows(IllegalArgumentException::class.java) { decodeBackupSnapshot(root.toString()) }
     }
 
     @Test fun backupRejectsMissingCurrentFieldsInsteadOfApplyingCompatibilityDefaults() {

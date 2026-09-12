@@ -3,14 +3,14 @@
     <!-- App-owned recovery snapshots are eligible for encrypted cloud backup. -->
     <include
         domain="file"
-        path="recovery-current/latest.json"
+        path="current-backups/latest.json"
         requireFlags="clientSideEncryption" />
     <include
         domain="file"
-        path="recovery-current/previous.json"
+        path="current-backups/previous.json"
         requireFlags="clientSideEncryption" />
     <include
         domain="sharedpref"
-        path="backup-status-current.xml"
+        path="current-backup-status.xml"
         requireFlags="clientSideEncryption" />
 </full-backup-content>
