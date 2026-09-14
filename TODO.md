@@ -19,8 +19,8 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
 
 - `minimum_completion_interval_minutes`: `60`
 - `max_concurrency`: `1`
-- `last_completion_at`: `2026-09-13T18:16:37-05:00`
-- `next_eligible_dispatch_at`: `2026-09-13T19:16:37-05:00`
+- `last_completion_at`: `2026-09-13T19:30:25-05:00`
+- `next_eligible_dispatch_at`: `2026-09-13T20:30:25-05:00`
 - `processor_lease`: empty
 - For active Phase 6 and later queued work, dispatch only a task whose `Status` is `ready`, and never dispatch while another task is `running` or before `next_eligible_dispatch_at`.
 - When claiming an active task, set its `Status` to `running` and fill `Executor thread ID` and `Started at`; the checkbox claim marker remains `[~]` for compatibility with the worker protocol above.
@@ -313,20 +313,21 @@ Approved direction: **Quiet hierarchy (Option A)**. Preserve the current navy, i
   - Claimed: 2026-09-13T17:43:27-05:00 by gpt-6-astra; immediate dispatch explicitly authorized by user.
   - Completed: Independent requirement-by-requirement audit in `docs/reviews/DR5-038-phase-6-product-audit.md`; fixed long-timer clipping, crowded four-to-six-set headings, and the Dashboard health-query window staying stale across midnight. Added two unit regressions and eight timer boundary references. Focused tests passed 81/81; final full gate passed 225 unit tests in 36 suites, 271 fresh native screenshot comparisons with zero failures, lintDebug (0 errors), assembleDebug (70,019,961-byte APK; all 56 catalog WebPs, no mockups), both artwork validators, and git diff --check. All three findings closed. ADB found no attached device; live interaction/accessibility/system checks remain explicitly unavailable. Push: NO; accumulated work remains uncommitted for DR5-039.
 
-- [~] **DR5-039 — Release the Phase 6 polish milestone**
+- [x] **DR5-039 — Release the Phase 6 polish milestone**
   - Outcome: review findings are resolved and one coherent tagged release publishes the signed APK with aligned app version defaults.
   - Scope: Phase 6 findings, README/design status, version defaults, full verification gate, Git commit/push/tag, release workflow, and published APK verification.
   - Model: `gpt-5.6-sol`
   - Model reason: established deterministic release procedure after Astra approval.
   - Depends on: DR5-038
-  - Status: `running`
+  - Status: `complete`
   - Acceptance: all approved Phase 6 improvements and DR5-038 findings are complete; README/design status is current; default version name/code advance consistently from 0.23.0/23002; `testDebugUnitTest lintDebug assembleDebug` and all screenshot comparisons pass; accumulated work is committed and pushed once; the next increasing version tag is pushed; its release workflow completes and the signed APK is published and verified.
   - Executor thread ID: `01a09d12-d91d-7053-b455-7f7a9c96bdb9`
   - Started at: `2026-09-13T18:22:29-05:00`
-  - Completed at: empty
+  - Completed at: `2026-09-13T19:30:25-05:00`
   - Push: `YES`
   - Claimed: 2026-09-13T18:22:29-05:00 by gpt-5.6-sol; immediate dispatch explicitly authorized by user.
   - Notes: never commit credentials, signing material, generated builds, `.gradle-user-home`, or `.tooling`; do not release intermediate Phase 6 tasks.
+  - Completed: Released the audited Phase 6 polish as v0.24.0/24002 after reconciling README and TechnicalDesign status. All 225 unit tests in 36 suites, 271 native screenshot comparisons, lintDebug (0 errors), assembleDebug, both artwork validators (56 WebPs), version/asset inspection, and staged whitespace/credential/path checks passed. The two Settings references showing the new version were updated after visual inspection. ADB had no attached device; device-only limitations remain in `docs/reviews/DR5-038-phase-6-product-audit.md`. Commit `2ce0646` and tag `v0.24.0` were pushed; GitHub Actions run `34792338420` completed successfully, including persistent-key signing and release publication. The public release has an uploaded `DraftingRoom5.apk` (49,979,233 bytes, SHA-256 `e06553918513d10cc403b8e277793b14929670b942df2c0334cba7a2a4c6c8a9`).
 
 ## Phase 7 — Living icon-sized widget
 
@@ -338,7 +339,7 @@ Approved direction: a one-cell home-screen widget that opens the app normally on
   - Model: `gpt-5.6-sol`
   - Model reason: bounded Android widget feasibility and lifecycle implementation.
   - Depends on: DR5-039
-  - Status: `blocked`
+  - Status: `ready`
   - Acceptance: widget advertises a one-cell target size with sensible minimums; its full tile has a direct activity `PendingIntent` that opens the app through its normal entry point; a launcher can render the 5 and frame at icon-like size without clipping; rotation among the four samples works on supported host/emulator tests using a platform-supported, approximately hourly and inexact cadence plus safe refresh on relevant app interactions; no 30-second promise, foreground service, wake lock, or per-minute background polling; widget removal cancels unnecessary work; API 28–36 behavior and no-widget case are tested. If a real 1 × 1 tile or practical rotation fails on the available launcher, mark `needs_input` with evidence before commissioning 50 assets rather than silently enlarging the widget or changing the brief.
   - Executor thread ID: empty
   - Started at: empty
