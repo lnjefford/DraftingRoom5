@@ -2,16 +2,18 @@
 
 DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
-The current production release is v0.23.0. Its source and host-rendered UI passed the whole-product review and full Android build gate. Physical-device checks that require Health Connect/Withings, TalkBack, external apps, process termination, real timers/feedback, Android backup/installation, or OEM icon masks remain explicitly device-dependent; use the prioritized checklist in `docs/reviews/DR5-030-final-product-review.md` rather than treating host screenshots as device certification.
+The current production release is v0.24.0. Its Phase 6 interaction and visual polish passed the independent product audit and full Android build gate. Physical-device checks that require Health Connect/Withings, TalkBack, external apps, touch dragging, process termination, real timers/feedback, Android backup/installation, or OEM icon masks remain explicitly device-dependent; use the checklist in `docs/reviews/DR5-038-phase-6-product-audit.md` rather than treating host screenshots as device certification.
 
 ## Current scope
 
 - Native Android app built with Kotlin and Jetpack Compose.
 - Health Connect permission flow for body mass, body-fat percentage, lean body mass, exercise sessions, and distance.
 - Today-focused training cards resolve their name, artwork, type, and launch behavior from one persistent routine model.
+- Dashboard trends always show the latest 30 days, independent of metric-detail ranges; scheduled cards support defer to tomorrow, skip today, and exact Undo.
 - Persistent schedule and routine management with weekday ordering, recurrence controls, drag and accessible reordering, editing, deletion, and reset-to-default behavior.
 - Unified guided and linked-app routine creation with rename, curated artwork, installed-app selection, launch testing and recovery, and explicit save/discard behavior.
 - Guided-routine exercise editing with ordered exercises, positive set counts, targets, notes, optional timers, and paired list/session artwork.
+- Curated hangboard routine and exercise artwork includes a seeded grip routine; rice-bag artwork is available for custom exercises.
 - Durable guided sessions with exact occurrence identity, automatic progress checkpoints, resumable exercise/set focus, partial-set correction, and saved completion history.
 - Fixed-state exercise timers with a distinct 10-second readiness countdown, elapsed-clock recovery, explicit cancellation/restart, and foreground-only voice/haptic cues.
 - Persistent dashboard customization: show, hide, reorder, and reset metric and training cards.
@@ -34,11 +36,11 @@ Open the project in Android Studio with Android SDK 36 and Java 17 installed, th
 
 Open **Settings → Customize dashboard** to choose which training and metric sections appear, move them into the exact order you want, or restore the default layout. At least one section always remains visible. Open **Settings → Schedules & routines** to manage recurring weekday entries and both routine types. You can create, rename, illustrate, edit, schedule, reorder, launch, and delete guided and linked-app routines; changes persist on-device across restarts. Linked-app launch failures offer change-app and store recovery instead of a dead action.
 
-The dashboard opens on today’s training, supports selecting nearby dates, and presents one clear Start or Resume action for each session. Guided progress is saved after each change and resumes the exact session, exercise, completed sets, and occurrence date. Finishing every required set durably records completion before showing the completion screen; incomplete sessions remain available under their scheduled day or Saved sessions. Its health snapshot follows the saved dashboard order. Tap a metric to choose a time range and inspect recorded readings or activity totals without crowding the dashboard.
+The dashboard opens on today’s training, supports selecting nearby dates, and presents one quiet Start or Resume action for each session. Today's unstarted scheduled cards can be deferred to tomorrow or skipped for today without changing their recurrence; an exact Undo is available after either action. Linked-app cards can be opened and marked complete, with Undo for the exact occurrence. Guided progress is saved after each change and resumes the exact session, exercise, completed sets, and occurrence date. Finishing every required set durably records completion before showing the completion screen; incomplete sessions remain available under their scheduled day or Saved sessions. Its health snapshot follows the saved dashboard order and always plots the latest 30 days. Tap a metric to choose an independent time range and inspect recorded readings or activity totals.
 
 Open **Settings → Workout feedback** to turn workout haptics on or off. Guided sessions focus one exercise while keeping every remaining exercise reachable, allow correction of completed sets, and save ordinary exits for later resumption. Timed exercises use a distinct readiness countdown and running/finished states; timers never complete a set automatically. Completing a set produces one short cue, while timer and workout milestones use distinct cues. Duplicate or restored events are deduplicated, and the app stays silent when Android system haptics are disabled or the phone has no vibrator.
 
-The same **Workout feedback** section includes a voice-announcement mute switch and rate control. Announcements use the phone's default Android text-to-speech voice. If no compatible voice service or language is installed, DraftingRoom5 shows that status and keeps timers and haptics working without interruption.
+The same **Workout feedback** section includes an expandable Voice announcements row with a mute switch and rate control. Announcements use the phone's default Android text-to-speech voice. If no compatible voice service or language is installed, DraftingRoom5 shows that status and keeps timers and haptics working without interruption.
 
 Expand **Settings → Automatic backups** to see the last successful snapshot, back up immediately, restore with explicit confirmation, or turn automatic backups off. Manual backup remains available while scheduling is off. DraftingRoom5 keeps the latest two current-format recovery copies on the device and can participate in encrypted Android cloud backup. Health Connect measurements and permissions, downloads, and update files are never included.
 

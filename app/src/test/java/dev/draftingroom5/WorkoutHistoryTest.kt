@@ -11,6 +11,6 @@ class WorkoutHistoryTest {
             WorkoutHistoryEntry("one", OccurrenceKey("schedule-one", LocalDate.of(2026, 6, 1)), routine, 1, 2),
             WorkoutHistoryEntry("two", OccurrenceKey("schedule-two", LocalDate.of(2026, 6, 2)), routine, 3, 4),
         )
-        assertEquals(listOf("schedule-one"), completedScheduleIdsForDate(entries, LocalDate.of(2026, 6, 1)))
+        assertEquals(listOf(entries.first().occurrence), completedOccurrencesForDate(entries, LocalDate.of(2026, 6, 1)))
     }
 }

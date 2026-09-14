@@ -67,8 +67,8 @@ def build() -> None:
 
 def validate_outputs() -> None:
     sources = sorted(MASTERS.glob("exercise_*.png"))
-    if len(sources) != 8:
-        raise ValueError(f"expected 8 exercise masters, found {len(sources)}")
+    if len(sources) != 10:
+        raise ValueError(f"expected 10 exercise masters, found {len(sources)}")
     for source in sources:
         with Image.open(source) as master:
             if master.size != (1254, 1254) or "A" not in master.getbands():

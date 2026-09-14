@@ -26,6 +26,8 @@ internal object ExerciseArtworkCatalog {
         asset("dead_hang", R.string.exercise_artwork_dead_hang, R.drawable.exercise_dead_hang_list, R.drawable.exercise_dead_hang_header),
         asset("farmers_walk", R.string.exercise_artwork_farmers_walk, R.drawable.exercise_farmers_walk_list, R.drawable.exercise_farmers_walk_header),
         asset("grip_hold", R.string.exercise_artwork_grip_hold, R.drawable.exercise_grip_hold_list, R.drawable.exercise_grip_hold_header),
+        asset("rice_bag", R.string.exercise_artwork_rice_bag, R.drawable.exercise_rice_bag_list, R.drawable.exercise_rice_bag_header),
+        asset("hangboard", R.string.exercise_artwork_hangboard, R.drawable.exercise_hangboard_list, R.drawable.exercise_hangboard_header),
         asset("wrist_curl", R.string.exercise_artwork_wrist_curl, R.drawable.exercise_wrist_curl_list, R.drawable.exercise_wrist_curl_header),
         asset("reverse_wrist_curl", R.string.exercise_artwork_reverse_wrist_curl, R.drawable.exercise_reverse_wrist_curl_list, R.drawable.exercise_reverse_wrist_curl_header),
         asset("finger_extension", R.string.exercise_artwork_finger_extension, R.drawable.exercise_finger_extension_list, R.drawable.exercise_finger_extension_header),

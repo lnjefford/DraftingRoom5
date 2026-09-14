@@ -261,16 +261,7 @@ internal fun GuidedRoutineEditorScreen(
                         contentScale = ContentScale.Fit,
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { renaming = true }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Icon(Icons.Default.Edit, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Rename")
-                    }
-                    TextButton(onClick = { artworkPicker = true }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text("Change artwork")
-                    }
-                }
+                RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -338,7 +329,7 @@ internal fun GuidedRoutineEditorScreen(
                 }
             }
             item {
-                OutlinedButton(
+                Button(
                     onClick = { addingExercise = true },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 ) {
@@ -377,7 +368,7 @@ internal fun GuidedRoutineEditorScreen(
             }
         },
     )
-    if (renaming) GuidedRoutineNameDialog(
+    if (renaming) RoutineNameDialog(
         initial = working.name,
         onDismiss = { renaming = false },
         onSave = { name -> if (working.withGuidedIdentity(name, working.artworkId)?.let(::applyChange) == true) renaming = false },
@@ -446,10 +437,10 @@ private fun ManagedExerciseRow(
             .focusRequester(focusRequester).focusable().semantics {
                 stateDescription = "${exercise.name}, ${exercise.setCount} sets, ${exercise.target}, ${if (exercise.timerSeconds == null) "not timed" else "${exercise.timerSeconds} second timer"}, position ${position + 1} of $total"
                 customActions = buildList {
-                    if (position > 0) add(CustomAccessibilityAction("Move up") { onMove(-1) })
-                    if (position < total - 1) add(CustomAccessibilityAction("Move down") { onMove(1) })
+                    if (position > 0) add(CustomAccessibilityAction("Move ${exercise.name} up") { onMove(-1) })
+                    if (position < total - 1) add(CustomAccessibilityAction("Move ${exercise.name} down") { onMove(1) })
                 }
-            }.clickable(onClick = onEdit).padding(horizontal = 8.dp, vertical = 10.dp),
+            }.clickable(onClickLabel = "Edit ${exercise.name}", onClick = onEdit).padding(horizontal = 8.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -491,8 +482,8 @@ private fun ManagedExerciseRow(
         Box {
             IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(48.dp)) { Icon(Icons.Default.MoreVert, "More options for ${exercise.name}") }
             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                DropdownMenuItem(text = { Text("Edit") }, leadingIcon = { Icon(Icons.Default.Edit, null) }, onClick = { menuExpanded = false; onEdit() })
-                DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Default.Delete, null) }, onClick = { menuExpanded = false; onDelete() })
+                DropdownMenuItem(text = { Text("Edit") }, leadingIcon = { Icon(Icons.Default.Edit, null) }, modifier = Modifier.semantics { contentDescription = "Edit ${exercise.name}" }, onClick = { menuExpanded = false; onEdit() })
+                DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Default.Delete, null) }, modifier = Modifier.semantics { contentDescription = "Delete ${exercise.name}" }, onClick = { menuExpanded = false; onDelete() })
             }
         }
     }
@@ -566,22 +557,27 @@ internal fun ExerciseEditorScreen(original: Exercise?, onDismiss: () -> Unit, on
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExerciseArtworkPickerSheet(selectedId: String, onDismiss: () -> Unit, onDone: (String) -> Unit) {
+internal fun ExerciseArtworkPickerSheet(selectedId: String, onDismiss: () -> Unit, onDone: (String) -> Unit) {
     var pending by rememberSaveable(selectedId) { mutableStateOf(ExerciseArtworkCatalog.resolve(selectedId).storageId) }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = AppSurface) {
-        Column(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 28.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("Choose exercise artwork", style = MaterialTheme.typography.headlineSmall)
-            Text("One choice supplies the paired list and session images.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    PersistentSelectionSheet(
+        title = "Choose exercise artwork",
+        description = "One choice supplies the paired list and session images.",
+        onDismiss = onDismiss,
+        onSave = { onDone(pending) },
+    ) {
+        ExerciseArtworkSelection(pending) { pending = it }
+    }
+}
+
+@Composable
+internal fun ExerciseArtworkSelection(pending: String, onSelect: (String) -> Unit) {
             ExerciseArtworkCatalog.entries.chunked(2).forEach { rowAssets ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     rowAssets.forEach { asset ->
                         val chosen = asset.storageId == pending
                         val label = stringResource(asset.displayNameRes)
                         Card(
-                            onClick = { pending = asset.storageId },
+                            onClick = { onSelect(asset.storageId) },
                             modifier = Modifier.weight(1f).heightIn(min = 174.dp).semantics {
                                 selected = chosen
                                 contentDescription = "$label, ${if (chosen) "Selected" else "Not selected"}"
@@ -611,22 +607,4 @@ private fun ExerciseArtworkPickerSheet(selectedId: String, onDismiss: () -> Unit
                     if (rowAssets.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
-                Button(onClick = { onDone(pending) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Done") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GuidedRoutineNameDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
-    var name by rememberSaveable(initial) { mutableStateOf(initial) }
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Rename routine") },
-        text = { OutlinedTextField(name, { if (it.length <= 200) name = it }, label = { Text("Routine name") }) },
-        confirmButton = { TextButton(onClick = { onSave(name) }, enabled = name.trim().isNotEmpty()) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }

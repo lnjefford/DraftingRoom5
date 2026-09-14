@@ -108,6 +108,15 @@ internal data class UpdateSettingsPresentation(
     val tone: SettingsStatusTone,
 )
 
+internal fun updateMessageAfterRecreation(message: String): String =
+    if (message.startsWith("Checking for updates") || message.startsWith("Downloading version") ||
+        message.startsWith("Opening Android's installer")) {
+        "Update was interrupted. Try again from the update indicator or Settings."
+    } else message
+
+internal fun dashboardUpdateAnnouncement(availableVersion: String?, busy: Boolean, actionMessage: String?): String? =
+    if (busy) actionMessage ?: "Checking for updates" else availableVersion?.let { "Update $it available. Tap to install." }
+
 internal fun updateSettingsPresentation(
     status: AppUpdateStatus,
     busy: Boolean,

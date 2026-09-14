@@ -3,10 +3,13 @@ package dev.draftingroom5
 import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -27,7 +30,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -38,6 +40,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,12 +63,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -72,6 +78,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,7 +92,6 @@ import java.time.LocalDate
 internal data class SessionTimerPresentation(
     val phaseLabel: String,
     val display: String,
-    val supportingText: String,
     val primaryLabel: String?,
     val cancelLabel: String?,
     val faded: Boolean,
@@ -99,6 +106,7 @@ internal data class GuidedSessionPresentation(
     val totalExercises: Int,
     val timer: SessionTimerPresentation?,
     val upcoming: List<Exercise>,
+    val completed: List<Exercise>,
     val readyToFinish: Boolean,
     val setProgress: Float,
 )
@@ -109,13 +117,12 @@ internal fun guidedSessionPresentation(session: GuidedSession, elapsedMillis: Lo
     val completedExercises = session.snapshot.exercises.count {
         session.completedSets.getValue(it.id) == it.setCount
     }
-    val timer = focused.timerSeconds?.let { configured ->
+    val timer = focused.timerSeconds?.takeIf { completedSets < focused.setCount }?.let { configured ->
         val seconds = timerDisplaySeconds(session.timer, elapsedMillis, configured)
         when (session.timer.phase) {
             TimerPhase.IDLE -> SessionTimerPresentation(
                 phaseLabel = "Timer ready",
                 display = formatSessionTimer(seconds),
-                supportingText = "10-second Get ready countdown",
                 primaryLabel = "Start timer".takeIf { completedSets < focused.setCount },
                 cancelLabel = null,
                 faded = false,
@@ -124,7 +131,6 @@ internal fun guidedSessionPresentation(session: GuidedSession, elapsedMillis: Lo
             TimerPhase.READY -> SessionTimerPresentation(
                 phaseLabel = "Get ready",
                 display = seconds.toString(),
-                supportingText = "Timer starts automatically",
                 primaryLabel = null,
                 cancelLabel = "Cancel countdown",
                 faded = true,
@@ -133,7 +139,6 @@ internal fun guidedSessionPresentation(session: GuidedSession, elapsedMillis: Lo
             TimerPhase.RUNNING -> SessionTimerPresentation(
                 phaseLabel = "Timer running",
                 display = formatSessionTimer(seconds),
-                supportingText = "Complete the set early when your movement is finished",
                 primaryLabel = null,
                 cancelLabel = "Cancel timer",
                 faded = false,
@@ -142,7 +147,6 @@ internal fun guidedSessionPresentation(session: GuidedSession, elapsedMillis: Lo
             TimerPhase.FINISHED -> SessionTimerPresentation(
                 phaseLabel = "Timer complete",
                 display = "00:00",
-                supportingText = "The timer does not complete the set",
                 primaryLabel = "Restart timer",
                 cancelLabel = null,
                 faded = false,
@@ -157,7 +161,8 @@ internal fun guidedSessionPresentation(session: GuidedSession, elapsedMillis: Lo
         completedExercises = completedExercises,
         totalExercises = session.snapshot.exercises.size,
         timer = timer,
-        upcoming = session.snapshot.exercises.filterNot { it.id == focused.id },
+        upcoming = session.snapshot.exercises.filter { it.id != focused.id && session.completedSets.getValue(it.id) < it.setCount },
+        completed = session.snapshot.exercises.filter { it.id != focused.id && session.completedSets.getValue(it.id) == it.setCount },
         readyToFinish = session.durableState() == DurableSessionState.READY_TO_FINISH,
         setProgress = (session.completedSets.values.sumOf { it.toLong() }.toDouble() /
             session.snapshot.exercises.sumOf { it.setCount.toLong() }).toFloat(),
@@ -577,12 +582,8 @@ internal fun GuidedSessionScreen(
                     onCancelTimer = onCancelTimer,
                 )
             }
-            if (presentation.upcoming.isNotEmpty()) item {
-                Text("UP NEXT", color = AppGold, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp)
-            }
-            items(presentation.upcoming, key = Exercise::id) { exercise ->
-                UpcomingExerciseRow(exercise, session.completedSets.getValue(exercise.id), onFocus)
-            }
+            sessionExerciseSection("UP NEXT", "up-next", presentation.upcoming, session.completedSets, onFocus)
+            sessionExerciseSection("COMPLETED", "completed", presentation.completed, session.completedSets, onFocus)
             item {
                 if (presentation.readyToFinish) {
                     Button(
@@ -603,6 +604,23 @@ internal fun GuidedSessionScreen(
                 )
             }
         }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.sessionExerciseSection(
+    title: String,
+    keyPrefix: String,
+    exercises: List<Exercise>,
+    completedSets: Map<String, Int>,
+    onFocus: (String) -> Unit,
+) {
+    if (exercises.isEmpty()) return
+    item(key = "$keyPrefix-heading") {
+        Text(title, color = AppGold, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp,
+            modifier = Modifier.semantics { heading() })
+    }
+    items(exercises, key = Exercise::id) { exercise ->
+        UpcomingExerciseRow(exercise, completedSets.getValue(exercise.id), onFocus)
     }
 }
 
@@ -632,31 +650,29 @@ private fun SessionProgress(presentation: GuidedSessionPresentation) {
 
 @Composable
 private fun CurrentExerciseHeader(exercise: Exercise, motionEnabled: Boolean) {
-    val configuration = LocalConfiguration.current
     val fontScale = LocalDensity.current.fontScale
-    val showArtwork = configuration.screenWidthDp >= 340 && fontScale < 1.75f
+    val artworkWidth = if (fontScale >= 1.75f) 168.dp else 220.dp
+    val artworkHeight = if (fontScale >= 1.75f) 84.dp else 108.dp
     val artwork = ExerciseArtworkCatalog.resolve(exercise.artworkId)
     AppSurfaceCard(Modifier.fillMaxWidth()) {
-        Box(Modifier.fillMaxWidth().heightIn(min = 176.dp)) {
-            if (showArtwork) {
+        Column(
+            Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Text("CURRENT EXERCISE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+            HorizontalDivider(Modifier.width(36.dp), thickness = 2.dp, color = AppGold)
+            BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 Image(
                     painter = painterResource(artwork.headerAsset),
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxWidth(0.52f).height(190.dp)
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.width(minOf(maxWidth, artworkWidth)).height(artworkHeight)
                         .alpha(if (motionEnabled) 0.9f else 0.82f),
                 )
             }
-            Column(
-                Modifier.fillMaxWidth(if (showArtwork) 0.62f else 1f).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(7.dp),
-            ) {
-                Text("CURRENT EXERCISE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                HorizontalDivider(Modifier.width(36.dp), thickness = 2.dp, color = AppGold)
-                Text(exercise.name, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
-                if (exercise.notes.isNotBlank()) Text(exercise.notes, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${exercise.setCount} sets · ${exercise.target}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
-            }
+            Text(exercise.name, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
+            if (exercise.notes.isNotBlank()) Text(exercise.notes, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${exercise.setCount} sets · ${exercise.target}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -672,31 +688,104 @@ private fun SetAndTimerPanel(
 ) {
     val exercise = presentation.focused
     val currentComplete = presentation.completedSets >= exercise.setCount
+    val fontScale = LocalDensity.current.fontScale
+    val accessibilityView = LocalView.current
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    var optionsExpanded by rememberSaveable(exercise.id) { mutableStateOf(false) }
+    LaunchedEffect(exercise.id, session.timer.phase) {
+        presentation.timer?.let { accessibilityView.announceForAccessibility(it.phaseLabel) }
+    }
     AppSurfaceCard(Modifier.fillMaxWidth()) {
         Column(
-            Modifier.fillMaxWidth().padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text(
-                if (currentComplete) "All ${exercise.setCount} sets complete" else "Set ${presentation.completedSets + 1} of ${exercise.setCount}",
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Text(exercise.target, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            SetIndicators(exercise.setCount, presentation.completedSets)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        if (currentComplete) "All ${exercise.setCount} sets complete" else "Set ${presentation.completedSets + 1} of ${exercise.setCount}",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    if (fontScale >= 1.75f || exercise.setCount > 3) {
+                        SetIndicators(exercise.setCount, presentation.completedSets)
+                    }
+                }
+                if (fontScale < 1.75f && exercise.setCount <= 3) {
+                    SetIndicators(exercise.setCount, presentation.completedSets)
+                }
+                if (presentation.completedSets > 0) {
+                    Box {
+                        IconButton(
+                            onClick = { optionsExpanded = true },
+                            modifier = Modifier.size(48.dp).semantics { contentDescription = "Set options for ${exercise.name}" },
+                        ) { Icon(Icons.Default.MoreVert, null) }
+                        DropdownMenu(expanded = optionsExpanded, onDismissRequest = { optionsExpanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Undo last set") },
+                                onClick = {
+                                    optionsExpanded = false
+                                    onUndo(exercise.id, presentation.completedSets)
+                                },
+                            )
+                        }
+                    }
+                }
+            }
             presentation.timer?.let { timer ->
-                HorizontalDivider(color = AppBorder)
-                Icon(Icons.Default.Timer, null, tint = if (session.timer.phase == TimerPhase.FINISHED) AppMint else AppBlue)
-                Text(timer.phaseLabel, color = if (session.timer.phase == TimerPhase.FINISHED) AppMint else MaterialTheme.colorScheme.onSurface)
-                Text(
-                    timer.display,
-                    modifier = Modifier.semantics { stateDescription = "${timer.phaseLabel}, ${timer.display}" },
-                    color = if (timer.faded) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.62f) else MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.displayMedium,
-                )
-                Text(timer.supportingText, minLines = 3, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                timer.primaryLabel?.let { label ->
-                    TextButton(onClick = onStartTimer, modifier = Modifier.heightIn(min = 48.dp)) { Text(label) }
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val stackControls = fontScale >= 1.75f || maxWidth < 230.dp || timer.display.length > 5
+                    val desiredClockSize = if (timer.faded) 42.sp else if (maxWidth >= 300.dp) 68.sp else 56.sp
+                    val clockStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Serif, fontSize = desiredClockSize)
+                    val availableClockWidth = with(density) { maxWidth.toPx() } - 2f
+                    fun fits(size: Float) = textMeasurer.measure(timer.display, clockStyle.copy(fontSize = size.sp), softWrap = false).size.width <= availableClockWidth
+                    val clockSize = if (fits(desiredClockSize.value)) desiredClockSize else {
+                        // Measure each candidate: Android large-font scaling need not be linear.
+                        var low = 1f
+                        var high = desiredClockSize.value
+                        repeat(12) {
+                            val candidate = (low + high) / 2f
+                            if (fits(candidate)) low = candidate else high = candidate
+                        }
+                        low.sp
+                    }
+                    val clock: @Composable () -> Unit = {
+                        Text(
+                            timer.display,
+                            modifier = Modifier.clearAndSetSemantics {
+                                contentDescription = "${timer.phaseLabel}, ${timer.display}"
+                            },
+                            color = if (timer.faded) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                            fontFamily = FontFamily.Serif,
+                            fontSize = clockSize,
+                            lineHeight = (if (timer.faded) 50.sp else if (maxWidth >= 300.dp) 76.sp else 64.sp) * (clockSize.value / desiredClockSize.value),
+                            maxLines = 1,
+                        )
+                    }
+                    val start: @Composable () -> Unit = {
+                        timer.primaryLabel?.let { label ->
+                            OutlinedButton(
+                                onClick = onStartTimer,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                                border = BorderStroke(1.dp, AppBlue),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = AppBlue),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                            ) {
+                                Text(label, maxLines = if (stackControls) 2 else 1, textAlign = TextAlign.Center)
+                            }
+                        }
+                    }
+                    if (stackControls) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            clock()
+                            start()
+                        }
+                    } else {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            clock()
+                            start()
+                        }
+                    }
                 }
                 timer.cancelLabel?.let { label ->
                     TextButton(
@@ -704,12 +793,6 @@ private fun SetAndTimerPanel(
                         modifier = Modifier.heightIn(min = 48.dp),
                     ) { Text(label) }
                 }
-            }
-            if (presentation.completedSets > 0) {
-                TextButton(
-                    onClick = { onUndo(exercise.id, presentation.completedSets) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                ) { Text("Undo last set") }
             }
             if (!currentComplete) {
                 Button(
@@ -798,11 +881,15 @@ private fun GuidedSessionFailure(title: String, message: String, onExit: () -> U
 }
 
 @Composable
-internal fun GuidedSessionReviewPreview(state: String, controlsOnly: Boolean = false) {
+internal fun GuidedSessionReviewPreview(state: String, controlsOnly: Boolean = false, sectionsOnly: Boolean = false) {
     val original = defaultTrainingPlan().routines.first { it.execution == RoutineExecution.GUIDED }
-    val routine = if (state == "Session many sets") original.copy(
-        exercises = original.exercises.map { it.copy(setCount = Int.MAX_VALUE) },
-    ) else original
+    val routine = when (state) {
+        "Session many sets" -> original.copy(exercises = original.exercises.map { it.copy(setCount = Int.MAX_VALUE) })
+        "Session six sets" -> original.copy(exercises = original.exercises.map { it.copy(setCount = 6) })
+        "Session longest timer" -> original.copy(exercises = original.exercises.map { it.copy(timerSeconds = Int.MAX_VALUE) })
+        "Session no timer" -> original.copy(exercises = original.exercises.map { it.copy(timerSeconds = null) })
+        else -> original
+    }
     val elapsed = 100_000L
     val phase = when (state) {
         "Session ready" -> TimerPhase.READY
@@ -822,7 +909,15 @@ internal fun GuidedSessionReviewPreview(state: String, controlsOnly: Boolean = f
         routineId = routine.id,
         snapshot = routine,
         focusedExerciseId = routine.exercises.first().id,
-        completedSets = routine.exercises.associate { it.id to if (it == routine.exercises.first()) 1 else 0 },
+        completedSets = routine.exercises.associate {
+            it.id to when {
+                state == "Session all sets complete" -> it.setCount
+                state == "Session sections" && routine.exercises.indexOf(it) in 2..4 -> it.setCount
+                state == "Session completed only" && it != routine.exercises.first() -> it.setCount
+                it == routine.exercises.first() -> 1
+                else -> 0
+            }
+        },
         timer = timer,
         startedAtMillis = 1,
         updatedAtMillis = 1,
@@ -835,7 +930,42 @@ internal fun GuidedSessionReviewPreview(state: String, controlsOnly: Boolean = f
                     SetAndTimerPanel(guidedSessionPresentation(session, elapsed), session, { _, _ -> }, { _, _ -> }, {}, {})
                 }
             }
+        } else if (sectionsOnly) {
+            val presentation = guidedSessionPresentation(session, elapsed)
+            LazyColumn(Modifier.fillMaxSize().appScreenBackground().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                sessionExerciseSection("UP NEXT", "up-next", presentation.upcoming, session.completedSets, {})
+                sessionExerciseSection("COMPLETED", "completed", presentation.completed, session.completedSets, {})
+            }
         } else GuidedSessionScreen(session, elapsed, false, null, {}, {}, { _, _ -> }, { _, _ -> }, {}, {}, {}, {}, {})
+    }
+}
+
+@Composable
+internal fun GuidedSessionArtworkReviewPreview(artworkId: String) {
+    val asset = ExerciseArtworkCatalog.resolve(artworkId)
+    val longName = artworkId == "long_name"
+    val exercise = Exercise(
+        id = "preview-artwork",
+        name = when {
+            longName -> "Extended Pronated Thick-Bar Dead Hangs with Alternating Grip"
+            artworkId == "hangboard" -> "Hangboard Holds"
+            else -> stringResource(asset.displayNameRes)
+        },
+        notes = when {
+            longName -> "Pull-up bar + thick adapter; change hands after each hold"
+            artworkId == "hangboard" -> "Controlled edge hold"
+            artworkId == "rice_bag" -> "Practice at your own pace"
+            else -> "Pull-up bar + thick adapter"
+        },
+        setCount = 3,
+        target = "20 sec",
+        timerSeconds = 20,
+        artworkId = if (longName) "dead_hang" else artworkId,
+    )
+    DraftingRoom5Theme {
+        LazyColumn(Modifier.fillMaxSize().appScreenBackground().padding(20.dp)) {
+            item { CurrentExerciseHeader(exercise, motionEnabled = false) }
+        }
     }
 }
 

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.UUID
 
 internal sealed interface LoadState<out T> {
     data object Loading : LoadState<Nothing>
@@ -142,6 +143,76 @@ internal class AppRepository(
         RepositoryResult.Success(candidate)
     }
 
+    fun deferOccurrence(occurrence: OccurrenceKey, today: java.time.LocalDate): RepositoryResult<AppDocument> =
+        changeOccurrence(occurrence, today, OccurrenceDisposition.DEFERRED)
+
+    fun skipOccurrence(occurrence: OccurrenceKey, today: java.time.LocalDate): RepositoryResult<AppDocument> =
+        changeOccurrence(occurrence, today, OccurrenceDisposition.SKIPPED)
+
+    private fun changeOccurrence(
+        occurrence: OccurrenceKey,
+        today: java.time.LocalDate,
+        disposition: OccurrenceDisposition,
+    ): RepositoryResult<AppDocument> = synchronized(processLock) {
+        val current = (mutableState.value as? LoadState.Ready)?.value
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
+        if (current.history.any { it.occurrence == occurrence } || current.partialSessions.any { it.occurrence == occurrence }) {
+            return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Started or completed occurrences cannot be moved or skipped."))
+        }
+        val existing = current.occurrenceExceptions.firstOrNull { it.occurrence == occurrence }
+        if (existing?.disposition == disposition) return@synchronized RepositoryResult.Success(current)
+        update(current.generation) {
+            require(existing == null) { "Undo the existing exception before changing it." }
+            require(occurrence.scheduledDate == today && current.occurrenceDate(occurrence) == today) {
+                "Only today's scheduled occurrence can be moved or skipped."
+            }
+            require(disposition != OccurrenceDisposition.DEFERRED || today < java.time.LocalDate.MAX) { "Tomorrow is outside the supported date range." }
+            it.copy(occurrenceExceptions = it.occurrenceExceptions + OccurrenceException(occurrence, disposition,
+                if (disposition == OccurrenceDisposition.DEFERRED) today.plusDays(1) else null))
+        }
+    }
+
+    /** Compare the exact saved exception so stale Undo cannot alter a different disposition. */
+    fun undoOccurrenceException(exception: OccurrenceException): RepositoryResult<AppDocument> = synchronized(processLock) {
+        val current = (mutableState.value as? LoadState.Ready)?.value
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
+        val existing = current.occurrenceExceptions.firstOrNull { it.occurrence == exception.occurrence }
+            ?: return@synchronized RepositoryResult.Success(current)
+        update(current.generation) {
+            require(existing == exception) { "Occurrence exception changed; refresh before undoing." }
+            require(it.partialSessions.none { session -> session.occurrence == exception.occurrence } &&
+                it.history.none { history -> history.occurrence == exception.occurrence }) { "Started or completed occurrences cannot be moved back." }
+            it.copy(occurrenceExceptions = it.occurrenceExceptions - existing)
+        }
+    }
+
+    /** Records only the selected linked occurrence after Android has accepted its launch. */
+    fun completeLinkedOccurrence(occurrence: OccurrenceKey, routineId: String, atMillis: Long): RepositoryResult<AppDocument> = synchronized(processLock) {
+        val current = (mutableState.value as? LoadState.Ready)?.value
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
+        if (current.history.any { it.occurrence == occurrence }) return@synchronized RepositoryResult.Success(current)
+        val entry = current.plan.schedule.firstOrNull { it.id == occurrence.scheduleEntryId }
+        val routine = current.plan.routines.firstOrNull { it.id == routineId }
+        if (entry == null || routine == null || entry.routineId != routineId || current.occurrenceDate(occurrence) == null ||
+            routine.execution != RoutineExecution.LINKED_APP || current.partialSessions.any { it.occurrence == occurrence } || atMillis < 0
+        ) return@synchronized RepositoryResult.Invalid(IllegalArgumentException("This linked occurrence is no longer available."))
+        val history = WorkoutHistoryEntry(UUID.randomUUID().toString(), occurrence, routine, atMillis, atMillis,
+            requireNotNull(current.occurrenceDate(occurrence)))
+        update(current.generation) { it.copy(history = it.history + history) }
+    }
+
+    /** Undo is restricted to linked launches, leaving guided completion immutable. */
+    fun undoLinkedOccurrence(occurrence: OccurrenceKey): RepositoryResult<AppDocument> = synchronized(processLock) {
+        val current = (mutableState.value as? LoadState.Ready)?.value
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
+        val history = current.history.firstOrNull { it.occurrence == occurrence }
+            ?: return@synchronized RepositoryResult.Success(current)
+        if (history.snapshot.execution != RoutineExecution.LINKED_APP) {
+            return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Guided completion cannot be undone here."))
+        }
+        update(current.generation) { it.copy(history = it.history.filterNot { record -> record.occurrence == occurrence }).pruneOccurrenceExceptions() }
+    }
+
     fun restore(document: AppDocument): RepositoryResult<AppDocument> = synchronized(processLock) {
         val currentGeneration = (mutableState.value as? LoadState.Ready)?.value?.generation ?: 0L
         val candidate: AppDocument
@@ -175,23 +246,23 @@ internal class AppRepository(
         require(acknowledgeSavedSessions || current.partialSessions.none { it.routineId in changedIds }) {
             "Confirm changes to routines with saved sessions before saving."
         }
-        current.copy(plan = plan, partialSessions = current.partialSessions.filter { session -> plan.routines.any { it.id == session.routineId } })
+        current.copy(plan = plan, partialSessions = current.partialSessions.filter { session -> plan.routines.any { it.id == session.routineId } }).pruneOccurrenceExceptions()
     }
 
     fun deleteRoutine(expectedGeneration: Long, routineId: String) = update(expectedGeneration) {
         require(it.plan.routines.any { routine -> routine.id == routineId }) { "Routine does not exist." }
         it.copy(plan = it.plan.removeRoutine(routineId),
-            partialSessions = it.partialSessions.filterNot { session -> session.routineId == routineId })
+            partialSessions = it.partialSessions.filterNot { session -> session.routineId == routineId }).pruneOccurrenceExceptions()
     }
 
     fun deleteScheduleEntry(expectedGeneration: Long, scheduleEntryId: String) = update(expectedGeneration) {
         require(it.plan.schedule.any { entry -> entry.id == scheduleEntryId }) { "Scheduled item does not exist." }
-        it.copy(plan = it.plan.removeScheduleEntry(scheduleEntryId))
+        it.copy(plan = it.plan.removeScheduleEntry(scheduleEntryId)).pruneOccurrenceExceptions()
     }
 
     fun resetPlan(expectedGeneration: Long): RepositoryResult<AppDocument> = synchronized(processLock) {
         val result = update(expectedGeneration) {
-            it.copy(plan = defaultTrainingPlan(), partialSessions = emptyList(), history = emptyList())
+            it.copy(plan = defaultTrainingPlan(), partialSessions = emptyList(), history = emptyList(), occurrenceExceptions = emptyList())
         }
         if (result is RepositoryResult.Success) {
             nextLease()
@@ -229,7 +300,7 @@ internal class AppRepository(
         val routine = current.plan.routines.firstOrNull { it.id == entry.routineId }
             ?: return@synchronized SessionRepositoryResult.Invalid("Routine no longer exists.")
         if (routine.id != displayedRoutineId || routine.revision != displayedRoutineRevision ||
-            routine.execution != RoutineExecution.GUIDED || occurrence.scheduledDate.dayOfWeek !in entry.days) {
+            routine.execution != RoutineExecution.GUIDED || current.occurrenceDate(occurrence) == null) {
             return@synchronized SessionRepositoryResult.Invalid("Displayed occurrence is stale or is not guided.")
         }
         if (newSessionId.isBlank() || newSessionId.length > 128) return@synchronized SessionRepositoryResult.Invalid("Session ID is invalid.")
@@ -248,6 +319,7 @@ internal class AppRepository(
             startedAtMillis = now.wallMillis.coerceAtLeast(0L),
             updatedAtMillis = now.wallMillis.coerceAtLeast(0L),
             eventRevision = 0,
+            effectiveDate = requireNotNull(current.occurrenceDate(occurrence)),
         )
         commitSessionDocument(current.copy(partialSessions = current.partialSessions + created))?.let { failure ->
             return@synchronized failure
@@ -335,7 +407,7 @@ internal class AppRepository(
         }
         val now = sampleClock() ?: return@synchronized SessionRepositoryResult.Invalid("Session clock is unavailable.")
         val restarted = GuidedSession(newSessionId, existing.occurrence, live.id, live, live.exercises.first().id,
-            live.exercises.associate { it.id to 0 }, SessionTimer(), now.wallMillis, now.wallMillis, 0)
+            live.exercises.associate { it.id to 0 }, SessionTimer(), now.wallMillis, now.wallMillis, 0, existing.effectiveDate)
         commitSessionDocument(current.copy(partialSessions = current.partialSessions.map { if (it.id == sessionId) restarted else it }))
             ?.let { return@synchronized it }
         existing.timer.runId?.let(processOwnedTimerRuns::remove)
@@ -359,7 +431,7 @@ internal class AppRepository(
         }
         val now = sampleClock() ?: return@synchronized SessionRepositoryResult.Invalid("Session clock is unavailable.")
         val history = WorkoutHistoryEntry(existing.id, existing.occurrence, existing.snapshot, existing.startedAtMillis,
-            maxOf(existing.updatedAtMillis, now.wallMillis))
+            maxOf(existing.updatedAtMillis, now.wallMillis), existing.effectiveDate)
         val candidate = current.copy(
             partialSessions = current.partialSessions.filterNot { it.id == sessionId },
             history = current.history + history,

@@ -1,5 +1,39 @@
 # Production artwork asset ledger
 
+## Rice-bag exercise artwork — 2026-09-13
+
+- Tool: OpenAI built-in image generation; managed image model identifier not exposed. Orchestrating model: `gpt-5.6-sol`.
+- Source: one original generated, unbranded bag-only cutout. The approved `docs/design/phase-6-polish/rice-bag-artwork-option-a-approved.png` supplied direction, while the existing grip-hold and finger-extension exercise masters supplied catalog lighting context. No reference pixels were copied. No person, text, logo, or product identity was requested.
+- Master: `docs/artwork/masters/exercise_rice_bag.png`, 1254 × 1254 RGBA with true transparent alpha. The built-in 1214 × 1295 render was trimmed, proportionally fitted within a 1110px box, and centered on a transparent square canvas without changing its subject.
+- Runtime: `exercise_rice_bag_list.webp` (320 × 320) and `exercise_rice_bag_header.webp` (960 × 480), independently composed by `prepare_exercise_artwork.py`. No routine artwork or seeded exercise uses this ID.
+- Rights/provenance: generated specifically for DraftingRoom5 under the applicable OpenAI output terms; generic equipment rather than a manufacturer design.
+
+### Final prompt
+
+> Use case: transparent product cutout for an Android exercise-art catalog. Create one original, photorealistic, generic portable rice-training grip bag as the ONLY subject: compact upright cylindrical dark-charcoal/black neoprene fabric pouch, rounded stable body and base, open rolled cuff seen slightly from above with only a restrained glimpse of pale uncooked rice inside, one short flat black webbing loop on the right side. Three-quarter front view, object centered with generous transparent padding so it can be cropped into a square list tile and a wide guided-session header. Genuine fully transparent background and clean alpha edges, no ground, no cast shadow, no glow outside the object. Subtle warm amber light on the left rim and cool cyan-blue light on the right rim, matching a premium dark fitness-equipment catalog. Fabric texture legible at phone size. No hand or person, no grocery sack, no drawstring, no text, no logo, no branding or manufacturer-specific features. The approved direction is a bag-only equipment cutout; do not include a UI, label, caption, phone, or comparison board.
+
+### Inventory addition
+
+| Stable ID | Subject request | Master | Paired variants | Status |
+| --- | --- | --- | --- | --- |
+| `rice_bag` | Compact charcoal neoprene rice-training pouch with open cuff. | `exercise_rice_bag.png` | list, header | Approved exercise-only asset |
+
+## Hangboard exercise and routine artwork — 2026-09-13
+
+- Tool: OpenAI built-in image generation; managed image model identifier not exposed. Orchestrating model: `gpt-5.6-sol`.
+- Source: original generated equipment cutouts. The approved `docs/design/phase-6-polish/hangboard-artwork-option-a-approved.png` established the equipment-only direction; existing `exercise_dead_hang.png`, `exercise_grip_hold.png`, and `routine_grip_trainer.png` established catalog style. No pixels from those references, any purchased board, or third-party imagery were copied into the masters. The routine render used the generated exercise render as an identity reference. No logo, text, person, or watermark was requested.
+- Masters: `docs/artwork/masters/exercise_hangboard.png` and `docs/artwork/masters/routine_hangboard.png`, each 1254 × 1254 transparent RGBA, centered from separate built-in renders with preserved alpha. The built-in returned wide 1993 × 789 cutouts; the project masters place their complete silhouettes with transparent margin on square canvases.
+- Runtime: `exercise_hangboard_{list,header}.webp` and `routine_hangboard_{card,header,picker}.webp` in `app/src/main/res/drawable-nodpi/`, produced independently for each crop by the existing preparation scripts. Both contact sheets were refreshed for small-size visual review. Stable catalog ID: `hangboard` in each catalog; the seeded Forearm routine retains its `grip_trainer` routine art while adding one Hangboard Holds exercise.
+- Rights/provenance: generated specifically for DraftingRoom5 under the applicable OpenAI output terms; original generic composite-equipment subject, no branded product source or manufacturer-specific design.
+
+### Final exercise prompt
+
+> Use case: product-mockup. Asset type: transparent 1254x1254 Android exercise-artwork master for list thumbnail and editorial header crops. Create an original generic training hangboard as an isolated equipment-only tactile 3D product illustration, realistic but slightly softened to match a premium dark fitness-equipment artwork catalog. One compact horizontal symmetrical dark-charcoal composite hangboard, gently beveled outer corners, balanced rows of distinct recessed finger pockets/edges with clear depth, plausible generic geometry without copying a real manufacturer's shape. Nearly front-on subtle three-quarter depth, centered with generous true transparent margin on all sides, complete silhouette, large and legible at phone thumbnail size. Soft controlled studio light; restrained warm gold/amber rim on viewer-left and cool electric-blue/mint rim on viewer-right; deep navy shadow within recesses; crisp clean alpha edges. No people, hands, branding, logo, writing, numerals, labels, wood grain, mounting wall, floor, platform, environment, background, border, watermark, UI, or baked rectangular shadow. The background must be genuinely transparent, not a checkerboard or solid color.
+
+### Final routine prompt
+
+> Use case: product-mockup. Asset type: matching transparent Android routine-artwork master for cards, editor headers, and picker. Generate a new clean studio view of exactly the same original generic dark-charcoal composite hangboard shown in the reference image. Preserve its symmetrical horizontal finger-pocket structure and equipment-only identity, warm-left / cool-electric-blue-right rim lighting, dark tactile material, and true transparent cutout. Compose it slightly from above in shallow three-quarter perspective with substantial transparent margin so it reads at small card and picker sizes. No hands, person, manufacturer shape, logo, text, numerals, wood grain, environment, wall, platform, background, or watermark. The result must have genuine alpha and crisp complete silhouette.
+
 ## Dashboard hero — reviewed 2026-09-11
 
 - Runtime asset: `app/src/main/res/drawable-nodpi/dashboard_athlete_hero.png`, used only in the Dashboard training hero.

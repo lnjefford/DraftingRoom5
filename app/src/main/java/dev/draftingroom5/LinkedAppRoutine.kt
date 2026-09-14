@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -160,6 +161,7 @@ internal fun LinkedAppRoutineEditorScreen(
     var artworkId by rememberSaveable(routine.id, routine.revision) { mutableStateOf(original.artworkId) }
     var packageName by rememberSaveable(routine.id, routine.revision) { mutableStateOf(original.packageName) }
     var artworkPicker by rememberSaveable(routine.id) { mutableStateOf(false) }
+    var renaming by rememberSaveable(routine.id) { mutableStateOf(false) }
     var deleteRequested by rememberSaveable(routine.id) { mutableStateOf(false) }
     var discardRequested by rememberSaveable(routine.id) { mutableStateOf(false) }
     var overflowExpanded by remember { mutableStateOf(false) }
@@ -223,19 +225,7 @@ internal fun LinkedAppRoutineEditorScreen(
                     contentScale = ContentScale.Fit,
                 )
             }
-            OutlinedTextField(
-                value = name,
-                onValueChange = { if (it.length <= 200) name = it },
-                label = { Text("Routine name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = false,
-                supportingText = { if (name.isBlank()) Text("Enter a routine name") },
-            )
-            OutlinedButton(onClick = { artworkPicker = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Icon(Icons.Default.Edit, null)
-                Spacer(Modifier.size(8.dp))
-                Text("Change artwork")
-            }
+            RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
             AppSurfaceCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("APP CONNECTION", color = AppGold, style = MaterialTheme.typography.labelMedium)
@@ -246,8 +236,10 @@ internal fun LinkedAppRoutineEditorScreen(
                             Text(if (launchable) "Installed · Ready to open" else "App not installed", color = if (launchable) AppMint else AppGold)
                         }
                     }
-                    OutlinedButton(onClick = onChooseApp, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Change app") }
-                    OutlinedButton(
+                    RoutineEditorLink("Change app", Icons.Default.Apps, onChooseApp, description = "Change linked app")
+                    RoutineEditorLink(
+                        label = "Test app link",
+                        icon = Icons.AutoMirrored.Filled.OpenInNew,
                         onClick = {
                             val candidate = routine.withLinkedAppDraft(draft)
                             actionMessage = when (val result = candidate?.let(onTestLink)) {
@@ -256,14 +248,14 @@ internal fun LinkedAppRoutineEditorScreen(
                                 null -> "Enter a valid name and choose an app first."
                             }
                         },
+                        description = "Test linked app launch",
                         enabled = draft.isValid(),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    ) { Text("Test app link") }
+                    )
                 }
             }
             actionMessage?.let { Text(it, color = AppMint, style = MaterialTheme.typography.bodySmall) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }
+                TextButton(onClick = onBack, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }
                 Button(
                     enabled = draft.isValid() && changed,
                     onClick = { routine.withLinkedAppDraft(draft)?.let { if (onSave(it)) actionMessage = "Changes saved." } },
@@ -277,6 +269,11 @@ internal fun LinkedAppRoutineEditorScreen(
         selectedId = artworkId,
         onDismiss = { artworkPicker = false },
         onDone = { artworkId = it; artworkPicker = false },
+    )
+    if (renaming) RoutineNameDialog(
+        initial = name,
+        onDismiss = { renaming = false },
+        onSave = { name = it.trim(); renaming = false },
     )
     if (deleteRequested) AppConfirmationDialog(
         title = "Delete ${routine.name}?",
@@ -302,20 +299,25 @@ internal fun RoutineArtworkPickerSheet(
     onDone: (String) -> Unit,
 ) {
     var pending by rememberSaveable(selectedId) { mutableStateOf(selectedId) }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = AppSurface) {
-        Column(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 28.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("Choose artwork", style = MaterialTheme.typography.headlineSmall)
-            Text("Designed to stay consistent across session cards.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    PersistentSelectionSheet(
+        title = "Choose artwork",
+        description = "Designed to stay consistent across session cards.",
+        onDismiss = onDismiss,
+        onSave = { onDone(pending) },
+    ) {
+        RoutineArtworkSelection(pending) { pending = it }
+    }
+}
+
+@Composable
+internal fun RoutineArtworkSelection(pending: String, onSelect: (String) -> Unit) {
             RoutineArtworkCatalog.entries.chunked(2).forEach { rowAssets ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     rowAssets.forEach { asset ->
                         val isSelected = asset.storageId == pending
                         val assetName = stringResource(asset.displayNameRes)
                         Card(
-                            onClick = { pending = asset.storageId },
+                            onClick = { onSelect(asset.storageId) },
                             modifier = Modifier.weight(1f).heightIn(min = 132.dp).semantics {
                                 selected = isSelected
                                 contentDescription = "$assetName, ${if (isSelected) "Selected" else "Not selected"}"
@@ -336,12 +338,6 @@ internal fun RoutineArtworkPickerSheet(
                     if (rowAssets.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
-                Button(onClick = { onDone(pending) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Done") }
-            }
-        }
-    }
 }
 
 @Composable

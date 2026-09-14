@@ -55,5 +55,29 @@ def build() -> None:
     sheet.save(Path(__file__).resolve().parent / "RoutineArtworkContactSheet.png", optimize=True)
 
 
+def validate_outputs() -> None:
+    sources = sorted(MASTERS.glob("routine_*.png"))
+    if len(sources) != 12:
+        raise ValueError(f"expected 12 routine masters, found {len(sources)}")
+    for source in sources:
+        with Image.open(source) as master:
+            if master.size[0] != master.size[1] or "A" not in master.getbands():
+                raise ValueError(f"{source.name} must be a square RGBA master")
+            if source.stem == "routine_hangboard" and master.size != (1254, 1254):
+                raise ValueError("routine_hangboard.png must be 1254px square")
+        for variant, (expected_size, _, _) in CROPS.items():
+            destination = OUTPUT / f"{source.stem}_{variant}.webp"
+            with Image.open(destination).convert("RGBA") as image:
+                if image.size != expected_size:
+                    raise ValueError(f"{destination.name} has unexpected dimensions {image.size}")
+                bounds = image.getchannel("A").getbbox()
+                if bounds is None or bounds[0] <= 0 or bounds[1] <= 0 or bounds[2] >= image.width or bounds[3] >= image.height:
+                    raise ValueError(f"{destination.name} has empty or clipped artwork: {bounds}")
+                if variant == "header" and bounds[0] < image.width // 2:
+                    raise ValueError(f"{destination.name} does not preserve left-side text space: {bounds}")
+    print(f"Validated {len(sources)} masters and {len(sources) * len(CROPS)} routine WebP assets")
+
+
 if __name__ == "__main__":
     build()
+    validate_outputs()

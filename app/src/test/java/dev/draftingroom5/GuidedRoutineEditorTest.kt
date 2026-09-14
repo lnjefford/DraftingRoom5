@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.DayOfWeek
 
 class GuidedRoutineEditorTest {
     private val guided = defaultTrainingPlan().routines.first { it.execution == RoutineExecution.GUIDED }
@@ -36,6 +37,22 @@ class GuidedRoutineEditorTest {
         val asset = ExerciseArtworkCatalog.resolve(saved?.artworkId)
         assertTrue(asset.resource(ExerciseArtworkCrop.LIST) != 0)
         assertTrue(asset.resource(ExerciseArtworkCrop.HEADER) != 0)
+    }
+
+    @Test
+    fun riceBagArtworkSelectionPreservesExercisePrescriptionAndNotes() {
+        val original = ExerciseDraft(
+            id = "rice-grip", name = "Rice bag grip work", notes = "Own pace",
+            sets = "4", target = "45 sec", timed = true, timerSeconds = "45",
+        ).savedExercise()!!
+        val selected = original.exerciseDraft().copy(artworkId = "rice_bag").savedExercise()!!
+        assertEquals("rice_bag", selected.artworkId)
+        assertEquals(original.copy(artworkId = "rice_bag"), selected)
+        val edited = selected.exerciseDraft().copy(notes = "Keep wrist neutral").savedExercise()!!
+        assertEquals("rice_bag", edited.artworkId)
+        assertEquals(4, edited.setCount)
+        assertEquals("45 sec", edited.target)
+        assertEquals(45, edited.timerSeconds)
     }
 
     @Test
@@ -98,6 +115,28 @@ class GuidedRoutineEditorTest {
         val result = repository.replacePlan(initial.generation, initial.plan.copy(routines = initial.plan.routines + complete))
         assertTrue(result is RepositoryResult.Success)
         assertEquals(complete, repository.currentOrDefaults().plan.routines.last())
+    }
+
+    @Test
+    fun userCreatedHangboardingRoutineKeepsItsOwnArtworkAndRecurrenceThroughStorage() {
+        val storage = MemoryDocumentStorage()
+        val repository = AppRepository(storage)
+        val initial = (repository.load() as LoadState.Ready).value
+        val exercise = ExerciseDraft("hangboard-only", "Hangboard Holds", "Controlled edge hold", "3", "20 sec", true, "20", "hangboard").savedExercise()!!
+        val newRoutine = Routine("routine-hangboard", 1, "Hangboard session", "hangboard", RoutineExecution.GUIDED, listOf(exercise), null)
+        assertTrue(newRoutine.isSaveableGuidedRoutine())
+        val recurrence = ScheduleEntry("schedule-hangboard", newRoutine.id, setOf(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY))
+        val plan = initial.plan.copy(routines = initial.plan.routines + newRoutine, schedule = initial.plan.schedule + recurrence)
+
+        assertTrue(repository.replacePlan(initial.generation, plan) is RepositoryResult.Success)
+        val restored = (AppRepository(storage).load() as LoadState.Ready).value.plan
+        assertEquals("hangboard", restored.routineFor(recurrence).artworkId)
+        assertEquals("hangboard", restored.routineFor(recurrence).exercises.single().artworkId)
+        assertEquals(setOf(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY), restored.schedule.single { it.id == recurrence.id }.days)
+        assertEquals(initial.plan.schedule, restored.schedule.filter { it.id != recurrence.id })
+        val backup = decodeBackupSnapshot(encodeBackupSnapshot(BackupSnapshot(1234, AppDocument(plan = restored))))
+        assertEquals(newRoutine, backup.document.plan.routines.single { it.id == newRoutine.id })
+        assertEquals(recurrence, backup.document.plan.schedule.single { it.id == recurrence.id })
     }
 }
 

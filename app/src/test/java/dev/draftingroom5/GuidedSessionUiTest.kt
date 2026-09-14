@@ -7,12 +7,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GuidedSessionUiTest {
+    @Test fun longestSupportedTimerKeepsEveryDigitWithoutChangingTheDuration() {
+        val base = fixture()
+        val longest = base.copy(snapshot = base.snapshot.copy(exercises = base.snapshot.exercises.map {
+            it.copy(timerSeconds = Int.MAX_VALUE)
+        }))
+        assertEquals("35791394:07", guidedSessionPresentation(longest, 100_000).timer!!.display)
+        assertEquals("Start timer", guidedSessionPresentation(longest, 100_000).timer!!.primaryLabel)
+    }
     @Test fun progressCountsEverySetWithoutIntegerOverflowAndCompletedFocusCannotStartTimer() {
         val base = fixture()
         val partial = base.copy(completedSets = mapOf("A" to 1, "B" to 0, "C" to 0))
         assertEquals(0.25f, guidedSessionPresentation(partial, 100_000).setProgress)
         val full = base.copy(completedSets = mapOf("A" to 2, "B" to 0, "C" to 0))
-        assertEquals(null, guidedSessionPresentation(full, 100_000).timer!!.primaryLabel)
+        assertEquals(null, guidedSessionPresentation(full, 100_000).timer)
         val large = base.copy(
             snapshot = base.snapshot.copy(exercises = base.snapshot.exercises.map { it.copy(setCount = Int.MAX_VALUE) }),
             completedSets = base.completedSets.mapValues { Int.MAX_VALUE },
@@ -41,6 +49,22 @@ class GuidedSessionUiTest {
         assertEquals(changed.session.id, reopened.session.id)
         assertEquals(1, reopened.session.completedSets.getValue(firstExercise.id))
         assertEquals(changed.session.focusedExerciseId, reopened.session.focusedExerciseId)
+
+        var progressed = reopened.session
+        for (setNumber in 2..firstExercise.setCount) {
+            progressed = (repository.applySessionEvent(
+                lease, progressed.id, progressed.eventRevision, SessionEvent.CompleteSet(firstExercise.id, setNumber),
+            ) as SessionRepositoryResult.Partial).session
+        }
+        val recreatedRepository = AppRepository(storage) { SessionClockSample(100_000, 200_000, 7) }
+        recreatedRepository.load()
+        val recreated = recreatedRepository.openGuidedSession(
+            checkNotNull(recreatedRepository.sessionLease()), occurrence, routine.id, routine.revision, "ignored",
+        ) as SessionRepositoryResult.Partial
+        val sections = guidedSessionPresentation(recreated.session, 100_000)
+        assertEquals(firstExercise.setCount, recreated.session.completedSets.getValue(firstExercise.id))
+        assertEquals(listOf(firstExercise.id), sections.completed.map(Exercise::id))
+        assertFalse(sections.upcoming.any { it.id == firstExercise.id })
     }
 
     @Test fun timerPresentationKeepsReadinessDistinctAndGatesSetCompletion() {
@@ -83,6 +107,31 @@ class GuidedSessionUiTest {
         assertEquals(null, guidedSessionPresentation(untimed, 100_000).timer)
     }
 
+    @Test fun everyTimerPhaseExposesOnlyItsRelevantControlsWithoutChangingSetEligibility() {
+        val base = fixture().copy(completedSets = mapOf("A" to 1, "B" to 0, "C" to 0))
+        val idle = guidedSessionPresentation(base, 100_000).timer!!
+        assertEquals("Start timer", idle.primaryLabel)
+        assertEquals(null, idle.cancelLabel)
+        assertTrue(idle.completeSetEnabled)
+
+        val timed = timer(base, TimerPhase.READY, 110_000, 130_000, 0)
+        val ready = guidedSessionPresentation(base.copy(timer = timed), 100_000).timer!!
+        assertEquals(null, ready.primaryLabel)
+        assertEquals("Cancel countdown", ready.cancelLabel)
+        assertFalse(ready.completeSetEnabled)
+
+        val running = guidedSessionPresentation(base.copy(timer = timed.copy(phase = TimerPhase.RUNNING)), 110_000).timer!!
+        assertEquals(null, running.primaryLabel)
+        assertEquals("Cancel timer", running.cancelLabel)
+        assertTrue(running.completeSetEnabled)
+
+        val finished = guidedSessionPresentation(base.copy(timer = timed.copy(phase = TimerPhase.FINISHED)), 130_000).timer!!
+        assertEquals("Restart timer", finished.primaryLabel)
+        assertEquals(null, finished.cancelLabel)
+        assertTrue(finished.completeSetEnabled)
+        assertEquals("00:00", finished.display)
+    }
+
     @Test fun presentationReportsFocusProgressAndKeepsEveryOtherExerciseReachable() {
         val session = fixture().copy(
             focusedExerciseId = "B",
@@ -92,11 +141,38 @@ class GuidedSessionUiTest {
         assertEquals("B", state.focused.id)
         assertEquals(1, state.focusedIndex)
         assertEquals(2, state.completedExercises)
-        assertEquals(listOf("A", "C"), state.upcoming.map(Exercise::id))
+        assertTrue(state.upcoming.isEmpty())
+        assertEquals(listOf("A", "C"), state.completed.map(Exercise::id))
         assertFalse(state.readyToFinish)
 
         val complete = session.copy(completedSets = mapOf("A" to 2, "B" to 1, "C" to 1))
         assertTrue(guidedSessionPresentation(complete, 100_000).readyToFinish)
+    }
+
+    @Test fun exerciseSectionsFollowCommittedCompletionAndUndoWithoutChangingOtherProgress() {
+        val clock = SessionClockSample(100_000, 200_000, 7)
+        val base = fixture().copy(focusedExerciseId = "B", completedSets = mapOf("A" to 1, "B" to 0, "C" to 0))
+        val initial = guidedSessionPresentation(base, clock.elapsedMillis)
+        assertEquals(listOf("A", "C"), initial.upcoming.map(Exercise::id))
+        assertTrue(initial.completed.isEmpty())
+
+        val focusedA = (reduceGuidedSession(base, SessionEvent.Focus("A"), clock) as SessionReduction.Changed).session
+        val afterCompletion = (reduceGuidedSession(focusedA, SessionEvent.CompleteSet("A", 2), clock) as SessionReduction.Changed).session
+        val completed = guidedSessionPresentation(afterCompletion, clock.elapsedMillis)
+        assertEquals("B", completed.focused.id)
+        assertEquals(listOf("C"), completed.upcoming.map(Exercise::id))
+        assertEquals(listOf("A"), completed.completed.map(Exercise::id))
+        assertEquals(2, afterCompletion.completedSets.getValue("A"))
+        assertEquals(0, afterCompletion.completedSets.getValue("B"))
+
+        val reviewed = (reduceGuidedSession(afterCompletion, SessionEvent.Focus("A"), clock) as SessionReduction.Changed).session
+        assertEquals(listOf("B", "C"), guidedSessionPresentation(reviewed, clock.elapsedMillis).upcoming.map(Exercise::id))
+        assertTrue(guidedSessionPresentation(reviewed, clock.elapsedMillis).completed.isEmpty())
+        val undone = (reduceGuidedSession(reviewed, SessionEvent.UndoLastSet("A", 2), clock) as SessionReduction.Changed).session
+        val corrected = (reduceGuidedSession(undone, SessionEvent.Focus("B"), clock) as SessionReduction.Changed).session
+        assertEquals(listOf("A", "C"), guidedSessionPresentation(corrected, clock.elapsedMillis).upcoming.map(Exercise::id))
+        assertTrue(guidedSessionPresentation(corrected, clock.elapsedMillis).completed.isEmpty())
+        assertEquals(mapOf("A" to 1, "B" to 0, "C" to 0), corrected.completedSets)
     }
 
     @Test fun feedbackControllerRequiresCurrentOwnerAndConsumesEachCueOnce() {

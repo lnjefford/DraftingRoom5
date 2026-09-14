@@ -38,6 +38,7 @@ internal fun defaultTrainingPlan(): TrainingPlan {
         id = "routine-forearm", revision = 1, name = "Forearm & Grip Conditioning",
         artworkId = "grip_trainer", execution = RoutineExecution.GUIDED, appLink = null,
         exercises = listOf(
+            Exercise("exercise-hangboard", "Hangboard Holds", "Controlled edge hold", 3, "20 sec", 20, "hangboard"),
             Exercise("exercise-dead-hang", "Thick-Bar Dead Hangs", "Pull-up bar + thick adapter", 3, "20 sec", 20, "dead_hang"),
             Exercise("exercise-farmers-walk", "Dumbbell Farmer's Walks", "Start 15-20 lb/hand", 3, "30 sec", 30, "farmers_walk"),
             Exercise("exercise-grip-hold", "Grip Holds", "Pinch & crush", 4, "20 sec", 20, "grip_hold"),
@@ -101,6 +102,40 @@ internal fun TrainingPlan.moveScheduleOnDay(day: DayOfWeek, entryId: String, off
     val result = schedule.toMutableList()
     occupied.forEachIndexed { index, slot -> result[slot] = checkNotNull(byId[movedIds[index]]) }
     return copy(schedule = result)
+}
+
+/** Keeps pointer previews local until a drop produces one repository write. */
+internal class ScheduleDragSession(
+    private val origin: TrainingPlan,
+    private val day: DayOfWeek,
+    val entryId: String,
+) {
+    var preview: TrainingPlan = origin
+        private set
+    private var finished = false
+    private var settled: TrainingPlan = origin
+
+    fun move(offset: Int): Boolean {
+        if (finished) return false
+        val moved = preview.moveScheduleOnDay(day, entryId, offset)
+        if (moved == preview) return false
+        preview = moved
+        return true
+    }
+
+    fun cancel(): TrainingPlan {
+        if (finished) return settled
+        finished = true
+        settled = origin
+        return settled
+    }
+
+    fun drop(persist: (TrainingPlan) -> Boolean): TrainingPlan {
+        if (finished) return settled
+        finished = true
+        settled = if (preview == origin || persist(preview)) preview else origin
+        return settled
+    }
 }
 
 internal fun TrainingPlan.removeScheduleEntry(id: String): TrainingPlan =

@@ -27,6 +27,7 @@ internal object RoutineArtworkCatalog {
         asset(FALLBACK_ID, R.string.routine_artwork_generic, R.drawable.routine_generic_card, R.drawable.routine_generic_header, R.drawable.routine_generic_picker),
         asset("dumbbell", R.string.routine_artwork_dumbbell, R.drawable.routine_dumbbell_card, R.drawable.routine_dumbbell_header, R.drawable.routine_dumbbell_picker),
         asset("grip_trainer", R.string.routine_artwork_grip_trainer, R.drawable.routine_grip_trainer_card, R.drawable.routine_grip_trainer_header, R.drawable.routine_grip_trainer_picker),
+        asset("hangboard", R.string.routine_artwork_hangboard, R.drawable.routine_hangboard_card, R.drawable.routine_hangboard_header, R.drawable.routine_hangboard_picker),
         asset("running_shoe", R.string.routine_artwork_running_shoe, R.drawable.routine_running_shoe_card, R.drawable.routine_running_shoe_header, R.drawable.routine_running_shoe_picker),
         asset("kettlebell", R.string.routine_artwork_kettlebell, R.drawable.routine_kettlebell_card, R.drawable.routine_kettlebell_header, R.drawable.routine_kettlebell_picker),
         asset("leg_day", R.string.routine_artwork_leg_day, R.drawable.routine_leg_day_card, R.drawable.routine_leg_day_header, R.drawable.routine_leg_day_picker),

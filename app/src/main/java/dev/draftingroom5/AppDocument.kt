@@ -36,6 +36,7 @@ internal data class GuidedSession(
     val startedAtMillis: Long,
     val updatedAtMillis: Long,
     val eventRevision: Long,
+    val effectiveDate: java.time.LocalDate = occurrence.scheduledDate,
 )
 
 internal data class AppDocument(
@@ -45,6 +46,7 @@ internal data class AppDocument(
     val preferences: AppPreferences = AppPreferences(),
     val partialSessions: List<GuidedSession> = emptyList(),
     val history: List<WorkoutHistoryEntry> = emptyList(),
+    val occurrenceExceptions: List<OccurrenceException> = emptyList(),
 )
 
 internal fun defaultAppDocument() = AppDocument()
@@ -76,6 +78,7 @@ internal fun validateAppDocument(document: AppDocument) {
     require(partialOccurrences.intersect(historyOccurrences.toSet()).isEmpty()) { "An occurrence cannot be partial and complete." }
     document.partialSessions.forEach { validateSession(it, document.plan) }
     document.history.forEach(::validateHistory)
+    validateOccurrenceExceptions(document)
 }
 
 private fun validateRoutine(routine: Routine) {
@@ -160,7 +163,7 @@ private fun validateHistory(entry: WorkoutHistoryEntry) {
     validateId(entry.id)
     validateId(entry.occurrence.scheduleEntryId)
     validateRoutine(entry.snapshot)
-    require(entry.snapshot.execution == RoutineExecution.GUIDED) { "History snapshot must be guided." }
+    // Linked-app history records the accepted external launch; guided history records a finished session.
     require(entry.startedAtMillis >= 0 && entry.completedAtMillis >= entry.startedAtMillis) { "History timestamps are invalid." }
 }
 

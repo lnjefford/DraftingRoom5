@@ -14,6 +14,13 @@ internal fun encodeAppDocument(document: AppDocument): String {
         put("preferences", encodePreferences(document.preferences))
         put("partialSessions", JSONArray().apply { document.partialSessions.forEach { put(encodeSession(it)) } })
         put("history", JSONArray().apply { document.history.forEach { put(encodeHistory(it)) } })
+        put("occurrenceExceptions", JSONArray().apply { document.occurrenceExceptions.forEach { exception ->
+            put(JSONObject().apply {
+                put("occurrence", encodeOccurrence(exception.occurrence))
+                put("disposition", exception.disposition.name)
+                put("effectiveDate", exception.effectiveDate?.toString() ?: JSONObject.NULL)
+            })
+        } })
     }.toString()
     require(value.toByteArray(Charsets.UTF_8).size <= MAX_DOCUMENT_BYTES) { "Document exceeds the 16 MiB limit." }
     return value
@@ -22,7 +29,7 @@ internal fun encodeAppDocument(document: AppDocument): String {
 internal fun decodeAppDocument(value: String): AppDocument = try {
     require(value.toByteArray(Charsets.UTF_8).size <= MAX_DOCUMENT_BYTES) { "Document exceeds the 16 MiB limit." }
     inspectJsonStructure(value)
-    val root = JSONObject(value).exact("format", "generation", "plan", "preferences", "partialSessions", "history")
+    val root = JSONObject(value).exact("format", "generation", "plan", "preferences", "partialSessions", "history", "occurrenceExceptions")
     val document = AppDocument(
         format = root.strictString("format"),
         generation = root.strictLong("generation"),
@@ -30,6 +37,12 @@ internal fun decodeAppDocument(value: String): AppDocument = try {
         preferences = decodePreferences(root.strictObject("preferences")),
         partialSessions = root.strictArray("partialSessions").objects(::decodeSession),
         history = root.strictArray("history").objects(::decodeHistory),
+        occurrenceExceptions = root.strictArray("occurrenceExceptions").objects {
+            it.exact("occurrence", "disposition", "effectiveDate")
+            OccurrenceException(decodeOccurrence(it.strictObject("occurrence")),
+                OccurrenceDisposition.valueOf(it.strictString("disposition")),
+                it.nullableString("effectiveDate")?.let(LocalDate::parse))
+        },
     )
     val normalized = document.copy(
         preferences = document.preferences.copy(
@@ -151,16 +164,18 @@ private fun encodeSession(value: GuidedSession) = JSONObject().apply {
     put("completedSets", JSONObject().apply { value.completedSets.forEach { (id, count) -> put(id, count) } })
     put("timer", encodeTimer(value.timer)); put("startedAtMillis", value.startedAtMillis); put("updatedAtMillis", value.updatedAtMillis)
     put("eventRevision", value.eventRevision)
+    put("effectiveDate", value.effectiveDate.toString())
 }
 
 private fun decodeSession(value: JSONObject): GuidedSession {
-    value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision")
+    value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision", "effectiveDate")
     val sets = value.strictObject("completedSets")
     return GuidedSession(
         value.strictString("id"), decodeOccurrence(value.strictObject("occurrence")), value.strictString("routineId"),
         decodeRoutine(value.strictObject("snapshot")), value.strictString("focusedExerciseId"),
         sets.keys().asSequence().associateWith { sets.strictInt(it) }, decodeTimer(value.strictObject("timer")),
         value.strictLong("startedAtMillis"), value.strictLong("updatedAtMillis"), value.strictLong("eventRevision"),
+        LocalDate.parse(value.strictString("effectiveDate")),
     )
 }
 
@@ -188,12 +203,14 @@ private fun decodeTimer(value: JSONObject): SessionTimer {
 private fun encodeHistory(value: WorkoutHistoryEntry) = JSONObject().apply {
     put("id", value.id); put("occurrence", encodeOccurrence(value.occurrence)); put("snapshot", encodeRoutine(value.snapshot))
     put("startedAtMillis", value.startedAtMillis); put("completedAtMillis", value.completedAtMillis)
+    put("effectiveDate", value.effectiveDate.toString())
 }
 
 private fun decodeHistory(value: JSONObject): WorkoutHistoryEntry {
-    value.exact("id", "occurrence", "snapshot", "startedAtMillis", "completedAtMillis")
+    value.exact("id", "occurrence", "snapshot", "startedAtMillis", "completedAtMillis", "effectiveDate")
     return WorkoutHistoryEntry(value.strictString("id"), decodeOccurrence(value.strictObject("occurrence")),
-        decodeRoutine(value.strictObject("snapshot")), value.strictLong("startedAtMillis"), value.strictLong("completedAtMillis"))
+        decodeRoutine(value.strictObject("snapshot")), value.strictLong("startedAtMillis"), value.strictLong("completedAtMillis"),
+        LocalDate.parse(value.strictString("effectiveDate")))
 }
 
 private fun JSONObject.exact(vararg expected: String): JSONObject {

@@ -12,16 +12,23 @@ internal data class DashboardSession(
     val completedExerciseCount: Int = 0,
     val totalExerciseCount: Int = routine.exercises.size,
     val savedOriginDate: LocalDate? = null,
+    val occurrence: OccurrenceKey,
+    val effectiveDate: LocalDate,
 ) {
     val actionLabel: String
         get() = when (action) {
-            SessionAction.START -> "Start"
+            SessionAction.START -> if (routine.execution == RoutineExecution.LINKED_APP) "Open & complete" else "Start"
             SessionAction.RESUME -> "Resume"
             SessionAction.DONE -> "Done"
         }
 
     val accessibilityAction: String
         get() = "$actionLabel ${routine.name}"
+
+    val undoCompletionAction: String?
+        get() = if (action == SessionAction.DONE && routine.execution == RoutineExecution.LINKED_APP) {
+            "Undo completion for ${routine.name}"
+        } else null
 
     val progressLabel: String?
         get() = if (action == SessionAction.RESUME) {
@@ -34,13 +41,23 @@ internal fun dashboardSessions(
     partialSessions: List<GuidedSession>,
     history: List<WorkoutHistoryEntry>,
     date: LocalDate,
+    occurrenceExceptions: List<OccurrenceException> = emptyList(),
 ): List<DashboardSession> {
     val partialByOccurrence = partialSessions.associateBy { it.occurrence }
     val completedByOccurrence = history.associateBy { it.occurrence }
-    return plan.forDay(date.dayOfWeek).map { entry ->
-        val liveRoutine = plan.routineFor(entry)
-        val occurrence = OccurrenceKey(entry.id, date)
+    val exceptionsByOccurrence = occurrenceExceptions.associateBy { it.occurrence }
+    val occurrences = plan.forDay(date.dayOfWeek).map { OccurrenceKey(it.id, date) }
+        .filter { it !in exceptionsByOccurrence } + occurrenceExceptions
+        .filter { it.disposition == OccurrenceDisposition.DEFERRED && it.effectiveDate == date }
+        .sortedWith(compareBy({ it.occurrence.scheduledDate }, { it.occurrence.scheduleEntryId }))
+        .map { it.occurrence }
+    return occurrences.mapNotNull { occurrence ->
         val partial = partialByOccurrence[occurrence]
+        val completed = completedByOccurrence[occurrence]
+        val entry = plan.schedule.firstOrNull { it.id == occurrence.scheduleEntryId }
+            ?: completed?.let { ScheduleEntry(occurrence.scheduleEntryId, it.snapshot.id, setOf(date.dayOfWeek)) }
+            ?: return@mapNotNull null // Orphaned partials remain reachable in Saved sessions.
+        val liveRoutine = completed?.snapshot ?: partial?.snapshot ?: plan.routineFor(entry)
         val action = when {
             occurrence in completedByOccurrence -> SessionAction.DONE
             partial != null -> SessionAction.RESUME
@@ -54,17 +71,23 @@ internal fun dashboardSessions(
                 partial.completedSets.getValue(exercise.id) == exercise.setCount
             } ?: 0,
             totalExerciseCount = partial?.snapshot?.exercises?.size ?: liveRoutine.exercises.size,
+            occurrence = occurrence,
+            effectiveDate = date,
         )
     }
 }
+
+internal fun dashboardSessions(document: AppDocument, date: LocalDate): List<DashboardSession> =
+    dashboardSessions(document.plan, document.partialSessions, document.history, date, document.occurrenceExceptions)
 
 internal fun savedDashboardSessions(
     plan: TrainingPlan,
     partialSessions: List<GuidedSession>,
     selectedDate: LocalDate,
+    occurrenceExceptions: List<OccurrenceException> = emptyList(),
 ): List<DashboardSession> {
-    val representedOccurrences = plan.forDay(selectedDate.dayOfWeek)
-        .mapTo(hashSetOf()) { OccurrenceKey(it.id, selectedDate) }
+    val representedOccurrences = dashboardSessions(plan, partialSessions, emptyList(), selectedDate, occurrenceExceptions)
+        .mapTo(hashSetOf()) { it.occurrence }
     val liveRoutineIds = plan.routines.mapTo(hashSetOf()) { it.id }
     return partialSessions
         .asSequence()
@@ -84,6 +107,8 @@ internal fun savedDashboardSessions(
                 },
                 totalExerciseCount = partial.snapshot.exercises.size,
                 savedOriginDate = partial.occurrence.scheduledDate,
+                occurrence = partial.occurrence,
+                effectiveDate = partial.effectiveDate,
             )
         }
         .toList()

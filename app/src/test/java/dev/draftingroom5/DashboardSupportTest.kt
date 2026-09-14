@@ -49,12 +49,12 @@ class DashboardSupportTest {
         val session = dashboardSessions(plan, listOf(partial), emptyList(), saturday).single()
 
         assertEquals(SessionAction.RESUME, session.action)
-        assertEquals("1 of 7 exercises complete", session.progressLabel)
+        assertEquals("1 of 8 exercises complete", session.progressLabel)
         assertEquals("Resume Forearm & Grip Conditioning", session.accessibilityAction)
         val editedPlan = plan.copy(routines = plan.routines.map {
             if (it.id == routine.id) it.copy(exercises = it.exercises.take(2), revision = it.revision + 1) else it
         })
-        assertEquals("1 of 7 exercises complete", dashboardSessions(editedPlan, listOf(partial), emptyList(), saturday).single().progressLabel)
+        assertEquals("1 of 8 exercises complete", dashboardSessions(editedPlan, listOf(partial), emptyList(), saturday).single().progressLabel)
     }
 
     @Test

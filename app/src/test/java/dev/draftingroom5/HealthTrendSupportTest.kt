@@ -84,6 +84,48 @@ class HealthTrendSupportTest {
         assertEquals(HealthTrendDirection.NEUTRAL, healthTrendDirection(listOf(HealthTrendPoint(dates.first(), null))))
     }
 
+    @Test fun dashboardWindowIsAlwaysTheLatestThirtyCalendarDays() {
+        val today = LocalDate.of(2026, 9, 12)
+        HealthDateRange.entries.forEach { storedDetailRange ->
+            val dashboard = dashboardHealthWindow(today)
+            val detail = metricDetailHealthWindow(storedDetailRange)
+
+            assertEquals(HealthDateRange.MONTH, dashboard.range)
+            assertEquals(today, dashboard.fixedEndDate)
+            assertEquals(today.minusDays(29), dashboard.startDate(null, today.minusYears(2), utc))
+            assertEquals(storedDetailRange, detail.range)
+            assertNull(detail.fixedEndDate)
+        }
+    }
+
+    @Test fun dashboardTrendExcludesOlderAndFutureHistoryButPreservesGaps() {
+        val today = LocalDate.of(2026, 9, 12)
+        val points = (0L..31L).map { offset ->
+            HealthTrendPoint(today.minusDays(offset), if (offset == 4L) null else offset.toDouble())
+        } + HealthTrendPoint(today.plusDays(1), 99.0)
+
+        val visible = dashboardHealthTrend(points, today)
+
+        assertEquals(30, visible.size)
+        assertEquals(today.minusDays(29), visible.first().date)
+        assertEquals(today, visible.last().date)
+        assertNull(visible.single { it.date == today.minusDays(4) }.value)
+    }
+
+    @Test fun dashboardWindowChangesAtCivilMidnightWhileDetailRangeStaysIndependent() {
+        val date = LocalDate.of(2026, 12, 31)
+        val before = dashboardHealthWindow(date)
+        val after = dashboardHealthWindow(date.plusDays(1))
+        org.junit.Assert.assertNotEquals(before, after)
+        assertEquals(LocalDate.of(2027, 1, 1), after.endDate(null, date, utc))
+        assertEquals(date.minusDays(28), after.startDate(null, date, utc))
+        val reading = Instant.parse("2026-12-15T12:00:00Z")
+        HealthDateRange.entries.forEach { range ->
+            val detail = metricDetailHealthWindow(range)
+            assertEquals(detail.startDate(reading, date, utc), detail.startDate(reading, date.plusDays(1), utc))
+        }
+    }
+
     @Test fun summaryReportsHighAverageLowAndEndpoints() {
         val points = listOf(
             HealthTrendPoint(LocalDate.of(2026, 9, 1), 10.0),

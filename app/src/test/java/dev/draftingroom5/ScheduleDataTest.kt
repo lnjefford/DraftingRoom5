@@ -17,6 +17,9 @@ class ScheduleDataTest {
         assertEquals("Forearm & Grip Conditioning", plan.routineFor(plan.forDay(DayOfWeek.SATURDAY).single()).name)
         assertTrue(plan.forDay(DayOfWeek.SUNDAY).isEmpty())
         assertEquals(3, plan.routines.single { it.id == "routine-forearm" }.exercises.single { it.id == "exercise-finger-extension" }.setCount)
+        val forearm = plan.routines.single { it.id == "routine-forearm" }
+        assertEquals(8, forearm.exercises.size)
+        assertEquals(Exercise("exercise-hangboard", "Hangboard Holds", "Controlled edge hold", 3, "20 sec", 20, "hangboard"), forearm.exercises.first())
     }
 
     @Test fun removingRoutineCascadesOnlyItsLiveScheduleReferences() {
@@ -72,6 +75,59 @@ class ScheduleDataTest {
         assertEquals("entry-4", plan.moveScheduleOnDay(DayOfWeek.MONDAY, "entry-4", 1).schedule.last().id)
         assertEquals(listOf("entry-2", "entry-1", "entry-3", "entry-4"), plan.moveScheduleOnDay(DayOfWeek.MONDAY, "entry-2", -1).schedule.map { it.id })
         assertEquals(listOf("entry-1", "entry-3", "entry-2", "entry-4"), plan.moveScheduleOnDay(DayOfWeek.MONDAY, "entry-2", 1).schedule.map { it.id })
+    }
+
+    @Test fun dragPreviewsMultipleBoundariesAndWritesOnlyOnceOnDrop() {
+        val routine = defaultTrainingPlan().routines.first()
+        val original = TrainingPlan(listOf(routine), (1..4).map {
+            ScheduleEntry("entry-$it", routine.id, setOf(DayOfWeek.MONDAY))
+        })
+        val drag = ScheduleDragSession(original, DayOfWeek.MONDAY, "entry-1")
+        var writes = 0
+
+        assertTrue(drag.move(1))
+        assertTrue(drag.move(1))
+        assertTrue(drag.move(1))
+        assertFalse(drag.move(1))
+        assertEquals(listOf("entry-2", "entry-3", "entry-4", "entry-1"), drag.preview.schedule.map { it.id })
+        assertEquals(listOf("entry-1", "entry-2", "entry-3", "entry-4"), original.schedule.map { it.id })
+
+        val committed = drag.drop { writes++; true }
+        assertEquals(1, writes)
+        assertEquals(drag.preview, committed)
+        assertEquals(committed, drag.drop { writes++; true })
+        assertEquals(committed, drag.cancel())
+        assertEquals(1, writes)
+    }
+
+    @Test fun canceledAndFailedDragsRestoreTheOriginalOrder() {
+        val original = defaultTrainingPlan()
+        val canceled = ScheduleDragSession(original, DayOfWeek.MONDAY, "schedule-strength")
+        assertTrue(canceled.move(1))
+        assertEquals(original, canceled.cancel())
+        assertEquals(original, canceled.drop { error("Canceled drag must not persist") })
+
+        val failed = ScheduleDragSession(original, DayOfWeek.MONDAY, "schedule-strength")
+        assertTrue(failed.move(1))
+        var writes = 0
+        assertEquals(original, failed.drop { writes++; false })
+        assertEquals(1, writes)
+        assertEquals(original, failed.drop { writes++; true })
+        assertEquals(1, writes)
+    }
+
+    @Test fun droppedDragOrderSurvivesRepositoryRecreation() {
+        val storage = ScheduleDocumentStorage()
+        val repository = AppRepository(storage)
+        val initial = (repository.load() as LoadState.Ready).value
+        val drag = ScheduleDragSession(initial.plan, DayOfWeek.MONDAY, "schedule-strength")
+        assertTrue(drag.move(1))
+        val committed = drag.drop {
+            repository.replacePlan(initial.generation, it) is RepositoryResult.Success
+        }
+        val recreated = (AppRepository(storage).load() as LoadState.Ready).value.plan
+        assertEquals(committed, recreated)
+        assertEquals(listOf("schedule-running", "schedule-strength"), recreated.forDay(DayOfWeek.MONDAY).map { it.id })
     }
 
     @Test fun scheduleReorderDeleteAndDaysPersistThroughCurrentStore() {

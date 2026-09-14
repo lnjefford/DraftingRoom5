@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -334,6 +335,7 @@ internal fun NewRoutineDraftScreen(
     var name by rememberSaveable(draft.id) { mutableStateOf(draft.appLabel?.let { "$it routine" }.orEmpty()) }
     var artworkId by rememberSaveable(draft.id) { mutableStateOf(RoutineArtworkCatalog.FALLBACK_ID) }
     var artworkPicker by rememberSaveable(draft.id) { mutableStateOf(false) }
+    var renaming by rememberSaveable(draft.id) { mutableStateOf(false) }
     var actionMessage by rememberSaveable(draft.id) { mutableStateOf<String?>(null) }
     var discardRequested by rememberSaveable(draft.id) { mutableStateOf(false) }
     val requestBack = { if (name.isNotBlank() || draft.packageName != null) discardRequested = true else onDiscard() }
@@ -357,22 +359,12 @@ internal fun NewRoutineDraftScreen(
                     "${draft.appLabel ?: "Selected app"} is selected but nothing has been saved yet."
                 },
             )
-            OutlinedTextField(
-                value = name,
-                onValueChange = { if (it.length <= 200) name = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Routine name") },
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                singleLine = false,
-            )
+            RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
             Image(
                 painter = painterResource(RoutineArtworkCatalog.resolve(artworkId).resource(RoutineArtworkCrop.HEADER)),
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
             )
-            OutlinedButton(onClick = { artworkPicker = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Change artwork")
-            }
             if (draft.execution == RoutineExecution.LINKED_APP) {
                 AppSurfaceCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -381,10 +373,10 @@ internal fun NewRoutineDraftScreen(
                         Text("Installed · Ready to open", color = AppMint)
                     }
                 }
-                OutlinedButton(onClick = onChooseApp, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Change app")
-                }
-                OutlinedButton(
+                RoutineEditorLink("Change app", Icons.Default.Apps, onChooseApp, description = "Change linked app")
+                RoutineEditorLink(
+                    label = "Test app link",
+                    icon = Icons.AutoMirrored.Filled.OpenInNew,
                     enabled = candidate != null,
                     onClick = {
                         actionMessage = when (val result = candidate?.let(onTestLink)) {
@@ -393,8 +385,8 @@ internal fun NewRoutineDraftScreen(
                             null -> "Enter a valid name and choose an app first."
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                ) { Text("Test app link") }
+                    description = "Test linked app launch",
+                )
                 Button(
                     enabled = candidate != null,
                     onClick = { onSaveLinked(name, artworkId) },
@@ -425,6 +417,11 @@ internal fun NewRoutineDraftScreen(
         selectedId = artworkId,
         onDismiss = { artworkPicker = false },
         onDone = { artworkId = it; artworkPicker = false },
+    )
+    if (renaming) RoutineNameDialog(
+        initial = name,
+        onDismiss = { renaming = false },
+        onSave = { name = it.trim(); renaming = false },
     )
 }
 

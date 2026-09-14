@@ -1,6 +1,6 @@
 # DraftingRoom5 clean-app technical design
 
-Status: implemented and audited through the DR5-030 whole-product review. The clean current-schema app, recurring planning, durable guided sessions, exceptional-state coverage, recovery, and release automation ship together in v0.23.0; unavailable physical-device checks remain recorded in the final review.
+Status: implemented and audited through the DR5-038 Phase 6 product review. The current-schema app ships in v0.24.0 with quiet Dashboard actions, fixed 30-day Dashboard trends, recurrence-safe occurrence exceptions, linked-app completion and Undo, revised editors and selection sheets, compact guided-session controls, and expanded curated artwork. Unavailable physical-device checks remain recorded in the Phase 6 review.
 
 ## Authority and implementation boundaries
 
@@ -50,8 +50,9 @@ Names here are concrete implementation names. IDs are opaque nonblank strings of
 | `ScheduleEntry` | `id`, nonblank `routineId` referencing a live routine, nonempty `days: Set<DayOfWeek>`. No title, subtitle, artwork, type, app, single-day anchor, enabled switch, dates or repeat enum. |
 | `OccurrenceKey` | Immutable `scheduleEntryId`, `scheduledDate: LocalDate`. It identifies an instance of a recurring rule, not its completion timestamp. Its schedule ID is historical origin, not a foreign key that must survive deletion. |
 | `RoutineSnapshot` | A complete guided `Routine` copied on start, including revision and ordered exercises. Immutable throughout that session. Snapshot duplication is intentional history/session evidence; schedule records never duplicate identity. |
-| `GuidedSession` | `id`, `occurrence`, `routineId` (live routine required), `snapshot`, `focusedExerciseId`, `completedSets` for every snapshot exercise, `timer`, `startedAtMillis`, `updatedAtMillis`, `eventRevision`. See session contract below. |
-| `WorkoutHistoryEntry` | `id` (completed session ID), `occurrence`, `snapshot`, `startedAtMillis`, `completedAtMillis`. All required snapshot sets were completed. Immutable, no live routine/schedule foreign key; never used to fabricate Health Connect records. |
+| `GuidedSession` | `id`, `occurrence`, `effectiveDate`, `routineId` (live routine required), `snapshot`, `focusedExerciseId`, `completedSets` for every snapshot exercise, `timer`, `startedAtMillis`, `updatedAtMillis`, `eventRevision`. See session contract below. |
+| `WorkoutHistoryEntry` | `id` (completed session ID or linked launch ID), `occurrence`, `effectiveDate`, `snapshot`, `startedAtMillis`, `completedAtMillis`. Guided sets were explicitly completed; linked history records an accepted launch. No live routine/schedule foreign key; never used to fabricate Health Connect records. |
+| `OccurrenceException` | `occurrence` (unchanged source key), `disposition` (`DEFERRED` or `SKIPPED`), `effectiveDate` (source date + 1 for deferred, explicit null for skipped). One exception per source; absence represents `SCHEDULED`. Required document array `occurrenceExceptions`; no compatibility reader. |
 
 Guided routines require at least one valid exercise and `appLink = null`. Linked routines require a valid app link and an empty exercise list. New guided drafts may be empty in UI, but are not saved or schedulable until an exercise is saved into the draft. Deleting the last exercise from a saved guided routine is rejected with an explanation; offer Delete routine for removing the routine. Routine/exercise names may coincide; identity must not.
 
@@ -99,6 +100,18 @@ There is at most one partial per occurrence, but multiple independent occurrence
 
 Deleting a schedule removes only its recurrence. Partials remain resumable through Saved sessions, linked to their still-live routine and historical occurrence origin. Changing a schedule's routine while it has partials requires a confirmation that saved sessions retain the prior routine snapshot; the associated card shows that saved session until completion. Its current management row always resolves the new routine. Routine deletion removes that routine, referencing recurrences and all partials for that routine in one transaction. Completed history survives routine/schedule deletion as self-contained evidence. Reset plan clears history too so reused default IDs cannot make a reset plan appear completed; its confirmation explicitly names this loss.
 
+### Per-occurrence exceptions (DR5-041)
+
+The source key never becomes tomorrow's key. A daily entry deferred from Saturday has source `(entry, Saturday)` and effective date Sunday, alongside ordinary `(entry, Sunday)`. Dashboard projections and completion lookups carry the complete key; counting completed occurrences also retains both keys. Dates are fixed civil `LocalDate` values, independent of audit timestamps, DST duration, or later timezone changes.
+
+`deferOccurrence(key, today)` and `skipOccurrence(key, today)` operate atomically under the repository lock. The caller supplies the current local date at command execution. Only an unstarted, uncompleted scheduled occurrence on that date can change. A deferred occurrence cannot be deferred again. Repeating the same saved disposition is a no-write success even after midnight; a different disposition requires Undo first. Started partials and history reject both actions. Skips have no progress, history, or effective date. An identical exception passed to `undoOccurrenceException` is removed atomically; repeated Undo is a no-op, a different saved exception rejects, and starting/completing the moved occurrence makes Undo invalid.
+
+Sessions copy the effective date on open and retain it through restart, recreation, and completion. The codec requires that every session/history date agrees with its source exception, or with its source date for an ordinary occurrence. Missing fields, duplicate sources, unknown dispositions, stored `SCHEDULED` records, invalid tomorrow dates, and skipped progress/history reject. Recurrence edits preserve existing exceptions, even when their original weekday is removed. Unstarted moved cards resolve current routine content just like ordinary unstarted cards.
+
+Schedule deletion cancels unstarted exceptions; it retains exceptions backing partials/history. Removed-schedule partials remain in Saved sessions; deferred completion remains visible on its effective date using its history snapshot. Routine deletion removes its partials and schedules and prunes unstarted exceptions, preserving completed history and its date evidence. Both plan and full reset clear exceptions with progress/history. Backup exports all required fields; restore validates the entire document and clears timers as before. Failed writes publish none of the proposed change.
+
+Production Dashboard wiring and menus use `dashboardSessions(document, selectedDate)`, pass `document.occurrenceExceptions` to `savedDashboardSessions`, key cards/actions/navigation by `DashboardSession.occurrence`, and use `effectiveDate` for placement/context. Never reconstruct a key from the selected date or key the list solely by schedule ID. Capture the committed exception for Undo and handle rejected stale actions locally. The DR5-041 model and DR5-042 UI together provide the complete flow.
+
 ## Current JSON document and persistence
 
 One UTF-8 file: `filesDir/training-current/document.json`, managed with Android `AtomicFile`. Do not use any old preference file as an initialization signal. The sole format discriminator is `format = "draftingroom5.current"`. There is one decoder and no version switch. All shown fields are required; nullable fields must be explicitly null. Empty arrays/maps are valid only where the domain permits them.
@@ -134,7 +147,8 @@ One UTF-8 file: `filesDir/training-current/document.json`, managed with Android 
     "voice": {"enabled": true, "rate": 1.0}, "automaticBackupsEnabled": true
   },
   "partialSessions": [],
-  "history": []
+  "history": [],
+  "occurrenceExceptions": []
 }
 ```
 
@@ -172,7 +186,7 @@ Restoring a route validates its referenced entity. Missing editor target returns
 | Add routine chooser | PlanningStateHolder overlay. | Exactly Guided or Linked app; Guided -> new editor draft, Linked -> app picker then draft editor. Cancel creates nothing. |
 | Installed app picker | InstalledAppPickerStateHolder owns query, loading/error/empty/list and scroll; owner draft ID routes selection. | Tap chooses package immediately; picker Back preserves original link and returns to originating chooser/editor. Query persists through recreation; inventory does not persist to disk. |
 | Guided/linked routine editor | RoutineEditorStateHolder, repository entity plus expected revision, transient new draft; save draft in SavedStateHandle. | New routine has explicit Save routine after validity; Back confirms discarding meaningful new input. Existing rename/artwork/exercise changes each commit explicitly at their child action, then list shows autosave status. Delete routine confirms cascading loss. |
-| Rename / routine artwork picker | Parent holder owns original and pending selection. | Rename Save / picker Done commits to existing entity, or updates new parent draft. Cancel/Back preserves original. Existing artwork selection is not saved on every tap. |
+| Rename / routine artwork picker | Parent holder owns original and pending selection. | Rename Save / picker Save commits to existing entity, or updates new parent draft. Cancel/Back preserves original. Existing artwork selection is not saved on every tap. |
 | Linked connection group | RoutineEditorStateHolder plus installed-app resolution and launcher status. | Change stages replacement, Save connection commits it (or parent draft Save). Cancel restores prior app. Test app link uses staged valid configuration without saving or recording completion. Existing name/artwork retain their own explicit child commits. |
 | Exercise editor / paired picker | ExerciseEditorStateHolder keeps text inputs and artwork draft; parent routine revision is captured. | Dedicated scrollable screen. Save exercise validates and updates parent draft or one repository transaction; Cancel restores original. Timed off saves null seconds. Picker Done updates only exercise draft. |
 | Schedule editor | ScheduleEditorStateHolder saves draft routine ID, weekday set, anchor and revision/generation. | Add to schedule / Save changes only; Back discards draft after dirty confirmation. No routine available -> explanation plus Add routine route, returning saved routine selection. No date fields. |
@@ -412,7 +426,7 @@ The following inventory covers every production Kotlin source present during DR5
 | `docs/design/**/*.png`, eight approved handoffs | Keep as design references only; update implementation status at milestones honestly. Add TechnicalDesign.md and AssetLedger.md; do not copy mockup UI into runtime resources. |
 | `README.md`, `LICENSE`, `AGENTS.md`, `TODO.md` | Keep license/delivery authority; update README for delivered clean capabilities and retire obsolete terminology. Remove completed queue work block, retaining compact checked dependency ledger. |
 | `app/build.gradle.kts`, root Gradle scripts, version catalog, wrapper/properties | Keep toolchain; add narrowly needed lifecycle/test dependencies and consistent version defaults at release milestones. No arbitrary upgrades in model/UI replacement. |
-| `.github/workflows/commit-build.yml`, `release.yml`, `dependabot-automerge.yml`, `.github/dependabot.yml` | Preserve verification, tag release and guarded patch auto-merge. Release defaults must equal the tag name and code formula `major*1,000,000 + minor*1,000 + patch + 2`; the production release defaults are 0.23.0/23002. |
+| `.github/workflows/commit-build.yml`, `release.yml`, `dependabot-automerge.yml`, `.github/dependabot.yml` | Preserve verification, tag release and guarded patch auto-merge. Release defaults must equal the tag name and code formula `major*1,000,000 + minor*1,000 + patch + 2`; the production release defaults are 0.24.0/24002. |
 | `.gitignore`, `.tooling/`, `.gradle-user-home/`, build/cache/local files | Preserve ignores; never commit toolchains/caches/generated APKs/signing files. Add missing ignore rules only as part of the relevant implementation cleanup. |
 
 Retired storage is explicitly `training-plan/plan-v1`, `workout-history/history-v1`, `dashboard-layout/layout-v1`, `health-date-range/selected-range-v1`, `haptic-feedback`, `voice-announcements`, `automatic-backup`, and `automatic-backups/*`. Delete their source readers/writers; leave old device files unobserved until Android clears app data. App-update status/cache is independent transient maintenance data and may remain, never a plan-format bridge.

@@ -14,6 +14,15 @@ class VoiceAnnouncementsTest {
     }
 
     @Test
+    fun editedVoiceRateAndEnabledStateSurviveDocumentRecreation() {
+        val document = defaultAppDocument().copy(
+            preferences = AppPreferences(voice = VoiceAnnouncementSettings(enabled = true, rate = 1.25f)),
+        )
+        val restored = decodeAppDocument(encodeAppDocument(document))
+        assertEquals(document.preferences.voice, restored.preferences.voice)
+    }
+
+    @Test
     fun timerAndSetAnnouncementsDescribeTransitions() {
         assertEquals("Get ready.", voiceAnnouncementText(VoiceCue.CountdownStarted))
         assertEquals("3", voiceAnnouncementText(VoiceCue.CountdownTick(3)))

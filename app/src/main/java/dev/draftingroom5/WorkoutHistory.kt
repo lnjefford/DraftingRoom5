@@ -10,9 +10,10 @@ internal data class WorkoutHistoryEntry(
     val snapshot: Routine,
     val startedAtMillis: Long,
     val completedAtMillis: Long,
+    val effectiveDate: LocalDate = occurrence.scheduledDate,
 )
 
-internal fun completedScheduleIdsForDate(entries: List<WorkoutHistoryEntry>, date: LocalDate): List<String> =
-    entries.filter { it.occurrence.scheduledDate == date }
-        .map { it.occurrence.scheduleEntryId }
+internal fun completedOccurrencesForDate(entries: List<WorkoutHistoryEntry>, date: LocalDate): List<OccurrenceKey> =
+    entries.filter { it.effectiveDate == date }
+        .map { it.occurrence }
         .distinct()

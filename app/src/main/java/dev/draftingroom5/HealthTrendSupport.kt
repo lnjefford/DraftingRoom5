@@ -25,6 +25,33 @@ internal data class HealthTrendSummary(
     val last: Double,
 )
 
+internal data class HealthTrendWindow(
+    val range: HealthDateRange,
+    val fixedEndDate: LocalDate? = null,
+) {
+    fun endDate(latestRecordedAt: Instant?, fallback: LocalDate, zoneId: ZoneId): LocalDate =
+        fixedEndDate ?: latestRecordedAt?.atZone(zoneId)?.toLocalDate() ?: fallback
+
+    fun startDate(latestRecordedAt: Instant?, fallback: LocalDate, zoneId: ZoneId): LocalDate =
+        range.startDate(endDate(latestRecordedAt, fallback, zoneId))
+}
+
+internal fun dashboardHealthWindow(today: LocalDate): HealthTrendWindow =
+    HealthTrendWindow(HealthDateRange.MONTH, fixedEndDate = today)
+
+internal fun metricDetailHealthWindow(range: HealthDateRange): HealthTrendWindow =
+    HealthTrendWindow(range)
+
+internal fun dashboardHealthTrend(
+    points: List<HealthTrendPoint>,
+    today: LocalDate,
+): List<HealthTrendPoint> {
+    val start = HealthDateRange.MONTH.startDate(today)
+    return points
+        .filter { it.date in start..today }
+        .sortedWith(compareBy<HealthTrendPoint> { it.date }.thenBy { it.recordedAt })
+}
+
 internal fun Double.toPounds() = this * 2.2046226218
 
 internal fun measurementHealthTrend(

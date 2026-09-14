@@ -254,13 +254,14 @@ private fun RecurringScheduleTab(
     val haptics = LocalHapticFeedback.current
     val dragThreshold = with(LocalDensity.current) { 52.dp.toPx() }
     var workingPlan by remember { mutableStateOf(plan) }
-    var draggedEntryId by remember { mutableStateOf<String?>(null) }
-    var dragOrigin by remember { mutableStateOf<TrainingPlan?>(null) }
+    var dragSession by remember { mutableStateOf<ScheduleDragSession?>(null) }
     var pendingFocusId by remember { mutableStateOf<String?>(null) }
     val visibleItems = workingPlan.forDay(selectedDay)
 
-    LaunchedEffect(plan, draggedEntryId) {
-        if (draggedEntryId == null) workingPlan = plan
+    LaunchedEffect(plan) {
+        if (dragSession != null) dragSession?.cancel()
+        dragSession = null
+        workingPlan = plan
     }
 
     fun moveAndSave(entry: ScheduleEntry, offset: Int): Boolean {
@@ -281,7 +282,7 @@ private fun RecurringScheduleTab(
     ) {
         item {
             Spacer(Modifier.height(4.dp))
-            PlanSectionLabel("WEEKLY SCHEDULE")
+            PlanSectionRule()
             Spacer(Modifier.height(10.dp))
             Text("Choose a day to review and edit its sessions.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -316,33 +317,32 @@ private fun RecurringScheduleTab(
                     position = index,
                     total = visibleItems.size,
                     focusRequester = focusRequester,
-                    dragged = draggedEntryId == entry.id,
+                    dragged = dragSession?.entryId == entry.id,
                     onMove = { offset -> moveAndSave(entry, offset) },
                     onDragStart = {
-                        dragOrigin = workingPlan
-                        draggedEntryId = entry.id
-                        pendingFocusId = entry.id
+                        dragSession = ScheduleDragSession(workingPlan, selectedDay, entry.id)
                         if (hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
                     onDragStep = { offset ->
-                        val current = workingPlan.forDay(selectedDay)
-                        val from = current.indexOfFirst { it.id == entry.id }
-                        if (from in current.indices && from + offset in current.indices) {
-                            workingPlan = workingPlan.moveScheduleOnDay(selectedDay, entry.id, offset)
-                            if (hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        dragSession?.let { session ->
+                            if (session.move(offset)) {
+                                workingPlan = session.preview
+                                if (hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
                         }
                     },
                     onDragEnd = {
-                        val completed = workingPlan
-                        draggedEntryId = null
-                        dragOrigin = null
-                        pendingFocusId = entry.id
-                        if (completed != plan && !onChange(completed)) workingPlan = plan
+                        dragSession?.let { session ->
+                            workingPlan = session.drop(onChange)
+                            dragSession = null
+                            pendingFocusId = session.entryId
+                        }
                     },
                     onDragCancel = {
-                        workingPlan = dragOrigin ?: plan
-                        draggedEntryId = null
-                        dragOrigin = null
+                        dragSession?.let { session ->
+                            workingPlan = session.cancel()
+                            dragSession = null
+                        }
                     },
                     dragThreshold = dragThreshold,
                     onEdit = { onEdit(entry) },
@@ -436,7 +436,7 @@ private fun ManagedScheduleCard(
                 Icons.Default.DragIndicator,
                 contentDescription = "Reorder ${routine.name}, position ${position + 1} of $total",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(48.dp).pointerInput(entry.id, total) {
+                modifier = Modifier.size(48.dp).pointerInput(entry.id) {
                     var distance = 0f
                     detectDragGesturesAfterLongPress(
                         onDragStart = { distance = 0f; currentStart() },
@@ -445,10 +445,8 @@ private fun ManagedScheduleCard(
                     ) { change, amount ->
                         change.consume()
                         distance += amount.y
-                        if (kotlin.math.abs(distance) >= dragThreshold) {
-                            currentStep(if (distance > 0) 1 else -1)
-                            distance = 0f
-                        }
+                        while (distance <= -dragThreshold) { currentStep(-1); distance += dragThreshold }
+                        while (distance >= dragThreshold) { currentStep(1); distance -= dragThreshold }
                     }
                 }.padding(10.dp),
             )
@@ -486,7 +484,7 @@ private fun CurrentRoutinesTab(
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Spacer(Modifier.height(4.dp))
-            PlanSectionLabel("ROUTINES")
+            PlanSectionRule()
             Spacer(Modifier.height(10.dp))
             Text("Guided routines stay in DraftingRoom5; linked routines open another app.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -627,9 +625,6 @@ internal fun routineDeletionMessage(plan: TrainingPlan, routine: Routine, partia
 }
 
 @Composable
-private fun PlanSectionLabel(label: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, color = AppGold, style = MaterialTheme.typography.labelMedium)
-        Box(Modifier.width(38.dp).height(2.dp).background(AppGold))
-    }
+private fun PlanSectionRule() {
+    Box(Modifier.width(38.dp).height(2.dp).background(AppGold))
 }

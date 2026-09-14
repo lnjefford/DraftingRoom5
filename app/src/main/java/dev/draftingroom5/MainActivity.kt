@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.MonitorWeight
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
@@ -98,6 +99,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -237,7 +239,10 @@ private fun DraftingRoom5App() {
     val updateManager = remember { AppUpdateManager(context) }
     var updateStatus by remember { mutableStateOf(updateManager.status()) }
     var updateBusy by remember { mutableStateOf(false) }
-    var updateActionMessage by remember { mutableStateOf<String?>(null) }
+    var updateActionMessage by rememberSaveable(stateSaver = Saver(
+        save = { message: String? -> message?.let(::updateMessageAfterRecreation) },
+        restore = { message -> message },
+    )) { mutableStateOf<String?>(null) }
     var pendingUpdateInstall by rememberSaveable { mutableStateOf(false) }
     var routineDraftId by rememberSaveable { mutableStateOf<String?>(null) }
     var routineDraftExecution by rememberSaveable { mutableStateOf<String?>(null) }
@@ -266,7 +271,10 @@ private fun DraftingRoom5App() {
     }
     val acceptDocumentResult: (RepositoryResult<AppDocument>) -> Boolean = { result ->
         when (result) {
-            is RepositoryResult.Success -> appDocument = result.value
+            is RepositoryResult.Success -> {
+                appDocument = result.value
+                documentError = null
+            }
             else -> {
                 (appRepository.state.value as? LoadState.Ready)?.value?.let { appDocument = it }
                 documentError = when (result) {
@@ -292,27 +300,33 @@ private fun DraftingRoom5App() {
         acceptDocumentResult(appRepository.replacePlan(appDocument.generation, updated)).also { if (it) requestAutomaticBackup() }
     }
     val coroutineScope = rememberCoroutineScope()
-    val installDownloadedUpdate: () -> Unit = {
-        coroutineScope.launch {
-        runCatching { openDownloadedUpdateInstaller(context) }
-            .onSuccess {
-                updateActionMessage = "Confirm the update in Android's installer. If you cancel, tap the update indicator to try again."
-            }
-            .onFailure { error ->
-                if (error is CancellationException) throw error
-                updateActionMessage = "Could not open the installer: ${error.message ?: "Download the update again."}"
-            }
-        }
+    val installDownloadedUpdate: suspend () -> Unit = {
+        updateActionMessage = "Opening Android's installer…"
+        openDownloadedUpdateInstaller(context)
+        updateActionMessage = "Confirm the update in Android's installer. If you cancel, tap the update indicator to try again."
     }
     val updateInstallPermission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (pendingUpdateInstall && context.packageManager.canRequestPackageInstalls()) installDownloadedUpdate()
-        else updateActionMessage = "Installation permission was not granted. Tap the update indicator to try again."
+        if (pendingUpdateInstall && context.packageManager.canRequestPackageInstalls()) {
+            updateBusy = true
+            coroutineScope.launch {
+                try {
+                    installDownloadedUpdate()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    updateActionMessage = "Could not open the installer: ${error.message ?: "Download the update again."}"
+                } finally {
+                    updateBusy = false
+                }
+            }
+        } else updateActionMessage = "Installation permission was not granted. Tap the update indicator to try again."
         pendingUpdateInstall = false
     }
     val checkAndInstallUpdate: () -> Unit = {
-        if (!updateBusy) coroutineScope.launch {
+        if (!updateBusy) {
             updateBusy = true
             updateActionMessage = "Checking for updates…"
+            coroutineScope.launch {
             try {
                 val available = downloadUpdate(context) { message -> updateActionMessage = message }
                 if (!available) {
@@ -335,6 +349,7 @@ private fun DraftingRoom5App() {
             } finally {
                 updateBusy = false
             }
+            }
         }
     }
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
@@ -350,7 +365,12 @@ private fun DraftingRoom5App() {
         )
     }
 
-    val refreshHealth: (HealthDateRange) -> Unit = refresh@ { range ->
+    fun activeHealthWindow(): HealthTrendWindow = when (screen) {
+        is AppRoute.MetricDetail -> metricDetailHealthWindow(healthDateRange)
+        else -> dashboardHealthWindow(LocalDate.now(ZoneId.systemDefault()))
+    }
+
+    val refreshHealth: (HealthTrendWindow) -> Unit = refresh@ { window ->
         if (!windowFocused) return@refresh
         healthRefreshJob?.cancel()
         healthRefreshJob = coroutineScope.launch {
@@ -384,7 +404,7 @@ private fun DraftingRoom5App() {
                             healthUi = healthUi.copy(connection = HealthConnection.CONNECTED, isLoading = true, message = null)
                             healthUi = HealthUiState(
                                 connection = HealthConnection.CONNECTED,
-                                stats = readHealthStats(context, client, granted, range, healthUi.stats),
+                                stats = readHealthStats(context, client, granted, window, healthUi.stats),
                                 message = when {
                                     !granted.containsAll(healthPermissions) -> "Some measurement permissions are off. Available measurements are shown below."
                                     !granted.containsAll(requestedPermissions) -> "Past-data access is off. Allow it to read Withings measurements from before the standard history window."
@@ -417,7 +437,7 @@ private fun DraftingRoom5App() {
                 message = "Allow the data types you want to display. If Android no longer shows the prompt, use Health Connect permissions & settings.",
             )
         }
-        if (granted.intersect(healthPermissions).isNotEmpty()) refreshHealth(healthDateRange)
+        if (granted.intersect(healthPermissions).isNotEmpty()) refreshHealth(activeHealthWindow())
     }
 
     val connectHealth: () -> Unit = {
@@ -429,13 +449,13 @@ private fun DraftingRoom5App() {
                     healthUi = HealthUiState(connection = HealthConnection.ERROR, message = error.message ?: "Could not open the Health Connect installer.")
                 }
             }
-            HealthConnection.UNAVAILABLE -> refreshHealth(healthDateRange)
+            HealthConnection.UNAVAILABLE -> refreshHealth(activeHealthWindow())
             else -> coroutineScope.launch {
                 try {
                     val client = HealthConnectClient.getOrCreate(context)
                     val requestedPermissions = healthPermissionsFor(client, healthPermissions)
                     val granted = client.permissionController.getGrantedPermissions()
-                    if (granted.containsAll(requestedPermissions)) refreshHealth(healthDateRange)
+                    if (granted.containsAll(requestedPermissions)) refreshHealth(activeHealthWindow())
                     else permissionLauncher.launch(requestedPermissions)
                 } catch (error: CancellationException) {
                     throw error
@@ -456,14 +476,20 @@ private fun DraftingRoom5App() {
 
     // Permission dialogs can resume the Activity before the app has foreground focus.
     // Read once our own window is focused; cancel reads when a dialog/app takes over.
-    LaunchedEffect(windowFocused) {
+    LaunchedEffect(screen, windowFocused, healthDateRange) {
         if (windowFocused) {
             backupManager.schedule()
             backupStatus = backupManager.status()
             updateManager.schedule()
             updateManager.requestCheckIfStale()
-            refreshHealth(healthDateRange)
+            var refreshedWindow = activeHealthWindow()
+            refreshHealth(refreshedWindow)
             while (true) {
+                val currentWindow = activeHealthWindow()
+                if (currentWindow != refreshedWindow) {
+                    refreshedWindow = currentWindow
+                    refreshHealth(currentWindow)
+                }
                 updateStatus = updateManager.status()
                 delay(2000)
             }
@@ -545,24 +571,60 @@ private fun DraftingRoom5App() {
             AppRoute.Dashboard -> Dashboard(
                 healthUi = healthUi,
                 dashboardLayout = dashboardLayout,
-                healthDateRange = healthDateRange,
                 trainingPlan = trainingPlan,
+                occurrenceExceptions = appDocument.occurrenceExceptions,
                 partialSessions = appDocument.partialSessions,
                 workoutHistory = workoutHistory,
                 animateBrandOnEntry = launchBrandAnimationPending,
                 onBrandAnimationFinished = { launchBrandAnimationPending = false },
                 onOpenSettings = { navigation.navigate(AppRoute.Settings) },
                 updateAvailableVersion = updateStatus.availableVersion,
+                updateBusy = updateBusy,
+                updateActionMessage = updateActionMessage,
                 onInstallUpdate = checkAndInstallUpdate,
                 onOpenMetric = { card -> navigation.navigate(AppRoute.MetricDetail(card)) },
-                onOpenCustom = { item, date -> navigation.navigate(AppRoute.GuidedSession(item.routineId, item.id, date)) },
-                onLaunchExternal = { item ->
-                    val routine = trainingPlan.routineFor(item)
-                    val result = launchLinkedApp(context, routine)
-                    if (result is LinkedAppLaunchResult.Failed) {
-                        launchError = linkedAppRecoveryMessage(routine, result)
-                        unavailableRoutine = routine
+                onOpenCustom = { session -> navigation.navigate(AppRoute.GuidedSession(
+                    session.routine.id, session.occurrence.scheduleEntryId, session.occurrence.scheduledDate)) },
+                onLaunchExternal = { session ->
+                    val occurrence = session.occurrence
+                    if ((appRepository.state.value as? LoadState.Ready)?.value?.history?.any { it.occurrence == occurrence } == true) {
+                        return@Dashboard
                     }
+                    val routine = session.routine
+                    val result = launchLinkedApp(context, routine)
+                    when (result) {
+                        is LinkedAppLaunchResult.Failed -> {
+                            launchError = linkedAppRecoveryMessage(routine, result)
+                            unavailableRoutine = routine
+                        }
+                        is LinkedAppLaunchResult.Opened -> {
+                            if (acceptDocumentResult(appRepository.completeLinkedOccurrence(occurrence, routine.id, System.currentTimeMillis().coerceAtLeast(0)))) {
+                                requestAutomaticBackup()
+                            }
+                        }
+                    }
+                },
+                onUndoLinked = { session ->
+                    if (acceptDocumentResult(appRepository.undoLinkedOccurrence(session.occurrence))) {
+                        requestAutomaticBackup()
+                    }
+                },
+                onChangeOccurrence = { occurrence, today, disposition ->
+                    val result = if (disposition == OccurrenceDisposition.DEFERRED) appRepository.deferOccurrence(occurrence, today)
+                        else appRepository.skipOccurrence(occurrence, today)
+                    if (result is RepositoryResult.Success) {
+                        acceptDocumentResult(result)
+                        requestAutomaticBackup()
+                    }
+                    result
+                },
+                onUndoOccurrence = { exception ->
+                    val result = appRepository.undoOccurrenceException(exception)
+                    if (result is RepositoryResult.Success) {
+                        acceptDocumentResult(result)
+                        requestAutomaticBackup()
+                    }
+                    result
                 },
             )
             is AppRoute.MetricDetail -> {
@@ -574,11 +636,10 @@ private fun DraftingRoom5App() {
                     onDateRangeChange = { updated ->
                         if (persistDocument { it.copy(preferences = it.preferences.copy(healthDateRange = updated)) }) {
                             requestAutomaticBackup()
-                            refreshHealth(updated)
                         }
                     },
                     onConnectHealth = connectHealth,
-                    onRetry = { refreshHealth(healthDateRange) },
+                    onRetry = { refreshHealth(metricDetailHealthWindow(healthDateRange)) },
                     onBack = { navigation.back() },
                 )
             }
@@ -940,18 +1001,23 @@ private fun DraftingRoom5App() {
 private fun Dashboard(
     healthUi: HealthUiState,
     dashboardLayout: DashboardLayout,
-    healthDateRange: HealthDateRange,
     trainingPlan: TrainingPlan,
+    occurrenceExceptions: List<OccurrenceException> = emptyList(),
     partialSessions: List<GuidedSession>,
     workoutHistory: List<WorkoutHistoryEntry>,
     animateBrandOnEntry: Boolean,
     onBrandAnimationFinished: () -> Unit,
     onOpenSettings: () -> Unit,
     updateAvailableVersion: String?,
+    updateBusy: Boolean,
+    updateActionMessage: String?,
     onInstallUpdate: () -> Unit,
     onOpenMetric: (DashboardCard) -> Unit,
-    onOpenCustom: (ScheduleEntry, LocalDate) -> Unit,
-    onLaunchExternal: (ScheduleEntry) -> Unit,
+    onOpenCustom: (DashboardSession) -> Unit,
+    onLaunchExternal: (DashboardSession) -> Unit,
+    onUndoLinked: (DashboardSession) -> Unit,
+    onChangeOccurrence: (OccurrenceKey, LocalDate, OccurrenceDisposition) -> RepositoryResult<AppDocument> = { _, _, _ -> RepositoryResult.Invalid(IllegalArgumentException("Unavailable")) },
+    onUndoOccurrence: (OccurrenceException) -> RepositoryResult<AppDocument> = { RepositoryResult.Invalid(IllegalArgumentException("Unavailable")) },
 ) {
     val reviewTime = LocalReviewTime.current
     val focused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
@@ -974,8 +1040,64 @@ private fun Dashboard(
         previousTodayEpochDay = today.toEpochDay()
     }
     val week = dashboardWeek(today)
-    val sessions = dashboardSessions(trainingPlan, partialSessions, workoutHistory, selectedDate)
-    val savedSessions = savedDashboardSessions(trainingPlan, partialSessions, selectedDate)
+    val sessions = dashboardSessions(trainingPlan, partialSessions, workoutHistory, selectedDate, occurrenceExceptions)
+    val savedSessions = savedDashboardSessions(trainingPlan, partialSessions, selectedDate, occurrenceExceptions)
+    var pendingEntryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
+    var pendingDisposition by rememberSaveable { mutableStateOf<String?>(null) }
+    var occurrenceError by rememberSaveable { mutableStateOf<String?>(null) }
+    var feedbackEntryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var feedbackEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
+    var feedbackDisposition by rememberSaveable { mutableStateOf<String?>(null) }
+    var feedbackName by rememberSaveable { mutableStateOf<String?>(null) }
+    var feedbackError by rememberSaveable { mutableStateOf<String?>(null) }
+    val pendingKey = pendingEntryId?.let { id -> pendingEpochDay?.let { OccurrenceKey(id, LocalDate.ofEpochDay(it)) } }
+    val pendingSession = sessions.firstOrNull { it.occurrence == pendingKey }
+    val feedbackException = feedbackEntryId?.let { id -> feedbackEpochDay?.let { day ->
+        feedbackDisposition?.let { disposition ->
+            val date = LocalDate.ofEpochDay(day)
+            OccurrenceException(OccurrenceKey(id, date), OccurrenceDisposition.valueOf(disposition),
+                if (disposition == OccurrenceDisposition.DEFERRED.name) date.plusDays(1) else null)
+        }
+    } }
+    fun clearPending() {
+        pendingEntryId = null
+        pendingEpochDay = null
+        pendingDisposition = null
+        occurrenceError = null
+    }
+    if (pendingKey != null && pendingDisposition != null) {
+        val name = pendingSession?.routine?.name ?: "This routine"
+        val moving = pendingDisposition == OccurrenceDisposition.DEFERRED.name
+        AppConfirmationDialog(
+            title = if (moving) "Move $name to tomorrow?" else "Skip $name today?",
+            message = occurrenceError ?: if (moving) "Only today's occurrence moves. Your recurring schedule stays the same."
+                else "Only today's occurrence is skipped. It will not count as completed.",
+            confirmLabel = if (occurrenceError == null) (if (moving) "Move to tomorrow" else "Skip today") else "Retry",
+            onConfirm = {
+                if (pendingSession == null || !canChangeDashboardOccurrence(pendingSession, today, selectedDate, occurrenceExceptions)) {
+                    occurrenceError = "This occurrence changed. Return to today's card and try again."
+                } else {
+                    val disposition = if (moving) OccurrenceDisposition.DEFERRED else OccurrenceDisposition.SKIPPED
+                    when (val result = onChangeOccurrence(pendingKey, LocalDate.now(ZoneId.systemDefault()), disposition)) {
+                        is RepositoryResult.Success -> {
+                            feedbackEntryId = pendingKey.scheduleEntryId
+                            feedbackEpochDay = pendingKey.scheduledDate.toEpochDay()
+                            feedbackDisposition = disposition.name
+                            feedbackName = name
+                            feedbackError = null
+                            clearPending()
+                        }
+                        is RepositoryResult.Invalid -> occurrenceError = result.error.message ?: "Could not save. Try again."
+                        is RepositoryResult.Failed -> occurrenceError = "Could not save. Try again."
+                        is RepositoryResult.Conflict -> occurrenceError = "App data changed. Review this card and retry."
+                    }
+                }
+            },
+            onDismiss = ::clearPending,
+        )
+    }
+    val updateAnnouncement = dashboardUpdateAnnouncement(updateAvailableVersion, updateBusy, updateActionMessage)
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
@@ -989,13 +1111,31 @@ private fun Dashboard(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
-                    if (updateAvailableVersion != null) {
-                        IconButton(onClick = onInstallUpdate) {
-                            Icon(
-                                Icons.Default.SystemUpdate,
-                                contentDescription = "Update $updateAvailableVersion available. Tap to install.",
-                                tint = AppGold,
-                            )
+                    if (updateAvailableVersion != null || updateBusy) {
+                        IconButton(
+                            onClick = onInstallUpdate,
+                            enabled = !updateBusy,
+                            modifier = Modifier.semantics {
+                                if (updateBusy) {
+                                    contentDescription = checkNotNull(updateAnnouncement)
+                                    stateDescription = "Working"
+                                    liveRegion = LiveRegionMode.Polite
+                                }
+                            },
+                        ) {
+                            if (updateBusy) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = AppGold,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.SystemUpdate,
+                                    contentDescription = updateAnnouncement,
+                                    tint = AppGold,
+                                )
+                            }
                         }
                     }
                     IconButton(onClick = onOpenSettings) {
@@ -1010,6 +1150,58 @@ private fun Dashboard(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (feedbackException != null && feedbackName != null) item(key = "occurrence-feedback") {
+                Row(
+                    Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Assertive },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        feedbackError ?: if (feedbackException.disposition == OccurrenceDisposition.DEFERRED)
+                            "$feedbackName moved to tomorrow." else "$feedbackName skipped today.",
+                        modifier = Modifier.weight(1f),
+                        color = if (feedbackError == null) AppMint else AppGold,
+                    )
+                    TextButton(
+                        onClick = {
+                            when (val result = onUndoOccurrence(feedbackException)) {
+                                is RepositoryResult.Success -> {
+                                    feedbackEntryId = null
+                                    feedbackEpochDay = null
+                                    feedbackDisposition = null
+                                    feedbackName = null
+                                    feedbackError = null
+                                }
+                                is RepositoryResult.Invalid -> feedbackError = result.error.message ?: "Could not undo. Try again."
+                                is RepositoryResult.Failed -> feedbackError = "Could not undo. Try again."
+                                is RepositoryResult.Conflict -> feedbackError = "App data changed. Try again."
+                            }
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp).semantics {
+                            contentDescription = "Undo ${if (feedbackException.disposition == OccurrenceDisposition.DEFERRED) "move" else "skip"} for $feedbackName on ${feedbackException.occurrence.scheduledDate}"
+                        },
+                    ) { Text(if (feedbackError == null) "Undo" else "Retry Undo") }
+                }
+            }
+            if (updateActionMessage != null) item(key = "update-feedback") {
+                Row(
+                    Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        updateActionMessage,
+                        modifier = Modifier.weight(1f),
+                        color = if (updateActionMessage.contains("failed", true) || updateActionMessage.contains("could not", true)) AppGold else AppBlue,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (!updateBusy && updateAvailableVersion != null && (
+                            updateActionMessage.contains("failed", true) || updateActionMessage.contains("could not", true) ||
+                                updateActionMessage.contains("cancel", true) || updateActionMessage.contains("permission", true) ||
+                                updateActionMessage.contains("interrupted", true)
+                        )) {
+                        TextButton(onClick = onInstallUpdate) { Text("Retry") }
+                    }
+                }
+            }
             dashboardLayout.dashboardSections().forEachIndexed { sectionIndex, section ->
                 when (section) {
                     DashboardSection.Training -> {
@@ -1018,15 +1210,26 @@ private fun Dashboard(
                         if (sessions.isEmpty()) {
                             item(key = "training-empty-$sectionIndex") { EmptySchedule(selectedDate == today) }
                         } else {
-                            items(sessions, key = { "schedule-$sectionIndex-${selectedDate}-${it.scheduleEntry.id}" }) { session ->
+                            items(sessions, key = { "schedule-$sectionIndex-${it.occurrence.scheduleEntryId}-${it.occurrence.scheduledDate}" }) { session ->
                                 SessionCard(
                                     session = session,
                                     onClick = {
                                         if (session.action != SessionAction.DONE) {
-                                            if (session.routine.execution == RoutineExecution.GUIDED) onOpenCustom(session.scheduleEntry, selectedDate)
-                                            else onLaunchExternal(session.scheduleEntry)
+                                            if (session.routine.execution == RoutineExecution.GUIDED) onOpenCustom(session)
+                                            else onLaunchExternal(session)
                                         }
                                     },
+                                    onUndoLinked = if (session.action == SessionAction.DONE && session.routine.execution == RoutineExecution.LINKED_APP) {
+                                        { onUndoLinked(session) }
+                                    } else null,
+                                    onOccurrenceMenu = if (canChangeDashboardOccurrence(session, today, selectedDate, occurrenceExceptions)) {
+                                        { disposition ->
+                                            pendingEntryId = session.occurrence.scheduleEntryId
+                                            pendingEpochDay = session.occurrence.scheduledDate.toEpochDay()
+                                            pendingDisposition = disposition.name
+                                            occurrenceError = null
+                                        }
+                                    } else null,
                                 )
                             }
                         }
@@ -1040,15 +1243,15 @@ private fun Dashboard(
                         }
                         if (savedSessions.isNotEmpty()) {
                             item(key = "saved-heading-$sectionIndex") { EditorialSectionLabel("SAVED SESSIONS") }
-                            items(savedSessions, key = { "saved-$sectionIndex-${it.scheduleEntry.id}-${it.savedOriginDate}" }) { session ->
-                                SessionCard(session = session) {
-                                    onOpenCustom(session.scheduleEntry, checkNotNull(session.savedOriginDate))
-                                }
+                            items(savedSessions, key = { "saved-$sectionIndex-${it.occurrence.scheduleEntryId}-${it.occurrence.scheduledDate}" }) { session ->
+                                SessionCard(session = session, onClick = {
+                                    onOpenCustom(session)
+                                })
                             }
                         }
                     }
                     is DashboardSection.Metrics -> item(key = "metrics-$sectionIndex-${section.cards.joinToString { it.name }}") {
-                        StatsWorkspaceHeader(section.cards, healthUi.stats, healthDateRange, onOpenMetric)
+                        StatsWorkspaceHeader(section.cards, healthUi.stats, today, onOpenMetric)
                     }
                 }
             }
@@ -1118,21 +1321,21 @@ private fun EditorialSectionLabel(label: String, trailing: String? = null, onTra
 private fun StatsWorkspaceHeader(
     cards: List<DashboardCard>,
     stats: HealthStats,
-    selectedRange: HealthDateRange,
+    today: LocalDate,
     onOpenMetric: (DashboardCard) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        EditorialSectionLabel("HEALTH SNAPSHOT", "VIEW TRENDS  →") { onOpenMetric(cards.first()) }
+        EditorialSectionLabel("HEALTH SNAPSHOT · 30 DAYS")
         BoxWithConstraints {
         val columns = (maxWidth.value / (104f * LocalDensity.current.fontScale)).toInt().coerceIn(1, 3)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         cards.chunked(columns).forEach { rowCards ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 rowCards.forEach { card ->
-                    CompactMetricCard(card, stats, selectedRange, Modifier.weight(1f)) { onOpenMetric(card) }
+                    CompactMetricCard(card, stats, today, Modifier.weight(1f)) { onOpenMetric(card) }
                 }
             }
         }
@@ -1209,12 +1412,12 @@ private fun List<HealthTrendPoint>.forRange(range: HealthDateRange): List<Health
 private fun CompactMetricCard(
     card: DashboardCard,
     stats: HealthStats,
-    selectedRange: HealthDateRange,
+    today: LocalDate,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val metric = card.metric(stats)
-    val trend = card.trend(stats).forRange(selectedRange)
+    val trend = dashboardHealthTrend(card.trend(stats), today)
     val direction = healthTrendDirection(trend)
     val recordedValues = trend.mapNotNull { it.value }
     val delta = if (recordedValues.size >= 2) recordedValues.last() - recordedValues.first() else null
@@ -1225,9 +1428,9 @@ private fun CompactMetricCard(
     }
     val trendText = when {
         delta == null -> "No comparison available"
-        direction == HealthTrendDirection.UP -> "Up ${formatMetricNumber(card, delta)} ${card.unit} over ${selectedRange.displayLabel}"
-        direction == HealthTrendDirection.DOWN -> "Down ${formatMetricNumber(card, kotlin.math.abs(delta))} ${card.unit} over ${selectedRange.displayLabel}"
-        else -> "Steady over ${selectedRange.displayLabel}"
+        direction == HealthTrendDirection.UP -> "Up ${formatMetricNumber(card, delta)} ${card.unit} over 30 days"
+        direction == HealthTrendDirection.DOWN -> "Down ${formatMetricNumber(card, kotlin.math.abs(delta))} ${card.unit} over 30 days"
+        else -> "Steady over 30 days"
     }
     BrandedCard(
         modifier
@@ -1246,7 +1449,7 @@ private fun CompactMetricCard(
                 Text(metric.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    if (card == DashboardCard.WORKOUTS || card == DashboardCard.DISTANCE) "${card.unit} · ${selectedRange.buttonLabel}" else card.unit,
+                    if (card == DashboardCard.WORKOUTS || card == DashboardCard.DISTANCE) "${card.unit} · 30D" else card.unit,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                 )
@@ -1502,8 +1705,10 @@ private fun SettingsScreen(
     updateActionMessage: String?,
     onCheckAndInstallUpdate: () -> Unit,
     reviewSection: String? = null,
+    initialVoiceExpanded: Boolean = false,
 ) {
     BackHandler(onBack = onBack)
+    var voiceExpanded by rememberSaveable { mutableStateOf(initialVoiceExpanded) }
     var backupExpanded by rememberSaveable { mutableStateOf(false) }
     var confirmRestore by rememberSaveable { mutableStateOf(false) }
     if (confirmRestore) AppConfirmationDialog(
@@ -1541,7 +1746,7 @@ private fun SettingsScreen(
             }
             if (reviewSection == null || reviewSection == "WORKOUT FEEDBACK") item {
                 SettingsSection("WORKOUT FEEDBACK") {
-                    SettingsToggleRow(
+                    SettingsNavigationRow(
                         Icons.Default.Timer,
                         "Voice announcements",
                         when (voiceAvailability) {
@@ -1549,33 +1754,32 @@ private fun SettingsScreen(
                             VoiceAvailability.READY -> "Countdowns, timers, sets, and completion"
                             VoiceAvailability.UNAVAILABLE -> "Text-to-speech unavailable; timers still work"
                         },
-                        voiceSettings.enabled,
-                        voiceAvailability == VoiceAvailability.READY,
-                    ) { onVoiceSettingsChange(voiceSettings.copy(enabled = it)) }
-                    SettingsDivider()
-                    Column(
-                        Modifier.fillMaxWidth().defaultMinSize(minHeight = 72.dp)
-                            .padding(start = 66.dp, end = 18.dp, top = 12.dp, bottom = 12.dp),
-                    ) {
-                        Column(Modifier.fillMaxWidth()) {
+                        if (voiceSettings.enabled) "On · ${voiceRateLabel(voiceSettings.rate)}" else "Off",
+                        expanded = voiceExpanded,
+                    ) { voiceExpanded = !voiceExpanded }
+                    if (voiceExpanded) {
+                        Column(Modifier.fillMaxWidth().padding(start = 66.dp, end = 18.dp, bottom = 18.dp)) {
+                            SettingsToggleRow(
+                                null, "Voice cues", "Speak guided workout cues",
+                                voiceSettings.enabled, voiceAvailability == VoiceAvailability.READY,
+                            ) { onVoiceSettingsChange(voiceSettings.copy(enabled = it)) }
                             Text("Voice rate", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "${voiceRateLabel(voiceSettings.rate)} · ${String.format(Locale.US, "%.2f", voiceSettings.rate)}×",
-                                color = AppBlue,
-                                style = MaterialTheme.typography.labelLarge,
+                                color = AppBlue, style = MaterialTheme.typography.labelLarge,
+                            )
+                            Slider(
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Voice rate"
+                                    stateDescription = "${voiceRateLabel(voiceSettings.rate)}, ${String.format(Locale.US, "%.2f", voiceSettings.rate)} times"
+                                },
+                                value = voiceSettings.rate,
+                                onValueChange = { onVoiceSettingsChange(voiceSettings.copy(rate = it)) },
+                                valueRange = MIN_VOICE_RATE..MAX_VOICE_RATE,
+                                steps = 14,
+                                enabled = voiceSettings.enabled && voiceAvailability == VoiceAvailability.READY,
                             )
                         }
-                        Slider(
-                            modifier = Modifier.semantics {
-                                contentDescription = "Voice rate"
-                                stateDescription = "${voiceRateLabel(voiceSettings.rate)}, ${String.format(Locale.US, "%.2f", voiceSettings.rate)} times"
-                            },
-                            value = voiceSettings.rate,
-                            onValueChange = { onVoiceSettingsChange(voiceSettings.copy(rate = it)) },
-                            valueRange = MIN_VOICE_RATE..MAX_VOICE_RATE,
-                            steps = 14,
-                            enabled = voiceSettings.enabled && voiceAvailability == VoiceAvailability.READY,
-                        )
                     }
                     SettingsDivider()
                     SettingsToggleRow(
@@ -1763,7 +1967,7 @@ private fun settingsToneColor(tone: SettingsStatusTone): Color = when (tone) {
 @Preview(name = "Settings tall", widthDp = 412, heightDp = 900)
 @Preview(name = "Settings large font", widthDp = 360, heightDp = 800, fontScale = 2f)
 @Composable
-private fun SettingsScreenPreview() {
+private fun SettingsScreenPreview(initialVoiceExpanded: Boolean = false) {
     DraftingRoom5Theme {
         SettingsScreen(
             healthUi = HealthUiState(connection = HealthConnection.CONNECTED),
@@ -1790,6 +1994,7 @@ private fun SettingsScreenPreview() {
             updateBusy = false,
             updateActionMessage = null,
             onCheckAndInstallUpdate = {},
+            initialVoiceExpanded = initialVoiceExpanded,
         )
     }
 }
@@ -2116,7 +2321,7 @@ private fun WeekSelector(
             Column(
                 modifier = Modifier
                     .width(48.dp)
-                    .defaultMinSize(minHeight = 64.dp)
+                    .defaultMinSize(minHeight = 78.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable { onSelect(date) }
                     .semantics {
@@ -2127,7 +2332,7 @@ private fun WeekSelector(
                             if (isSelected) append(", selected")
                         }
                     }
-                    .padding(vertical = 6.dp),
+                    .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(date.dayOfWeek.name.take(1), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -2139,22 +2344,51 @@ private fun WeekSelector(
                 ) {
                     Text(date.dayOfMonth.toString(), color = if (isSelected) AppBackgroundDeep else MaterialTheme.colorScheme.onSurface)
                 }
-                Box(Modifier.size(4.dp).background(if (date == today) AppBlue else Color.Transparent, CircleShape))
+                Spacer(Modifier.height(6.dp))
+                Box(Modifier.size(5.dp).background(if (date == today) AppBlue else Color.Transparent, CircleShape))
             }
         }
     }
 }
 
+internal fun canChangeDashboardOccurrence(
+    session: DashboardSession,
+    today: LocalDate,
+    selectedDate: LocalDate,
+    exceptions: List<OccurrenceException>,
+): Boolean = selectedDate == today && session.action == SessionAction.START && session.savedOriginDate == null &&
+    session.occurrence.scheduledDate == today && session.effectiveDate == today &&
+    exceptions.none { it.occurrence == session.occurrence }
+
+internal fun occurrenceMenuActionDescription(session: DashboardSession, disposition: OccurrenceDisposition): String =
+    when (disposition) {
+        OccurrenceDisposition.DEFERRED -> "Move ${session.routine.name} on ${session.occurrence.scheduledDate} to tomorrow"
+        OccurrenceDisposition.SKIPPED -> "Skip ${session.routine.name} on ${session.occurrence.scheduledDate}"
+        OccurrenceDisposition.SCHEDULED -> error("Scheduled is not a menu action")
+    }
+
+internal fun occurrenceMenuDescription(session: DashboardSession): String =
+    "More options for ${session.routine.name} on ${session.occurrence.scheduledDate}"
+
 @Composable
-private fun SessionCard(session: DashboardSession, onClick: () -> Unit) {
+private fun SessionCard(
+    session: DashboardSession,
+    onClick: () -> Unit,
+    onUndoLinked: (() -> Unit)? = null,
+    onOccurrenceMenu: ((OccurrenceDisposition) -> Unit)? = null,
+    initialMenuExpanded: Boolean = false,
+) {
     val routine = session.routine
+    var menuExpanded by rememberSaveable(session.occurrence.scheduleEntryId, session.occurrence.scheduledDate) { mutableStateOf(initialMenuExpanded) }
+    BackHandler(enabled = menuExpanded) { menuExpanded = false }
     val completed = session.action == SessionAction.DONE
     val actionModifier = if (completed) Modifier else Modifier.clickable(
         onClickLabel = session.accessibilityAction,
-        onClick = onClick,
+        onClick = { if (menuExpanded) menuExpanded = false else onClick() },
     )
     val progress = session.progressLabel
     val metadata = when {
+        session.effectiveDate != session.occurrence.scheduledDate -> "Moved from ${session.occurrence.scheduledDate.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))} · ${if (routine.execution == RoutineExecution.GUIDED) "${routine.exercises.size} exercises" else "Opens ${linkedAppDisplayName(checkNotNull(routine.appLink).packageName)}"}"
         progress != null && session.savedOriginDate != null -> "$progress · ${session.savedOriginDate.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))}"
         progress != null -> progress
         completed -> "Completed"
@@ -2170,7 +2404,7 @@ private fun SessionCard(session: DashboardSession, onClick: () -> Unit) {
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
             .then(actionModifier)
-            .semantics(mergeDescendants = true) {
+            .semantics(mergeDescendants = onUndoLinked == null && onOccurrenceMenu == null) {
                 contentDescription = "${routine.name}. $eyebrow. $metadata. ${session.actionLabel}."
                 stateDescription = if (completed) "Completed" else session.actionLabel
             }
@@ -2194,7 +2428,11 @@ private fun SessionCard(session: DashboardSession, onClick: () -> Unit) {
                 ),
             )
             }
-            Column(Modifier.fillMaxWidth(.72f).heightIn(min = 168.dp).padding(horizontal = 20.dp, vertical = 18.dp)) {
+            Column(
+                Modifier.fillMaxWidth(.72f).heightIn(min = 168.dp)
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .padding(bottom = if (routine.execution == RoutineExecution.LINKED_APP) 56.dp else 0.dp),
+            ) {
                 Text(
                     eyebrow,
                     color = if (completed) AppMint else AppBlue,
@@ -2205,30 +2443,83 @@ private fun SessionCard(session: DashboardSession, onClick: () -> Unit) {
                 Text(routine.name, color = Color(0xFFF4F0E7), style = MaterialTheme.typography.headlineLarge)
                 Spacer(Modifier.height(12.dp))
                 Text(metadata, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(12.dp))
-                SessionActionPill(session.action)
+            }
+            if (onOccurrenceMenu != null) {
+                Box(Modifier.align(Alignment.TopEnd)) {
+                    IconButton(
+                        onClick = { menuExpanded = !menuExpanded },
+                        modifier = Modifier.size(48.dp).semantics {
+                            contentDescription = occurrenceMenuDescription(session)
+                        },
+                    ) { Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color(0xFFF4F0E7)) }
+                }
+            }
+            if (onUndoLinked != null) {
+                TextButton(
+                    onClick = onUndoLinked,
+                    modifier = Modifier.align(Alignment.BottomEnd).defaultMinSize(minHeight = 48.dp)
+                        .semantics { contentDescription = checkNotNull(session.undoCompletionAction) },
+                ) { Text("Undo completion", color = AppMint) }
+            } else {
+                SessionActionLabel(
+                    action = session.action,
+                    label = session.actionLabel,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 8.dp),
+                )
+            }
+            if (menuExpanded && onOccurrenceMenu != null) {
+                Column(
+                    Modifier.align(Alignment.TopEnd).padding(top = 48.dp, end = 4.dp)
+                        .width(224.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(AppSurfaceRaised)
+                        .border(1.dp, AppBlue.copy(alpha = .35f), RoundedCornerShape(12.dp))
+                        .padding(4.dp),
+                ) {
+                    listOf(
+                        Triple(OccurrenceDisposition.DEFERRED, "Move to tomorrow", Icons.Default.CalendarMonth),
+                        Triple(OccurrenceDisposition.SKIPPED, "Skip today", Icons.Default.Remove),
+                    ).forEach { (disposition, label, icon) ->
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(onClickLabel = occurrenceMenuActionDescription(session, disposition)) {
+                                    menuExpanded = false
+                                    onOccurrenceMenu(disposition)
+                                }
+                                .semantics { contentDescription = occurrenceMenuActionDescription(session, disposition) }
+                                .padding(horizontal = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(icon, contentDescription = null, tint = AppBlue, modifier = Modifier.size(20.dp))
+                            Text(label, color = Color(0xFFF4F0E7), style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun SessionActionPill(action: SessionAction) {
+private fun SessionActionLabel(action: SessionAction, label: String, modifier: Modifier = Modifier) {
     val completed = action == SessionAction.DONE
     Row(
-        modifier = Modifier
+        modifier = modifier
             .clearAndSetSemantics { }
-            .defaultMinSize(minHeight = 48.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(if (completed) AppCompleted else AppBlue)
-            .border(1.dp, if (completed) AppMint else AppBlue, RoundedCornerShape(24.dp))
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (completed) Icon(Icons.Default.Check, null, tint = AppMint, modifier = Modifier.size(18.dp))
-        Text(action.name.lowercase().replaceFirstChar(Char::uppercase), color = if (completed) AppMint else AppBackgroundDeep, fontWeight = FontWeight.Bold)
-        if (!completed) Icon(Icons.Default.ChevronRight, null, tint = AppBackgroundDeep, modifier = Modifier.size(18.dp))
+        Text(
+            if (completed) "Done" else "$label  →",
+            color = if (completed) AppMint else AppBlue.copy(alpha = .9f),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
 
@@ -2240,7 +2531,7 @@ private fun DashboardSessionPreviewContent(sessions: List<DashboardSession>) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             EditorialSectionLabel("TODAY'S SESSION")
-            if (sessions.isEmpty()) EmptySchedule(true) else sessions.forEach { SessionCard(it) {} }
+            if (sessions.isEmpty()) EmptySchedule(true) else sessions.forEach { SessionCard(it, onClick = {}) }
             WeekSelector(
                 dashboardWeek(LocalDate.of(2026, 9, 10)),
                 LocalDate.of(2026, 9, 10),
@@ -2250,15 +2541,44 @@ private fun DashboardSessionPreviewContent(sessions: List<DashboardSession>) {
     }
 }
 
+@Composable
+private fun DashboardOccurrenceMenuPreview() {
+    val plan = defaultTrainingPlan()
+    val date = LocalDate.of(2026, 9, 10)
+    val session = dashboardSessions(plan, emptyList(), emptyList(), date).first()
+    DraftingRoom5Theme {
+        Column(
+            Modifier.fillMaxSize().appScreenBackground().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            EditorialSectionLabel("TODAY'S SESSION")
+            SessionCard(session, onClick = {}, onOccurrenceMenu = {}, initialMenuExpanded = true)
+        }
+    }
+}
+
+@Composable
+private fun DashboardDeferredPreview() {
+    val plan = defaultTrainingPlan()
+    val sourceDate = LocalDate.of(2026, 9, 9)
+    val source = plan.forDay(sourceDate.dayOfWeek).first()
+    val exception = OccurrenceException(OccurrenceKey(source.id, sourceDate), OccurrenceDisposition.DEFERRED, sourceDate.plusDays(1))
+    val sessions = dashboardSessions(plan, emptyList(), emptyList(), sourceDate.plusDays(1), listOf(exception))
+    DashboardSessionPreviewContent(sessions)
+}
+
 /** Shared real-screen fixtures for host-rendered visual regression checks. */
 @Composable
 internal fun CoreShellReviewPreview(screen: String) {
     CompositionLocalProvider(LocalReviewTime provides Instant.parse("2026-09-10T18:00:00Z")) {
     when (screen) {
+        "Dashboard defer menu" -> DashboardOccurrenceMenuPreview()
+        "Dashboard deferred" -> DashboardDeferredPreview()
         in HardeningState.entries.map { it.fixtureName } -> HardeningStateReviewPreview(checkNotNull(hardeningStateForFixture(screen)))
         "Session idle", "Session ready", "Session running", "Session finished" -> GuidedSessionReviewPreview(screen)
         "Session completion" -> SessionCompletionReviewPreview()
         "Settings" -> SettingsScreenPreview()
+        "Settings voice expanded" -> SettingsScreenPreview(initialVoiceExpanded = true)
         "Customization" -> DashboardCustomizationPreview()
         "Schedule", "Routines" -> DraftingRoom5Theme {
             PlanManagementScreen(
@@ -2290,11 +2610,11 @@ internal fun CoreShellReviewPreview(screen: String) {
                 onBack = {},
             )
         }
-        "Guided editor" -> DraftingRoom5Theme {
+        "Guided editor", "Guided editor actions" -> DraftingRoom5Theme {
             val plan = defaultTrainingPlan()
             val routine = plan.routines.first { it.execution == RoutineExecution.GUIDED }
             GuidedRoutineEditorScreen(
-                routine = routine,
+                routine = if (screen == "Guided editor actions") routine.copy(exercises = routine.exercises.take(1)) else routine,
                 scheduleSummary = plan.routineScheduleSummary(routine.id),
                 isNew = false,
                 onPersist = { true },
@@ -2317,21 +2637,29 @@ internal fun CoreShellReviewPreview(screen: String) {
         }
         "Weight" -> MetricDetailPreview("Weight")
         else -> DraftingRoom5Theme {
+            val reviewPlan = defaultTrainingPlan()
+            val linkedHistory = if (screen == "Dashboard linked done") {
+                val linkedEntry = reviewPlan.schedule.first { reviewPlan.routineFor(it).execution == RoutineExecution.LINKED_APP }
+                val linkedRoutine = reviewPlan.routineFor(linkedEntry)
+                listOf(WorkoutHistoryEntry("preview-linked-done", OccurrenceKey(linkedEntry.id, LocalDate.of(2026, 9, 10)), linkedRoutine, 1, 1))
+            } else emptyList()
             Dashboard(
                 healthUi = HealthUiState(HealthConnection.CONNECTED),
                 dashboardLayout = DashboardLayout(),
-                healthDateRange = HealthDateRange.MONTH,
-                trainingPlan = defaultTrainingPlan(),
+                trainingPlan = reviewPlan,
                 partialSessions = emptyList(),
-                workoutHistory = emptyList(),
+                workoutHistory = linkedHistory,
                 animateBrandOnEntry = false,
                 onBrandAnimationFinished = {},
                 onOpenSettings = {},
-                updateAvailableVersion = null,
+                updateAvailableVersion = if (screen == "Dashboard update working") "0.24.0" else null,
+                updateBusy = screen == "Dashboard update working",
+                updateActionMessage = if (screen == "Dashboard update working") "Checking for updates…" else null,
                 onInstallUpdate = {},
                 onOpenMetric = {},
-                onOpenCustom = { _, _ -> },
+                onOpenCustom = {},
                 onLaunchExternal = {},
+                onUndoLinked = {},
             )
         }
     }
@@ -2380,7 +2708,6 @@ private fun HardeningStateReviewPreview(state: HardeningState) {
             Dashboard(
                 healthUi = HealthUiState(HealthConnection.CONNECTED),
                 dashboardLayout = DashboardLayout(),
-                healthDateRange = HealthDateRange.MONTH,
                 trainingPlan = plan,
                 partialSessions = emptyList(),
                 workoutHistory = emptyList(),
@@ -2388,10 +2715,13 @@ private fun HardeningStateReviewPreview(state: HardeningState) {
                 onBrandAnimationFinished = {},
                 onOpenSettings = {},
                 updateAvailableVersion = null,
+                updateBusy = false,
+                updateActionMessage = null,
                 onInstallUpdate = {},
                 onOpenMetric = {},
-                onOpenCustom = { _, _ -> },
+                onOpenCustom = {},
                 onLaunchExternal = {},
+                onUndoLinked = {},
             )
         }
         HardeningState.NO_ROUTINES -> PlanHardeningPreview(emptyPlan = true, routinesTab = true)
@@ -2491,7 +2821,8 @@ private fun previewSession(routineId: String, action: SessionAction, completedEx
     val plan = defaultTrainingPlan()
     val routine = checkNotNull(plan.routines.firstOrNull { it.id == routineId })
     val entry = checkNotNull(plan.schedule.firstOrNull { it.routineId == routineId })
-    return DashboardSession(entry, routine, action, completedExercises)
+    return DashboardSession(entry, routine, action, completedExercises,
+        occurrence = OccurrenceKey(entry.id, LocalDate.of(2026, 9, 9)), effectiveDate = LocalDate.of(2026, 9, 9))
 }
 
 @Preview(name = "Dashboard linked session", widthDp = 360, heightDp = 360)
@@ -2534,15 +2865,15 @@ private suspend fun readHealthStats(
     context: Context,
     client: HealthConnectClient,
     granted: Set<String>,
-    dateRange: HealthDateRange,
+    trendWindow: HealthTrendWindow,
     previous: HealthStats,
 ): HealthStats {
     val now = Instant.now()
     val zoneId = ZoneId.systemDefault()
     val trendEndDate = LocalDate.now(zoneId)
     fun historyRange(anchor: Instant?): TimeRangeFilter {
-        val end = anchor?.atZone(zoneId)?.toLocalDate() ?: trendEndDate
-        val start = minOf(dateRange.startDate(end), HealthDateRange.MONTH.startDate(end))
+        val end = trendWindow.endDate(anchor, trendEndDate, zoneId)
+        val start = trendWindow.startDate(anchor, trendEndDate, zoneId)
         return TimeRangeFilter.between(start.atStartOfDay(zoneId).toInstant(), minOf(end.plusDays(1).atStartOfDay(zoneId).toInstant(), now))
     }
 
@@ -2573,7 +2904,7 @@ private suspend fun readHealthStats(
 
     fun source(packageName: String?) = resolveHealthSource(context, packageName)
     fun sources(packageNames: Iterable<String>) = packageNames.mapNotNull(::source).distinct().sorted()
-    fun selectedStart(anchor: Instant?): Instant = dateRange.startDate(anchor?.atZone(zoneId)?.toLocalDate() ?: trendEndDate).atStartOfDay(zoneId).toInstant()
+    fun selectedStart(anchor: Instant?): Instant = trendWindow.startDate(anchor, trendEndDate, zoneId).atStartOfDay(zoneId).toInstant()
     val sessionStart = selectedStart(sessions.value?.maxOfOrNull { it.endTime })
     val distanceStart = selectedStart(distance.value?.maxOfOrNull { it.endTime })
     val selectedSessions = sessions.value?.filter { !it.endTime.isBefore(sessionStart) }
@@ -2641,18 +2972,20 @@ private suspend fun readHealthStats(
             zoneId,
         ),
         workoutTrend = sessions.value?.let { records ->
+            val end = trendWindow.endDate(records.maxOf { it.endTime }, trendEndDate, zoneId)
             dailyHealthTotals(
                 records.map { TimedHealthValue(it.endTime, 1.0) },
-                dateRange.startDate(records.maxOf { it.endTime }.atZone(zoneId).toLocalDate()),
-                records.maxOf { it.endTime }.atZone(zoneId).toLocalDate(),
+                trendWindow.range.startDate(end),
+                end,
                 zoneId,
             )
         }.orEmpty(),
         distanceTrend = distance.value?.let { records ->
+            val end = trendWindow.endDate(records.maxOf { it.endTime }, trendEndDate, zoneId)
             dailyHealthTotals(
                 records.map { TimedHealthValue(it.endTime, it.distance.inMeters / 1_609.344) },
-                dateRange.startDate(records.maxOf { it.endTime }.atZone(zoneId).toLocalDate()),
-                records.maxOf { it.endTime }.atZone(zoneId).toLocalDate(),
+                trendWindow.range.startDate(end),
+                end,
                 zoneId,
             )
         }.orEmpty(),

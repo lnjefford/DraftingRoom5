@@ -39,6 +39,23 @@ class SettingsSupportTest {
         assertEquals("Retry", updateSettingsPresentation(AppUpdateStatus(lastError = "Offline"), false, null, "2.3.4").actionLabel)
         assertEquals("Check", updateSettingsPresentation(AppUpdateStatus(lastError = "Old error"), false, "You're running the latest version.", "2.3.4").actionLabel)
         assertFalse(updateSettingsPresentation(AppUpdateStatus(), true, null, "2.3.4").enabled)
+        val opening = updateSettingsPresentation(AppUpdateStatus(availableVersion = "2.4.0"), true, "Opening Android's installer…", "2.3.4")
+        assertEquals("Working…", opening.actionLabel)
+        assertEquals("Opening Android's installer…", opening.summary)
+        assertFalse(opening.enabled)
+        assertEquals("Retry", updateSettingsPresentation(AppUpdateStatus(availableVersion = "2.4.0"), false, "Could not open the installer", "2.3.4").actionLabel)
+    }
+
+    @Test fun interruptedUpdateWorkRecoversAfterRecreationWithoutAStuckBusyState() {
+        listOf("Checking for updates…", "Downloading version 2.4.0…", "Opening Android's installer…").forEach { working ->
+            assertEquals(working, dashboardUpdateAnnouncement("2.4.0", true, working))
+            val restored = updateMessageAfterRecreation(working)
+            assertTrue(restored.contains("interrupted"))
+            assertEquals("Install", updateSettingsPresentation(AppUpdateStatus(availableVersion = "2.4.0"), false, restored, "2.3.4").actionLabel)
+        }
+        assertEquals("Update 2.4.0 available. Tap to install.", dashboardUpdateAnnouncement("2.4.0", false, null))
+        assertEquals(null, dashboardUpdateAnnouncement(null, false, null))
+        assertEquals("Confirm the update in Android's installer.", updateMessageAfterRecreation("Confirm the update in Android's installer."))
     }
 
     @Test fun hapticSummaryReflectsAndroidAndDeviceCapability() {

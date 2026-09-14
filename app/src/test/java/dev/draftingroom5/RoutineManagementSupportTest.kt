@@ -11,7 +11,7 @@ class RoutineManagementSupportTest {
         val guided = plan.routines.single { it.execution == RoutineExecution.GUIDED }
         val linked = plan.routines.first { it.execution == RoutineExecution.LINKED_APP }
 
-        assertEquals("Guided Routine · 7 exercises", guided.routineListMetadata())
+        assertEquals("Guided Routine · 8 exercises", guided.routineListMetadata())
         assertTrue(linked.routineListMetadata().startsWith("Linked App · "))
         assertTrue("built-in" !in guided.routineListMetadata().lowercase())
         assertTrue("custom" !in guided.routineListMetadata().lowercase())

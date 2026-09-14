@@ -14,7 +14,7 @@ class RoutineArtworkCatalogTest {
     @Test
     fun catalogContainsEveryStableRoutineArtworkId() {
         assertEquals(
-            setOf("generic", "dumbbell", "grip_trainer", "running_shoe", "kettlebell", "leg_day", "full_body", "push_day", "pull_day", "jump_rope", "stopwatch"),
+            setOf("generic", "dumbbell", "grip_trainer", "hangboard", "running_shoe", "kettlebell", "leg_day", "full_body", "push_day", "pull_day", "jump_rope", "stopwatch"),
             RoutineArtworkCatalog.entries.mapTo(linkedSetOf()) { it.storageId },
         )
         assertEquals(RoutineArtworkCatalog.entries.size, RoutineArtworkCatalog.entries.map { it.storageId }.distinct().size)
@@ -37,6 +37,11 @@ class RoutineArtworkCatalogTest {
 
     @Test
     fun missingAndBlankIdsResolveToTheGenericFallback() {
+        val hangboard = RoutineArtworkCatalog.resolve("hangboard")
+        assertEquals("hangboard", hangboard.storageId)
+        assertEquals(R.drawable.routine_hangboard_card, hangboard.resource(RoutineArtworkCrop.CARD))
+        assertEquals(R.drawable.routine_hangboard_header, hangboard.resource(RoutineArtworkCrop.HEADER))
+        assertEquals(R.drawable.routine_hangboard_picker, hangboard.resource(RoutineArtworkCrop.PICKER))
         val fallback = RoutineArtworkCatalog.resolve(RoutineArtworkCatalog.FALLBACK_ID)
         assertSame(fallback, RoutineArtworkCatalog.resolve("not_in_catalog"))
         assertSame(fallback, RoutineArtworkCatalog.resolve(""))

@@ -1,6 +1,7 @@
 package dev.draftingroom5
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -14,9 +15,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,6 +38,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -154,6 +162,60 @@ internal fun AppConfirmationDialog(
         confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.heightIn(min = 48.dp)) { Text(confirmLabel) } },
         dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(dismissLabel) } },
     )
+}
+
+/** Only the choices scroll; the commit controls stay in the sheet's visible bottom area. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun PersistentSelectionSheet(
+    title: String,
+    description: String,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    selectionContent: @Composable ColumnScope.() -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = AppSurface) {
+        PersistentSelectionSheetContent(title, description, onDismiss, onSave, selectionContent)
+    }
+}
+
+@Composable
+internal fun PersistentSelectionSheetContent(
+    title: String,
+    description: String,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    selectionContent: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth().fillMaxHeight(0.9f)
+            .background(AppSurface)
+            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+            Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Column(
+            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = selectionContent,
+        )
+        HorizontalDivider(color = AppBorder)
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save") }
+        }
+    }
 }
 
 @Preview(widthDp = 320, heightDp = 640)
