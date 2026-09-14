@@ -103,9 +103,9 @@ internal fun PlanManagementScreen(
     onAddLinkedRoutine: () -> Unit,
     onRenameRoutine: (String, String) -> Unit,
     onDeleteRoutine: (String) -> Unit,
-    onDeleteSchedule: (String) -> Unit,
+    onDeleteSchedule: (String, DayOfWeek) -> Unit,
     onAddSchedule: (DayOfWeek) -> Unit,
-    onEditSchedule: (String) -> Unit,
+    onEditSchedule: (String, DayOfWeek) -> Unit,
     onBack: () -> Unit,
     initialTab: Int = 0,
     hapticsEnabled: Boolean = true,
@@ -163,7 +163,7 @@ internal fun PlanManagementScreen(
                     onSelectDay = { selectedDayName = it.name },
                     onChange = onChange,
                     onAdd = { onAddSchedule(selectedDay) },
-                    onEdit = { onEditSchedule(it.id) },
+                    onEdit = { onEditSchedule(it.id, selectedDay) },
                     onDelete = { deletingScheduleId = it.id },
                 )
             } else {
@@ -228,11 +228,11 @@ internal fun PlanManagementScreen(
     deletingSchedule?.let { entry ->
         val routine = plan.routineFor(entry)
         AppConfirmationDialog(
-            title = "Delete ${routine.name}?",
-            message = "This removes the scheduled item from ${entry.days.weekdayList()}. The routine remains available.",
-            confirmLabel = "Delete",
+            title = "Remove ${routine.name} from ${selectedDay.fullName()}?",
+            message = "This removes the activity from ${selectedDay.fullName()}. The routine remains available.",
+            confirmLabel = "Remove activity",
             onConfirm = {
-                onDeleteSchedule(entry.id)
+                onDeleteSchedule(entry.id, selectedDay)
                 deletingScheduleId = null
             },
             onDismiss = { deletingScheduleId = null },
@@ -284,7 +284,7 @@ private fun RecurringScheduleTab(
             Spacer(Modifier.height(4.dp))
             PlanSectionRule()
             Spacer(Modifier.height(10.dp))
-            Text("Choose a day to review and edit its sessions.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Pick a day, then choose its activities. Repeat for the next day.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item { RecurringWeekSelector(workingPlan.scheduleCounts(), selectedDay, onSelectDay) }
         item {
@@ -298,7 +298,7 @@ private fun RecurringScheduleTab(
                 AppSurfaceCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Recovery day", style = MaterialTheme.typography.titleMedium)
-                        Text("Nothing recurs on ${selectedDay.fullName()}.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Nothing planned for ${selectedDay.fullName()}.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -354,7 +354,7 @@ private fun RecurringScheduleTab(
             Button(onClick = onAdd, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Add scheduled item")
+                Text("Choose an activity for ${selectedDay.fullName()}")
             }
         }
         item {

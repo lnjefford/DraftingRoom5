@@ -141,6 +141,12 @@ internal class ScheduleDragSession(
 internal fun TrainingPlan.removeScheduleEntry(id: String): TrainingPlan =
     copy(schedule = schedule.filterNot { it.id == id })
 
+internal fun TrainingPlan.removeScheduleOnDay(id: String, day: DayOfWeek): TrainingPlan =
+    copy(schedule = schedule.mapNotNull { entry ->
+        if (entry.id != id || day !in entry.days) entry
+        else (entry.days - day).takeIf { it.isNotEmpty() }?.let { entry.copy(days = it) }
+    })
+
 internal fun TrainingPlan.removeRoutine(id: String): TrainingPlan = copy(
     routines = routines.filterNot { it.id == id },
     schedule = schedule.filterNot { it.routineId == id },

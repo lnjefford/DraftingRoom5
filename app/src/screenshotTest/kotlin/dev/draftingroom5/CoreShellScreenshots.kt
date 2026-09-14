@@ -178,7 +178,7 @@ fun HangboardRoutineScreenshots(@PreviewParameter(HangboardRoutineCases::class) 
     val plan = initial.copy(routines = listOf(routine) + initial.routines, schedule = initial.schedule + occurrence)
     DraftingRoom5Theme {
         when (screen) {
-            "Routines" -> PlanManagementScreen(plan, emptyMap(), { true }, {}, {}, {}, {}, { _, _ -> }, {}, {}, {}, {}, {}, initialTab = 1)
+            "Routines" -> PlanManagementScreen(plan, emptyMap(), { true }, {}, {}, {}, {}, { _, _ -> }, {}, { _, _ -> }, {}, { _, _ -> }, {}, initialTab = 1)
             "Editor" -> GuidedRoutineEditorScreen(routine, "Scheduled Tue · Fri", false, onPersist = { true }, onDelete = {}, onBack = {})
             else -> ScheduleEditorScreen(plan, occurrence, "review-hangboard-entry", DayOfWeek.TUESDAY, onSave = { true }, onBack = {})
         }
@@ -205,7 +205,7 @@ fun RiceBagArtworkScreenshots(@PreviewParameter(RiceBagArtworkCases::class) scre
     val plan = initial.copy(routines = listOf(routine) + initial.routines)
     DraftingRoom5Theme {
         when (screen) {
-            "Routines" -> PlanManagementScreen(plan, emptyMap(), { true }, {}, {}, {}, {}, { _, _ -> }, {}, {}, {}, {}, {}, initialTab = 1)
+            "Routines" -> PlanManagementScreen(plan, emptyMap(), { true }, {}, {}, {}, {}, { _, _ -> }, {}, { _, _ -> }, {}, { _, _ -> }, {}, initialTab = 1)
             "Editor" -> GuidedRoutineEditorScreen(routine, "Not scheduled", false, onPersist = { true }, onDelete = {}, onBack = {})
             else -> ExerciseEditorScreen(riceExercise, {}, {})
         }

@@ -2,7 +2,6 @@ package dev.draftingroom5
 
 import java.io.IOException
 import java.time.DayOfWeek
-import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -11,78 +10,66 @@ import org.junit.Test
 class ScheduleEditorTest {
     private val plan = defaultTrainingPlan()
 
-    @Test fun everyRepeatShortcutProducesOnlyTheAuthoritativeWeekdaySet() {
-        val initial = ScheduleEditorDraft.initial(null, plan.routines, DayOfWeek.THURSDAY)
+    @Test fun newActivityRequiresSelectionAndSavesOnlyOnChosenDay() {
+        val initial = ScheduleEditorDraft.initial(null, DayOfWeek.SUNDAY)
+        assertNull(plan.saveScheduleDraft(null, initial, "schedule-new"))
 
-        assertEquals(setOf(DayOfWeek.THURSDAY), initial.applyRepeat(ScheduleRepeat.WEEKLY).days)
-        assertEquals(DayOfWeek.entries.take(5).toSet(), initial.applyRepeat(ScheduleRepeat.WEEKDAYS).days)
-        assertEquals(DayOfWeek.entries.toSet(), initial.applyRepeat(ScheduleRepeat.DAILY).days)
-        assertEquals(initial.days, initial.applyRepeat(ScheduleRepeat.CUSTOM).days)
+        val updated = requireNotNull(plan.saveScheduleDraft(null, initial.selectRoutine(plan.routines.first().id), "schedule-new"))
+        assertEquals(4, updated.schedule.size)
+        assertEquals(ScheduleEntry("schedule-new", plan.routines.first().id, setOf(DayOfWeek.SUNDAY)), updated.schedule.last())
+        assertEquals(plan.forDay(DayOfWeek.MONDAY).map { it.id }, updated.forDay(DayOfWeek.MONDAY).map { it.id })
     }
 
-    @Test fun manualDayChangesBecomeCustomAndCanBeInvalidUntilCorrected() {
-        val initial = ScheduleEditorDraft.initial(null, plan.routines, DayOfWeek.SATURDAY)
-        val empty = initial.toggleDay(DayOfWeek.SATURDAY)
+    @Test fun editingOneDayOfLegacyMultiDayEntryKeepsOtherDays() {
+        val original = plan.schedule.first()
+        val replacement = plan.routines.last().id
+        val draft = ScheduleEditorDraft.initial(original, DayOfWeek.TUESDAY).selectRoutine(replacement)
 
-        assertEquals(ScheduleRepeat.CUSTOM, empty.repeat)
-        assertTrue(empty.days.isEmpty())
-        assertNull(empty.toEntry(null, "new-entry", plan.routines))
-
-        val corrected = empty.toggleDay(DayOfWeek.SUNDAY)
-        assertEquals(setOf(DayOfWeek.SUNDAY), corrected.days)
-        assertEquals("Every Sunday", corrected.days.recurrenceDescription(Locale.ENGLISH))
+        val updated = requireNotNull(plan.saveScheduleDraft(original.id, draft, "schedule-tuesday"))
+        assertEquals(plan.schedule.size + 1, updated.schedule.size)
+        assertEquals(original.copy(days = original.days - DayOfWeek.TUESDAY), updated.schedule.first())
+        assertEquals(ScheduleEntry("schedule-tuesday", replacement, setOf(DayOfWeek.TUESDAY)), updated.schedule[1])
+        assertEquals(plan.forDay(DayOfWeek.MONDAY).map { it.id }, updated.forDay(DayOfWeek.MONDAY).map { it.id })
     }
 
-    @Test fun recurrencePreviewCoversWeeklyWeekdaysDailyAndCustom() {
-        assertEquals("Every Monday", setOf(DayOfWeek.MONDAY).recurrenceDescription(Locale.ENGLISH))
-        assertEquals("Every weekday", DayOfWeek.entries.take(5).toSet().recurrenceDescription(Locale.ENGLISH))
-        assertEquals("Every day", DayOfWeek.entries.toSet().recurrenceDescription(Locale.ENGLISH))
-        assertEquals("Every Tuesday, Thursday", setOf(DayOfWeek.THURSDAY, DayOfWeek.TUESDAY).recurrenceDescription(Locale.ENGLISH))
-        assertEquals("Choose at least one day", emptySet<DayOfWeek>().recurrenceDescription(Locale.ENGLISH))
+    @Test fun editingSingleDayPreservesIdentityAndOrder() {
+        val original = plan.schedule.last()
+        val draft = ScheduleEditorDraft.initial(original, DayOfWeek.SATURDAY).selectRoutine(plan.routines.first().id)
+        val updated = requireNotNull(plan.saveScheduleDraft(original.id, draft, "unused"))
+
+        assertEquals(plan.schedule.map { it.id }, updated.schedule.map { it.id })
+        assertEquals(original.id, updated.schedule.last().id)
+        assertEquals(setOf(DayOfWeek.SATURDAY), updated.schedule.last().days)
     }
 
-    @Test fun addAndEditRequireExplicitValidSaveAndPreserveEntryIdentityAndOrder() {
-        val initial = ScheduleEditorDraft.initial(null, plan.routines, DayOfWeek.SUNDAY)
-        assertEquals(3, plan.schedule.size) // Opening/cancelling has no canonical mutation.
-
-        val added = requireNotNull(plan.saveScheduleDraft(null, initial, "schedule-new"))
-        assertEquals(4, added.schedule.size)
-        assertEquals("schedule-new", added.schedule.last().id)
-        assertEquals(setOf(DayOfWeek.SUNDAY), added.schedule.last().days)
-
-        val original = added.schedule[1]
-        val editedDraft = ScheduleEditorDraft.initial(original, added.routines, DayOfWeek.MONDAY)
-            .selectRoutine(added.routines.last().id)
-            .applyRepeat(ScheduleRepeat.DAILY)
-        val edited = requireNotNull(added.saveScheduleDraft(original.id, editedDraft, "ignored"))
-        assertEquals(added.schedule.map { it.id }, edited.schedule.map { it.id })
-        assertEquals(original.id, edited.schedule[1].id)
-        assertEquals(added.routines.last().id, edited.schedule[1].routineId)
-        assertEquals(DayOfWeek.entries.toSet(), edited.schedule[1].days)
-    }
-
-    @Test fun missingRoutineAndMissingEditTargetCannotSave() {
-        val missingRoutine = ScheduleEditorDraft("missing", setOf(DayOfWeek.MONDAY), ScheduleRepeat.WEEKLY, DayOfWeek.MONDAY)
+    @Test fun invalidRoutineOrWrongDayCannotSave() {
+        val missingRoutine = ScheduleEditorDraft("missing", DayOfWeek.MONDAY)
         assertNull(plan.saveScheduleDraft(null, missingRoutine, "new"))
-
-        val valid = missingRoutine.selectRoutine(plan.routines.first().id)
-        assertNull(plan.saveScheduleDraft("missing-entry", valid, "ignored"))
+        assertNull(plan.saveScheduleDraft("missing-entry", missingRoutine.selectRoutine(plan.routines.first().id), "new"))
+        assertNull(plan.saveScheduleDraft(plan.schedule.first().id, ScheduleEditorDraft(plan.routines.first().id, DayOfWeek.SUNDAY), "new"))
     }
 
-    @Test fun addedAndEditedRecurrencesPersistThroughCurrentDocumentStore() {
+    @Test fun removingOneDayLeavesOtherDaysScheduled() {
+        val original = plan.schedule.first()
+        val updated = plan.removeScheduleOnDay(original.id, DayOfWeek.TUESDAY)
+        assertEquals(original.copy(days = original.days - DayOfWeek.TUESDAY), updated.schedule.first())
+        assertEquals(plan.forDay(DayOfWeek.MONDAY).map { it.id }, updated.forDay(DayOfWeek.MONDAY).map { it.id })
+        assertTrue(updated.forDay(DayOfWeek.TUESDAY).none { it.id == original.id })
+        assertEquals(plan.schedule.size - 1, plan.removeScheduleOnDay(plan.schedule.last().id, DayOfWeek.SATURDAY).schedule.size)
+    }
+
+    @Test fun daySpecificActivityPersistsThroughDocumentStore() {
         val storage = ScheduleEditorStorage()
         val repository = AppRepository(storage)
         val document = (repository.load() as LoadState.Ready).value
-        val draft = ScheduleEditorDraft.initial(null, document.plan.routines, DayOfWeek.SUNDAY)
-            .applyRepeat(ScheduleRepeat.WEEKDAYS)
+        val draft = ScheduleEditorDraft.initial(null, DayOfWeek.SUNDAY).selectRoutine(document.plan.routines.first().id)
         val updated = requireNotNull(document.plan.saveScheduleDraft(null, draft, "schedule-editor-test"))
 
         repository.replacePlan(document.generation, updated) as RepositoryResult.Success
         val restored = decodeAppDocument(checkNotNull(storage.value)).plan
 
         assertEquals(updated, restored)
-        assertEquals(DayOfWeek.entries.take(5).toSet(), restored.schedule.last().days)
-        assertEquals(draft.routineId, restored.schedule.last().routineId)
+        assertEquals(setOf(DayOfWeek.SUNDAY), restored.schedule.last().days)
     }
 }
 

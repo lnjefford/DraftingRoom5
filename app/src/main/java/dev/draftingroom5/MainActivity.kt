@@ -735,14 +735,13 @@ private fun DraftingRoom5App() {
                 onDeleteRoutine = { routineId ->
                     if (acceptDocumentResult(appRepository.deleteRoutine(appDocument.generation, routineId))) requestAutomaticBackup()
                 },
-                onDeleteSchedule = { scheduleEntryId ->
-                    if (acceptDocumentResult(appRepository.deleteScheduleEntry(appDocument.generation, scheduleEntryId))) requestAutomaticBackup()
+                onDeleteSchedule = { scheduleEntryId, day ->
+                    val updated = trainingPlan.removeScheduleOnDay(scheduleEntryId, day)
+                    if (acceptDocumentResult(appRepository.replacePlan(appDocument.generation, updated))) requestAutomaticBackup()
                 },
                 onAddSchedule = { day -> navigation.navigate(AppRoute.ScheduleEditor(null, newId(), day)) },
-                onEditSchedule = { entryId ->
-                    val anchor = trainingPlan.schedule.firstOrNull { it.id == entryId }
-                        ?.days?.minByOrNull(java.time.DayOfWeek::getValue) ?: java.time.DayOfWeek.MONDAY
-                    navigation.navigate(AppRoute.ScheduleEditor(entryId, newId(), anchor))
+                onEditSchedule = { entryId, day ->
+                    navigation.navigate(AppRoute.ScheduleEditor(entryId, newId(), day))
                 },
                 onBack = { navigation.back() },
             )
@@ -2591,9 +2590,9 @@ internal fun CoreShellReviewPreview(screen: String) {
                 onAddLinkedRoutine = {},
                 onRenameRoutine = { _, _ -> },
                 onDeleteRoutine = {},
-                onDeleteSchedule = {},
+                onDeleteSchedule = { _, _ -> },
                 onAddSchedule = {},
-                onEditSchedule = {},
+                onEditSchedule = { _, _ -> },
                 onBack = {},
                 initialTab = if (screen == "Routines") 1 else 0,
             )
@@ -2796,7 +2795,7 @@ private fun PlanHardeningPreview(emptyPlan: Boolean, routinesTab: Boolean) {
             plan = plan,
             partialSessionCounts = emptyMap(),
             onChange = { true }, onReset = {}, onEditRoutine = {}, onAddGuidedRoutine = {}, onAddLinkedRoutine = {},
-            onRenameRoutine = { _, _ -> }, onDeleteRoutine = {}, onDeleteSchedule = {}, onAddSchedule = {}, onEditSchedule = {}, onBack = {},
+            onRenameRoutine = { _, _ -> }, onDeleteRoutine = {}, onDeleteSchedule = { _, _ -> }, onAddSchedule = {}, onEditSchedule = { _, _ -> }, onBack = {},
             initialTab = if (routinesTab) 1 else 0,
         )
     }

@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,18 +12,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -47,38 +40,18 @@ import java.util.Locale
 
 internal data class ScheduleEditorDraft(
     val routineId: String?,
-    val days: Set<DayOfWeek>,
-    val repeat: ScheduleRepeat,
-    val anchor: DayOfWeek,
+    val day: DayOfWeek,
 ) {
     fun selectRoutine(id: String) = copy(routineId = id)
 
-    fun applyRepeat(value: ScheduleRepeat): ScheduleEditorDraft = copy(
-        days = repeatDays(value, anchor, days),
-        repeat = value,
-    )
-
-    fun toggleDay(day: DayOfWeek): ScheduleEditorDraft {
-        val updated = if (day in days) days - day else days + day
-        return copy(days = updated, repeat = ScheduleRepeat.CUSTOM, anchor = day)
-    }
-
     fun toEntry(originalId: String?, newEntryId: String, routines: List<Routine>): ScheduleEntry? {
         val id = routineId?.takeIf { candidate -> routines.any { it.id == candidate } } ?: return null
-        if (days.isEmpty()) return null
-        return ScheduleEntry(originalId ?: newEntryId, id, days)
+        return ScheduleEntry(originalId ?: newEntryId, id, setOf(day))
     }
 
     companion object {
-        fun initial(original: ScheduleEntry?, routines: List<Routine>, requestedAnchor: DayOfWeek): ScheduleEditorDraft {
-            val days = original?.days ?: setOf(requestedAnchor)
-            return ScheduleEditorDraft(
-                routineId = original?.routineId ?: routines.firstOrNull()?.id,
-                days = days,
-                repeat = repeatPattern(days),
-                anchor = original?.days?.minByOrNull(DayOfWeek::getValue) ?: requestedAnchor,
-            )
-        }
+        fun initial(original: ScheduleEntry?, requestedDay: DayOfWeek) =
+            ScheduleEditorDraft(original?.routineId, requestedDay)
     }
 }
 
@@ -88,9 +61,19 @@ internal fun TrainingPlan.saveScheduleDraft(
     newEntryId: String,
 ): TrainingPlan? {
     val entry = draft.toEntry(originalId, newEntryId, routines) ?: return null
-    if (originalId == null) return copy(schedule = schedule + entry)
+    if (originalId == null) {
+        if (schedule.any { it.id == newEntryId }) return null
+        return copy(schedule = schedule + entry)
+    }
     if (schedule.none { it.id == originalId }) return null
-    return copy(schedule = schedule.map { if (it.id == originalId) entry else it })
+    val original = schedule.first { it.id == originalId }
+    if (draft.day !in original.days) return null
+    if (original.routineId == entry.routineId) return this
+    if (original.days.size == 1) return copy(schedule = schedule.map { if (it.id == originalId) entry else it })
+    if (schedule.any { it.id == newEntryId }) return null
+    return copy(schedule = schedule.flatMap {
+        if (it.id == originalId) listOf(it.copy(days = it.days - draft.day), entry.copy(id = newEntryId)) else listOf(it)
+    })
 }
 
 internal fun Set<DayOfWeek>.recurrenceDescription(locale: Locale = Locale.getDefault()): String {
@@ -115,13 +98,10 @@ internal fun ScheduleEditorScreen(
     onSave: (TrainingPlan) -> Boolean,
     onBack: () -> Unit,
 ) {
-    val initial = remember(original?.id, draftId, plan.routines) {
-        ScheduleEditorDraft.initial(original, plan.routines, requestedAnchor)
+    val initial = remember(original?.id, draftId, requestedAnchor) {
+        ScheduleEditorDraft.initial(original, requestedAnchor)
     }
     var routineId by rememberSaveable(original?.id, draftId) { mutableStateOf(initial.routineId) }
-    var dayNames by rememberSaveable(original?.id, draftId) { mutableStateOf(initial.days.map { it.name }) }
-    var repeatName by rememberSaveable(original?.id, draftId) { mutableStateOf(initial.repeat.name) }
-    var anchorName by rememberSaveable(original?.id, draftId) { mutableStateOf(initial.anchor.name) }
     var confirmDiscard by rememberSaveable(original?.id, draftId) { mutableStateOf(false) }
     var saveFailed by rememberSaveable(original?.id, draftId) { mutableStateOf(false) }
     var confirmReassignment by rememberSaveable(original?.id, draftId) { mutableStateOf(false) }
@@ -129,22 +109,18 @@ internal fun ScheduleEditorScreen(
     val originalIdentity = rememberSaveable(original?.id, draftId) { currentIdentity }
     val stale = originalIdentity != currentIdentity
 
-    fun currentDraft() = ScheduleEditorDraft(
-        routineId = routineId,
-        days = dayNames.mapNotNull { runCatching { DayOfWeek.valueOf(it) }.getOrNull() }.toSet(),
-        repeat = runCatching { ScheduleRepeat.valueOf(repeatName) }.getOrDefault(ScheduleRepeat.CUSTOM),
-        anchor = runCatching { DayOfWeek.valueOf(anchorName) }.getOrDefault(requestedAnchor),
-    )
+    fun currentDraft() = ScheduleEditorDraft(routineId, requestedAnchor)
     fun requestBack() {
         if (currentDraft() == initial) onBack() else confirmDiscard = true
     }
 
     BackHandler(onBack = ::requestBack)
     val draft = currentDraft()
-    val valid = !stale && draft.toEntry(original?.id, draftId, plan.routines) != null
+    val valid = !stale && (original == null || requestedAnchor in original.days) &&
+        draft.toEntry(original?.id, draftId, plan.routines) != null
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
-        topBar = { SecondaryTopBar(if (original == null) "Add scheduled item" else "Edit scheduled item", ::requestBack) },
+        topBar = { SecondaryTopBar(if (original == null) "Add activity" else "Change activity", ::requestBack) },
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
     ) { padding ->
         LazyColumn(
@@ -154,9 +130,9 @@ internal fun ScheduleEditorScreen(
         ) {
             item {
                 EditorialHeading(
-                    eyebrow = "Routine",
-                    title = if (original == null) "Add to your week" else "Update recurrence",
-                    supportingText = "Choose an existing routine, then set the days it repeats.",
+                    eyebrow = requestedAnchor.getDisplayName(TextStyle.FULL, Locale.getDefault()),
+                    title = if (original == null) "Choose an activity" else "Change this activity",
+                    supportingText = "Pick an activity for ${requestedAnchor.getDisplayName(TextStyle.FULL, Locale.getDefault())}. You can choose another day when you return to the schedule.",
                 )
             }
             if (plan.routines.isEmpty()) {
@@ -173,56 +149,6 @@ internal fun ScheduleEditorScreen(
                     RoutineChoiceRow(routine, selected = routine.id == draft.routineId) { routineId = routine.id }
                 }
             }
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("REPEAT", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(ScheduleRepeat.entries) { option ->
-                            FilterChip(
-                                selected = draft.repeat == option,
-                                onClick = {
-                                    val updated = draft.applyRepeat(option)
-                                    dayNames = updated.days.map { it.name }
-                                    repeatName = updated.repeat.name
-                                },
-                                label = { Text(option.editorLabel()) },
-                                modifier = Modifier.heightIn(min = 48.dp),
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("DAYS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        items(DayOfWeek.entries) { day ->
-                            FilterChip(
-                                selected = day in draft.days,
-                                onClick = {
-                                    val updated = draft.toggleDay(day)
-                                    dayNames = updated.days.map { it.name }
-                                    repeatName = updated.repeat.name
-                                    anchorName = updated.anchor.name
-                                },
-                                label = { Text(day.getDisplayName(TextStyle.SHORT, Locale.getDefault())) },
-                                modifier = Modifier.heightIn(min = 48.dp).semantics {
-                                    contentDescription = "${day.getDisplayName(TextStyle.FULL, Locale.getDefault())}, ${if (day in draft.days) "included" else "not included"}"
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                AppSurfaceCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("RECURRENCE", color = AppMint, style = MaterialTheme.typography.labelMedium)
-                        Text(draft.days.recurrenceDescription(), style = MaterialTheme.typography.titleLarge)
-                        Text("The weekday selection above is the saved schedule.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
             if (saveFailed) item { Text("Couldn’t save these changes. Try again.", color = MaterialTheme.colorScheme.error) }
             if (stale) item { Text("This scheduled item changed elsewhere. Go back and reopen it to review the current values.", color = MaterialTheme.colorScheme.error) }
             item {
@@ -236,7 +162,7 @@ internal fun ScheduleEditorScreen(
                     },
                     enabled = valid,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                ) { Text(if (original == null) "Add to schedule" else "Save changes") }
+                ) { Text(if (original == null) "Add to ${requestedAnchor.getDisplayName(TextStyle.FULL, Locale.getDefault())}" else "Save ${requestedAnchor.getDisplayName(TextStyle.FULL, Locale.getDefault())}") }
             }
         }
     }
@@ -253,7 +179,7 @@ internal fun ScheduleEditorScreen(
     )
     if (confirmDiscard) AppConfirmationDialog(
         title = "Discard schedule changes?",
-        message = "Your routine and weekday changes haven’t been saved.",
+        message = "Your activity change hasn’t been saved.",
         confirmLabel = "Discard",
         onConfirm = onBack,
         onDismiss = { confirmDiscard = false },
@@ -287,11 +213,4 @@ private fun RoutineChoiceRow(routine: Routine, selected: Boolean, onSelect: () -
 private fun Routine.scheduleEditorMetadata(): String = when (execution) {
     RoutineExecution.GUIDED -> "Guided routine · ${if (exercises.size == 1) "1 exercise" else "${exercises.size} exercises"}"
     RoutineExecution.LINKED_APP -> "Linked app · ${linkedAppDisplayName(checkNotNull(appLink).packageName)}"
-}
-
-private fun ScheduleRepeat.editorLabel(): String = when (this) {
-    ScheduleRepeat.WEEKLY -> "Weekly"
-    ScheduleRepeat.WEEKDAYS -> "Weekdays"
-    ScheduleRepeat.DAILY -> "Every day"
-    ScheduleRepeat.CUSTOM -> "Custom"
 }
