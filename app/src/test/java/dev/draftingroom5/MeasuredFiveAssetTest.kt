@@ -14,32 +14,39 @@ class MeasuredFiveAssetTest {
         ?: error("Android resources were not found from ${File(".").absolutePath}")
 
     @Test
-    fun fullColorAndMonochromeUseTheSameSafeMeasuredGeometry() {
-        val fullColor = pathData("drawable/measured_five_foreground.xml")
-        val monochrome = pathData("drawable/measured_five_monochrome.xml")
+    fun roundLauncherKeepsTheMeasuredFiveAndHatchedRingInBothModes() {
+        val fullColor = pathData("drawable/launcher_five_foreground.xml")
+        val monochrome = pathData("drawable/launcher_five_monochrome.xml")
+        val inAppMark = pathData("drawable/measured_five_foreground.xml")
 
-        assertEquals(fullColor, monochrome)
-        assertTrue(fullColor.first().contains("M21,24h66"))
-        assertTrue(fullColor.last().contains("M44,29h4v6"))
-        assertTrue(fullColor.last().contains("M53,29h4v6"))
-        assertTrue(fullColor.last().contains("M62,29h4v6"))
+        assertEquals(fullColor.take(3), monochrome.take(3))
+        assertEquals(inAppMark.last(), fullColor.last())
+        assertEquals(fullColor.last(), monochrome.last())
+        assertTrue(fullColor[3].contains("M44,29h4v6"))
+        assertFalse(fullColor.any { it.contains("M21,24h66") })
+        assertTrue(resources.resolve("values/colors.xml").readText().contains("<color name=\"launcher_background\">#000000</color>"))
     }
 
     @Test
     fun launcherArtworkFitsTheGuaranteedAdaptiveIconSafeZone() {
-        val fullColorScale = launcherSafeZoneScale("drawable/measured_five_foreground.xml")
-        val monochromeScale = launcherSafeZoneScale("drawable/measured_five_monochrome.xml")
+        val fullColorScale = groupScale("drawable/launcher_five_foreground.xml", "launcher_safe_zone")
+        val monochromeScale = groupScale("drawable/launcher_five_monochrome.xml", "launcher_safe_zone")
+        val numeralScale = groupScale("drawable/launcher_five_foreground.xml", "launcher_numeral")
 
+        assertEquals(1.0, fullColorScale, 0.0)
         assertEquals(fullColorScale, monochromeScale, 0.0)
-
-        // The 66-unit source frame remains at least 48 units after scaling, while its
-        // furthest real corner (an overshoot endpoint, not the empty 21,21 corner)
-        // remains inside Android's guaranteed 66-unit-diameter safe circle.
-        assertTrue("launcher mark must remain at least 48 units", 66.0 * fullColorScale >= 48.0)
-        assertTrue(
-            "launcher frame corners must fit the 33-unit safe radius",
-            hypot(33.0, 30.0) * fullColorScale < 33.0,
-        )
+        assertEquals(numeralScale, groupScale("drawable/launcher_five_monochrome.xml", "launcher_numeral"), 0.0)
+        assertTrue("the 5 must be wider than the previous framed version", 47.0 * numeralScale > 35.0)
+        // The complete outer stroke ends at radius 33; the numeral and hatching sit inside it.
+        val vector = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+            .parse(resources.resolve("drawable/launcher_five_foreground.xml"))
+        val outerRing = vector.getElementsByTagName("path").item(0).attributes
+        assertTrue(outerRing.getNamedItem("android:pathData").nodeValue.startsWith("M86,54a32,32"))
+        val ringStroke = outerRing.getNamedItem("android:strokeWidth").nodeValue.toDouble()
+        assertTrue(32.0 + ringStroke / 2.0 <= 33.0)
+        val fiveTopLeftX = 54.0 + (36.0 - 54.0) * numeralScale - 1.0
+        val fiveTopLeftY = 54.0 + (29.0 - 54.0) * numeralScale - 2.0
+        assertTrue(hypot(fiveTopLeftX - 54.0, fiveTopLeftY - 54.0) < 29.0)
     }
 
     @Test
@@ -53,9 +60,12 @@ class MeasuredFiveAssetTest {
             "mipmap-anydpi-v33/ic_launcher_round.xml",
         )
         launcherFiles.forEach { relativePath ->
-            assertTrue(relativePath, resources.resolve(relativePath).readText().contains("measured_five_foreground"))
+            assertTrue(relativePath, resources.resolve(relativePath).readText().contains("launcher_five_foreground"))
         }
         assertTrue(resources.resolve("mipmap/ic_launcher_round.xml").readText().contains("android:shape=\"oval\""))
+        listOf("mipmap-anydpi-v33/ic_launcher.xml", "mipmap-anydpi-v33/ic_launcher_round.xml").forEach { relativePath ->
+            assertTrue(resources.resolve(relativePath).readText().contains("launcher_five_monochrome"))
+        }
         assertFalse(resources.walkTopDown().any { it.isFile && it.name.startsWith("ic_launcher") && it.extension == "png" })
     }
 
@@ -70,8 +80,8 @@ class MeasuredFiveAssetTest {
     @Test
     fun maskReviewArtifactCoversEveryRequiredShape() {
         val repository = if (File("docs").isDirectory) File(".") else File("..")
-        val artifact = repository.resolve("docs/reviews/DR5-033/icon-mask-review.png")
-        val renderer = repository.resolve("docs/reviews/DR5-033/render_launcher_mask_review.py").readText()
+        val artifact = repository.resolve("docs/reviews/launcher-h2/mask-review.png")
+        val renderer = repository.resolve("docs/reviews/launcher-h2/render_mask_review.py").readText()
         val png = artifact.readBytes()
 
         assertEquals(1120, pngInt(png, 16))
@@ -79,6 +89,7 @@ class MeasuredFiveAssetTest {
         listOf("Circle", "Squircle", "Rounded square", "Tight mask").forEach { mask ->
             assertTrue(mask, renderer.contains("\"$mask\""))
         }
+        assertTrue(renderer.contains("icon(\"H2\""))
     }
 
     private fun pathData(relativePath: String): List<String> {
@@ -94,12 +105,12 @@ class MeasuredFiveAssetTest {
             ((bytes[offset + 2].toInt() and 0xff) shl 8) or
             (bytes[offset + 3].toInt() and 0xff)
 
-    private fun launcherSafeZoneScale(relativePath: String): Double {
+    private fun groupScale(relativePath: String, name: String): Double {
         val document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(resources.resolve(relativePath))
         val groups = document.getElementsByTagName("group")
         val safeZone = (0 until groups.length)
             .map(groups::item)
-            .single { it.attributes.getNamedItem("android:name")?.nodeValue == "launcher_safe_zone" }
+            .single { it.attributes.getNamedItem("android:name")?.nodeValue == name }
         val scaleX = safeZone.attributes.getNamedItem("android:scaleX").nodeValue.toDouble()
         val scaleY = safeZone.attributes.getNamedItem("android:scaleY").nodeValue.toDouble()
         assertEquals(scaleX, scaleY, 0.0)

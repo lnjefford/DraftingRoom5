@@ -5,5 +5,5 @@
             <solid android:color="@color/launcher_background" />
         </shape>
     </item>
-    <item android:drawable="@drawable/measured_five_foreground" />
+    <item android:drawable="@drawable/launcher_five_foreground" />
 </layer-list>

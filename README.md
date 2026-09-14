@@ -2,7 +2,7 @@
 
 DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
-The current production release is v0.24.0. Its Phase 6 interaction and visual polish passed the independent product audit and full Android build gate. Physical-device checks that require Health Connect/Withings, TalkBack, external apps, touch dragging, process termination, real timers/feedback, Android backup/installation, or OEM icon masks remain explicitly device-dependent; use the checklist in `docs/reviews/DR5-038-phase-6-product-audit.md` rather than treating host screenshots as device certification.
+The current production release is v0.24.1. Its Phase 6 interaction and visual polish passed the independent product audit and full Android build gate. The launcher now uses a round-first measured 5 on black with a hatched gold ring. Physical-device checks that require Health Connect/Withings, TalkBack, external apps, touch dragging, process termination, real timers/feedback, Android backup/installation, or OEM icon masks remain explicitly device-dependent; use the checklist in `docs/reviews/DR5-038-phase-6-product-audit.md` rather than treating host screenshots as device certification.
 
 ## Current scope
 
@@ -24,7 +24,7 @@ The current production release is v0.24.0. Its Phase 6 interaction and visual po
 - Custom exercises support sets, targets, notes, optional timers, and a 10-second pre-timer countdown.
 - Configurable workout haptics mark timer starts, countdown and timer completion, each completed set, and workout completion while respecting the phone's system haptic setting.
 - Optional text-to-speech announces the final countdown, timer start and completion, set transitions, and workout completion with an adjustable voice rate.
-- Custom DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
+- Round-first black-and-gold DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
 - Branded navy interface with ivory typography, blue/mint/gold accents, responsive cards, bundled DM Serif Display, and edge-to-edge system bars.
 - A short first-launch brand-title animation that never blocks navigation and follows Android's reduced-motion setting.
 - Opens Fitbod (`com.fitbod.fitbod`) and Just Run (`com.jupli.run`) when installed.
