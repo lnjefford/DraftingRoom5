@@ -7,7 +7,7 @@ plugins {
 
 // The host renderer uses Kotlin 2.2 at runtime; source fixtures use the app's 2.0 compiler.
 configurations.matching { it.name.endsWith("ScreenshotTestCompileClasspath") }.configureEach {
-    resolutionStrategy.force("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
+    resolutionStrategy.force("org.jetbrains.kotlin:kotlin-stdlib:2.4.20")
 }
 
 android {
