@@ -2,7 +2,7 @@
 
 DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
-The current production release is v0.25.0. It adds a one-cell living-icon home-screen widget whose 50 distinct still images rotate on Android's battery-conscious, inexact approximately-hourly schedule and refresh when the app opens or relevant widget lifecycle events occur. Tapping anywhere on the tile opens DraftingRoom5 normally; the launcher icon itself is unchanged. Phase 7 passed its independent API 28/35 widget audit and full Android build gate. Physical-device and unavailable-device checks remain documented honestly in `docs/reviews/DR5-056/`; earlier Phase 6 device-dependent checks remain in `docs/reviews/DR5-038-phase-6-product-audit.md`.
+The current production release is v0.25.1. It aligns the in-app brand mark with the circular launcher icon and includes the one-cell living-icon home-screen widget whose 50 distinct still images rotate on Android's battery-conscious, inexact approximately-hourly schedule. Tapping anywhere on the widget opens DraftingRoom5 normally. Phase 7 passed its independent API 28/35 widget audit and full Android build gate. Physical-device and unavailable-device checks remain documented honestly in `docs/reviews/DR5-056/`; earlier Phase 6 device-dependent checks remain in `docs/reviews/DR5-038-phase-6-product-audit.md`.
 
 ## Current scope
 

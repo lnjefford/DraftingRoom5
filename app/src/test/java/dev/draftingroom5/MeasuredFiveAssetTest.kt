@@ -14,14 +14,15 @@ class MeasuredFiveAssetTest {
         ?: error("Android resources were not found from ${File(".").absolutePath}")
 
     @Test
-    fun roundLauncherKeepsTheMeasuredFiveAndHatchedRingInBothModes() {
+    fun inAppBrandAndLauncherUseTheSameHatchedRingArtwork() {
         val fullColor = pathData("drawable/launcher_five_foreground.xml")
         val monochrome = pathData("drawable/launcher_five_monochrome.xml")
-        val inAppMark = pathData("drawable/measured_five_foreground.xml")
+        val appTheme = File(resources.parentFile, "java/dev/draftingroom5/AppTheme.kt").readText()
 
         assertEquals(fullColor.take(3), monochrome.take(3))
-        assertEquals(inAppMark.last(), fullColor.last())
         assertEquals(fullColor.last(), monochrome.last())
+        assertTrue(appTheme.contains("painterResource(R.drawable.launcher_five_foreground)"))
+        assertFalse(appTheme.contains("painterResource(R.drawable.measured_five_foreground)"))
         assertTrue(fullColor[3].contains("M44,29h4v6"))
         assertFalse(fullColor.any { it.contains("M21,24h66") })
         assertTrue(resources.resolve("values/colors.xml").readText().contains("<color name=\"launcher_background\">#000000</color>"))

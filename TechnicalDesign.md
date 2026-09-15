@@ -1,6 +1,6 @@
 # DraftingRoom5 clean-app technical design
 
-Status: implemented and audited through the DR5-056 Phase 7 product review. The current-schema app ships in v0.25.0 with the Phase 6 day-by-day scheduling and interaction work plus a one-cell, tap-to-open living-icon widget. Its 50 still images use deterministic hourly selection with Android-managed inexact delivery, preserve each asset's alpha silhouette, and require no foreground service or wake lock. API 28/35 evidence and unavailable physical-device checks are recorded in `docs/reviews/DR5-056/`.
+Status: implemented and audited through the DR5-056 Phase 7 product review. The current-schema app ships in v0.25.1 with a circular in-app brand mark matching the launcher, the Phase 6 day-by-day scheduling and interaction work, and a one-cell, tap-to-open living-icon widget. Its 50 still images use deterministic hourly selection with Android-managed inexact delivery, preserve each asset's alpha silhouette, and require no foreground service or wake lock. API 28/35 evidence and unavailable physical-device checks are recorded in `docs/reviews/DR5-056/`.
 
 ## Authority and implementation boundaries
 
@@ -419,7 +419,7 @@ The following inventory covers every production Kotlin source present during DR5
 | `res/xml/backup_rules.xml`, `data_extraction_rules.xml` | Replace old snapshot/status allowlists with current ones; retain encrypted cloud constraints. |
 | `res/xml/update_paths.xml` | Retain narrowly scoped cache update path; verify it never broadens to entire storage. |
 | `res/values/themes.xml`, `colors.xml` | Keep Android theme plumbing; consolidate navy background/token values and remove obsolete ones once unused. |
-| `res/mipmap-anydpi-v26/*`, `mipmap-anydpi-v33/*`, `res/mipmap/*.xml`, `res/drawable/measured_five_*.xml`, `res/drawable/launcher_five_*.xml` | Keep the separate in-app framed mark and round-first H2 launcher vector, with static/round/adaptive/themed references. |
+| `res/mipmap-anydpi-v26/*`, `mipmap-anydpi-v33/*`, `res/mipmap/*.xml`, `res/drawable/launcher_five_*.xml` | Use the round-first H2 launcher vector for both the in-app brand mark and static/round/adaptive/themed launcher references. |
 | `res/drawable-nodpi/ic_launcher_{foreground,monochrome}.png`, density `mipmap-*/ic_launcher*.png`, `branding/draftingroom5-mark.png` | Remove superseded launcher/brand raster assets and stale README references. Some are already deleted in the working tree; do not restore them. |
 | `res/drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_notification.png` | Replace with verified standalone monochrome vector/silhouette in DR5-005, then remove superseded density variants. |
 | `res/drawable-nodpi/dashboard_athlete_hero.png` | Retained as the reviewed Dashboard-only hero with text fallback and an honest source-status entry in `docs/artwork/AssetLedger.md`; the unused legacy `session_dumbbell.png` was removed at DR5-013. |
@@ -427,7 +427,7 @@ The following inventory covers every production Kotlin source present during DR5
 | `docs/design/**/*.png`, eight approved handoffs | Keep as design references only; update implementation status at milestones honestly. Add TechnicalDesign.md and AssetLedger.md; do not copy mockup UI into runtime resources. |
 | `README.md`, `LICENSE`, `AGENTS.md`, `TODO.md` | Keep license/delivery authority; update README for delivered clean capabilities and retire obsolete terminology. Remove completed queue work block, retaining compact checked dependency ledger. |
 | `app/build.gradle.kts`, root Gradle scripts, version catalog, wrapper/properties | Keep toolchain; add narrowly needed lifecycle/test dependencies and consistent version defaults at release milestones. No arbitrary upgrades in model/UI replacement. |
-| `.github/workflows/commit-build.yml`, `release.yml`, `dependabot-automerge.yml`, `.github/dependabot.yml` | Preserve verification, tag release and guarded patch auto-merge. Release defaults must equal the tag name and code formula `major*1,000,000 + minor*1,000 + patch + 2`; the production release defaults are 0.25.0/25002. |
+| `.github/workflows/commit-build.yml`, `release.yml`, `dependabot-automerge.yml`, `.github/dependabot.yml` | Preserve verification, tag release and guarded patch auto-merge. Release defaults must equal the tag name and code formula `major*1,000,000 + minor*1,000 + patch + 2`; the production release defaults are 0.25.1/25003. |
 | `.gitignore`, `.tooling/`, `.gradle-user-home/`, build/cache/local files | Preserve ignores; never commit toolchains/caches/generated APKs/signing files. Add missing ignore rules only as part of the relevant implementation cleanup. |
 
 Retired storage is explicitly `training-plan/plan-v1`, `workout-history/history-v1`, `dashboard-layout/layout-v1`, `health-date-range/selected-range-v1`, `haptic-feedback`, `voice-announcements`, `automatic-backup`, and `automatic-backups/*`. Delete their source readers/writers; leave old device files unobserved until Android clears app data. App-update status/cache is independent transient maintenance data and may remain, never a plan-format bridge.

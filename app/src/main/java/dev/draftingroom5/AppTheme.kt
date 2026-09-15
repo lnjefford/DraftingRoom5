@@ -98,9 +98,9 @@ private val AppTypography = Typography().run {
 internal fun Modifier.appScreenBackground(): Modifier = background(AppBackground)
 
 @Composable
-internal fun MeasuredFiveMark(modifier: Modifier = Modifier) {
+internal fun LauncherFiveMark(modifier: Modifier = Modifier) {
     Image(
-        painter = painterResource(R.drawable.measured_five_foreground),
+        painter = painterResource(R.drawable.launcher_five_foreground),
         contentDescription = null,
         modifier = modifier.size(46.dp),
     )
@@ -150,7 +150,7 @@ internal fun BrandTitle(
         },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MeasuredFiveMark()
+        LauncherFiveMark()
         Spacer(Modifier.width(10.dp))
         Text(title, style = MaterialTheme.typography.titleLarge)
     }
