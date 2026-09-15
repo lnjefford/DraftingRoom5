@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.android.compose.screenshot") version "0.0.1-alpha15"
+    id("com.android.compose.screenshot") version "0.0.1-alpha16"
 }
 
 // The host renderer uses Kotlin 2.2 at runtime; source fixtures use the app's 2.0 compiler.
