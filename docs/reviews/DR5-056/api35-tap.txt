@@ -1,0 +1,3 @@
+
+    topResumedActivity=ActivityRecord{885181a u0 dev.draftingroom5/.MainActivity t19}
+

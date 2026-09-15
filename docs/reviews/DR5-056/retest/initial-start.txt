@@ -1,0 +1,7 @@
+Starting: Intent { cmp=dev.draftingroom5/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: dev.draftingroom5/.MainActivity
+TotalTime: 8105
+WaitTime: 8178
+Complete

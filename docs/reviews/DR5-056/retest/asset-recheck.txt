@@ -1,0 +1,1 @@
+PASS: 50 catalog/resource/hash/master/source matches; genuine alpha; safe bounds; black discs 41–50; free silhouettes 21–40; 693818 bytes

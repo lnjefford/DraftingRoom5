@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="40dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="3600000"
+    android:initialLayout="@layout/living_icon_widget"
+    android:previewLayout="@layout/living_icon_widget"
+    android:previewImage="@drawable/widget_01_dumbbell"
+    android:description="@string/living_icon_widget_label"
+    android:widgetCategory="home_screen" />

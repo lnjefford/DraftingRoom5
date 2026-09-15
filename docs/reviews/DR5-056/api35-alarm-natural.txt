@@ -1,0 +1,39 @@
+        listener=android.app.AlarmManager$ListenerWrapper@2b86834
+        idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=2, android:broadcast.temporaryAppAllowlistReasonCode=302, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0, android:broadcast.flags=8}]
+      ELAPSED_WAKEUP #12: Alarm{230bb85 type 2 origWhen 7317341 whenElapsed 7317341 android}
+>       tag=*walarm*:android.appwidget.action.APPWIDGET_UPDATE
+        type=ELAPSED_WAKEUP origWhen=+50m56s875ms window=+45m0s0ms repeatInterval=3600000 count=0 flags=0x8
+        policyWhenElapsed: requester=+50m56s875ms app_standby=-4m39s0ms device_idle=-- battery_saver=--
+        whenElapsed=+50m56s875ms maxWhenElapsed=+1h35m56s875ms
+        operation=PendingIntent{117819c: PendingIntentRecord{b27e7a5 android broadcastIntent}}
+      ELAPSED #13: Alarm{a8c89cc type 3 origWhen 14476514 whenElapsed 14476514 android}
+        tag=*alarm*:PowerStats
+        type=ELAPSED origWhen=+2h50m16s48ms window=+1h0m0s0ms repeatInterval=0 count=0 flags=0x8
+        policyWhenElapsed: requester=+2h50m16s48ms app_standby=-1h9m34s471ms device_idle=-- battery_saver=--
+        whenElapsed=+2h50m16s48ms maxWhenElapsed=+3h50m16s48ms
+    
+    Top Alarms:
+      +33s593ms running, 1 wakeups, 1 alarms: 1000:android
+>       *walarm*:android.appwidget.action.APPWIDGET_UPDATE
+      +10s10ms running, 2 wakeups, 2 alarms: u0a181:com.android.systemui
+        *walarm*:ReverseChargingControl
+      +5s451ms running, 0 wakeups, 15 alarms: u0a143:com.google.android.gms
+        *alarm*:com.google.android.gms.gcm.ACTION_CHECK_QUEUE
+      +2s506ms running, 12 wakeups, 12 alarms: u0a143:com.google.android.gms
+        *walarm*:com.google.android.location.ALARM_WAKEUP_ACTIVITY_DETECTION
+      +2s131ms running, 0 wakeups, 3 alarms: 1000:android
+        *alarm*:com.android.server.action.NETWORK_STATS_POLL
+      +1s941ms running, 0 wakeups, 12 alarms: 1000:android
+    Alarm Stats:
+    1000:android +38s864ms running, 13 wakeups:
+      +33s593ms 1 wakes 1 alarms, last -4m39s0ms:
+>       *walarm*:android.appwidget.action.APPWIDGET_UPDATE
+      +2s131ms 0 wakes 3 alarms, last -4m39s0ms:
+        *alarm*:com.android.server.action.NETWORK_STATS_POLL
+      +1s941ms 0 wakes 12 alarms, last -4m39s0ms:
+        *alarm*:*job.delay*
+      +1s463ms 9 wakes 9 alarms, last -4m33s969ms:
+        *walarm*:*job.deadline*
+      +1s88ms 0 wakes 70 alarms, last -34s380ms:
+        *alarm*:TIME_TICK
+      +345ms 2 wakes 2 alarms, last -1h9m13s993ms:

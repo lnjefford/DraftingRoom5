@@ -1,0 +1,8 @@
+  Widgets:
+>   [0] id=2
+      host=HostId{user:0, app:10179, hostId:1024, pkg:com.google.android.apps.nexuslauncher}
+      provider=ProviderId{user:0, app:10210, cmp:ComponentInfo{dev.draftingroom5/dev.draftingroom5.LivingIconWidgetProvider}}
+      host.callbacks=com.android.internal.appwidget.IAppWidgetHost$Stub$Proxy@ed1020b
+   
+  Hosts:
+    [0] hostId=HostId{user:0, app:10179, hostId:1024, pkg:com.google.android.apps.nexuslauncher}

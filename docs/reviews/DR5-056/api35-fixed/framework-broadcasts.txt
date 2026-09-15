@@ -1,0 +1,306 @@
+          reason: assuming delivered
+      Historical Broadcast modern #5:
+        BroadcastRecord{ca5117c android.appwidget.action.APPWIDGET_DELETED/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_DELETED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetId=5}]
+        caller=android 650:system/1000 pid=650 uid=1000
+        enqueueClockTime=2026-09-14 19:21:51.842 dispatchClockTime=2026-09-14 19:21:51.849
+        dispatchTime=-2m34s358ms (+7ms since enq) finishTime=-2m34s329ms (+29ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +7ms terminal +28ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+>           processName=dev.draftingroom5:living_icon
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #6:
+        BroadcastRecord{b7f249 android.appwidget.action.APPWIDGET_DELETED/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_DELETED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetId=4}]
+        caller=android 650:system/1000 pid=650 uid=1000
+        enqueueClockTime=2026-09-14 19:21:51.799 dispatchClockTime=2026-09-14 19:21:51.803
+        dispatchTime=-2m34s405ms (+4ms since enq) finishTime=-2m34s394ms (+11ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +4ms terminal +10ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+>           processName=dev.draftingroom5:living_icon
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #7:
+>       BroadcastRecord{86869e4 android.appwidget.action.APPWIDGET_UPDATE_OPTIONS/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE_OPTIONS flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetId=4, appWidgetOptions=Bundle[{appWidgetMaxHeight=60, appWidgetCategory=1, appWidgetMaxWidth=121, appWidgetMinHeight=60, appWidgetMinWidth=120}]}]
+        caller=android 650:system/1000 pid=650 uid=1000
+        options=Bundle[{android:broadcast.flags=32}]
+        enqueueClockTime=2026-09-14 19:21:49.829 dispatchClockTime=2026-09-14 19:21:51.632
+        dispatchTime=-2m34s577ms (+1s803ms since enq) finishTime=-2m34s509ms (+68ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +1s804ms terminal +67ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+>           processName=dev.draftingroom5:living_icon
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #8:
+        BroadcastRecord{e850f76 android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED/u0} to user 0
+        Intent { act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010 }
+        caller=android 650:system/1000 pid=650 uid=1000
+        options=Bundle[{android:broadcast.deferralPolicy=2, android:broadcast.deliveryGroupPolicy=1}]
+        enqueueClockTime=2026-09-14 19:21:50.494 dispatchClockTime=2026-09-14 19:21:50.497
+        dispatchTime=-2m35s717ms (+3ms since enq) finishTime=-2m35s716ms (+1ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +3ms terminal +1ms (-1) #0: BroadcastFilter{6206a92 1000/u-1 ReceiverList{897b81d 650 system/1000/u-1 local:94ae8f4}}
+          reason: assuming delivered
+      Historical Broadcast modern #9:
+>       BroadcastRecord{77e56fa android.appwidget.action.APPWIDGET_UPDATE_OPTIONS/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE_OPTIONS flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetId=4, appWidgetOptions=Bundle[{appWidgetMaxHeight=60, appWidgetCategory=1, appWidgetMaxWidth=121, appWidgetMinHeight=60, appWidgetMinWidth=120}]}]
+        caller=android 650:system/1000 pid=650 uid=1000
+        options=Bundle[{android:broadcast.flags=32}]
+        enqueueClockTime=2026-09-14 19:21:48.897 dispatchClockTime=2026-09-14 19:21:48.902
+        dispatchTime=-2m37s312ms (+5ms since enq) finishTime=-2m37s284ms (+28ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +5ms terminal +27ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+>           processName=dev.draftingroom5:living_icon
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #10:
+        BroadcastRecord{7886e8f android.appwidget.action.APPWIDGET_UPDATE/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetIds=[5]}]
+        caller=android 650:system/1000 pid=650 uid=1000
+        options=Bundle[{android:broadcast.flags=32}]
+        enqueueClockTime=2026-09-14 19:21:45.012 dispatchClockTime=2026-09-14 19:21:46.573
+        dispatchTime=-2m39s641ms (+1s561ms since enq) finishTime=-2m39s612ms (+29ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +1s561ms terminal +27ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+>           processName=dev.draftingroom5:living_icon
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #11:
+        BroadcastRecord{49d09f0 android.appwidget.action.APPWIDGET_UPDATE/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetIds=[4]}]
+        caller=android 650:system/1000 pid=650 uid=1000
+        options=Bundle[{android:broadcast.flags=32}]
+        enqueueClockTime=2026-09-14 19:21:44.699 dispatchClockTime=2026-09-14 19:21:46.526
+        dispatchTime=-2m39s689ms (+1s827ms since enq) finishTime=-2m39s642ms (+47ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +1s827ms terminal +47ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+>           processName=dev.draftingroom5:living_icon
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #12:
+        BroadcastRecord{538f4b5 android.intent.action.DROPBOX_ENTRY_ADDED/u-1} to user -1
+        Intent { act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras) }
+          extras: Bundle[{tag=system_server_strictmode, time=1789431702067, android.os.extra.DROPPED_COUNT=0}]
+        caller=android 650:system/1000 pid=650 uid=1000
+        requiredPermissions=[android.permission.READ_LOGS]  appOp=-1
+        options=Bundle[{android:broadcast.deferralPolicy=2, android:broadcast.deliveryGroupMatchingKey=system_server_strictmode-READ_LOGS, android:broadcast.deliveryGroupMatchingNamespace=android.intent.action.DROPBOX_ENTRY_ADDED, android:broadcast.deliveryGroupExtrasMerger=android.os.BundleMerger@b4f672d, android:broadcast.requireCompatChangeId=296060945, android:broadcast.deliveryGroupPolicy=2}]
+        enqueueClockTime=2026-09-14 19:21:44.089 dispatchClockTime=1969-12-31 18:00:00.000
+        dispatchTime=-- (-18m31s763ms since enq) finishTime=-2m41s620ms (+18m32s270ms since disp)
+        nextReceiver=2
+          reason: skipped by policy at enqueue: Compat change filtered: broadcasting Intent { act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras) } from android (pid=650, uid=1000) to com.google.android.gms/.stats.service.DropBoxEntryAddedReceiver to uid 10143 due to compat change 296060945
+      Historical Broadcast modern #15:
+        BroadcastRecord{45dbc21 android.appwidget.action.APPWIDGET_UPDATE/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetIds=[2]}]
+        caller=android 650:system/1000 pid=650 uid=1000
+        enqueueClockTime=2026-09-14 19:21:12.517 dispatchClockTime=2026-09-14 19:21:36.131
+        dispatchTime=-2m50s90ms (+23s613ms since enq) finishTime=-2m50s63ms (+27ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +23s613ms terminal +26ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+>           processName=dev.draftingroom5:living_icon
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #16:
+        BroadcastRecord{98f380f android.intent.action.MY_PACKAGE_REPLACED/u0} to user 0
+        Intent { act=android.intent.action.MY_PACKAGE_REPLACED flg=0x4000010 pkg=dev.draftingroom5 (has extras) }
+          extras: Bundle[{android.intent.extra.user_handle=0}]
+        caller=null null pid=650 uid=1000
+        options=Bundle[{android:broadcast.temporaryAppAllowlistReasonCode=311, android:broadcast.temporaryAppAllowlistDuration=20000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0}]
+        enqueueClockTime=2026-09-14 19:21:12.310 dispatchClockTime=2026-09-14 19:21:35.960
+        dispatchTime=-2m50s261ms (+23s650ms since enq) finishTime=-2m50s90ms (+171ms since disp)
+        resultTo=null resultCode=0 resultData=null
+        nextReceiver=1
+        DELIVERED scheduled +23s683ms terminal +137ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+>           processName=dev.draftingroom5:living_icon
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #17:
+        BroadcastRecord{ed11aa5 android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED/u0} to user 0
+        Intent { act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010 }
+        caller=android 650:system/1000 pid=650 uid=1000
+        options=Bundle[{android:broadcast.deferralPolicy=2, android:broadcast.deliveryGroupPolicy=1}]
+        enqueueClockTime=2026-09-14 19:21:36.023 dispatchClockTime=2026-09-14 19:21:36.026
+        dispatchTime=-2m50s196ms (+3ms since enq) finishTime=-2m50s196ms (0 since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +3ms terminal 0 (-1) #0: BroadcastFilter{6206a92 1000/u-1 ReceiverList{897b81d 650 system/1000/u-1 local:94ae8f4}}
+        DELIVERED scheduled +1m37s916ms terminal +182ms (6) #93: (manifest)
+          priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+        DELIVERED scheduled +1m38s99ms terminal +120ms (6) #94: (manifest)
+          priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
+          ActivityInfo:
+            name=androidx.work.impl.background.systemalarm.RescheduleReceiver
+            packageName=dev.draftingroom5
+            enabled=false exported=false directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+      #4: act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010
+        +2ms dispatch +1ms finish
+        enq=2026-09-14 19:21:56.014 disp=2026-09-14 19:21:56.016 fin=2026-09-14 19:21:56.017
+>     #5: act=android.appwidget.action.APPWIDGET_DELETED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +7ms dispatch +29ms finish
+        enq=2026-09-14 19:21:51.842 disp=2026-09-14 19:21:51.849 fin=2026-09-14 19:21:51.878
+        extras: Bundle[{appWidgetId=5}]
+>     #6: act=android.appwidget.action.APPWIDGET_DELETED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +4ms dispatch +11ms finish
+        enq=2026-09-14 19:21:51.799 disp=2026-09-14 19:21:51.803 fin=2026-09-14 19:21:51.814
+        extras: Bundle[{appWidgetId=4}]
+>     #7: act=android.appwidget.action.APPWIDGET_UPDATE_OPTIONS flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +1s803ms dispatch +68ms finish
+        enq=2026-09-14 19:21:49.829 disp=2026-09-14 19:21:51.632 fin=2026-09-14 19:21:51.700
+        extras: Bundle[{appWidgetId=4, appWidgetOptions=Bundle[{appWidgetMaxHeight=60, appWidgetCategory=1, appWidgetMaxWidth=121, appWidgetMinHeight=60, appWidgetMinWidth=120}]}]
+      #8: act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010
+        +3ms dispatch +1ms finish
+        enq=2026-09-14 19:21:50.494 disp=2026-09-14 19:21:50.497 fin=2026-09-14 19:21:50.498
+>     #9: act=android.appwidget.action.APPWIDGET_UPDATE_OPTIONS flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +5ms dispatch +28ms finish
+        enq=2026-09-14 19:21:48.897 disp=2026-09-14 19:21:48.902 fin=2026-09-14 19:21:48.930
+        extras: Bundle[{appWidgetId=4, appWidgetOptions=Bundle[{appWidgetMaxHeight=60, appWidgetCategory=1, appWidgetMaxWidth=121, appWidgetMinHeight=60, appWidgetMinWidth=120}]}]
+>     #10: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +1s561ms dispatch +29ms finish
+        enq=2026-09-14 19:21:45.012 disp=2026-09-14 19:21:46.573 fin=2026-09-14 19:21:46.602
+        extras: Bundle[{appWidgetIds=[5]}]
+>     #11: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +1s827ms dispatch +47ms finish
+        enq=2026-09-14 19:21:44.699 disp=2026-09-14 19:21:46.526 fin=2026-09-14 19:21:46.573
+        extras: Bundle[{appWidgetIds=[4]}]
+      #12: act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras)
+        -20711d0h21m44s89ms dispatch +20711d0h21m44s595ms finish
+        enq=2026-09-14 19:21:44.089 disp=1969-12-31 18:00:00.000 fin=2026-09-14 19:21:44.595
+        extras: Bundle[{tag=system_server_strictmode, time=1789431702067, android.os.extra.DROPPED_COUNT=0}]
+      #13: act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras)
+        -20711d0h21m44s80ms dispatch +20711d0h21m44s89ms finish
+        enq=2026-09-14 19:21:44.080 disp=1969-12-31 18:00:00.000 fin=2026-09-14 19:21:44.089
+        extras: Bundle[{tag=system_server_strictmode, time=1789431702067, android.os.extra.DROPPED_COUNT=0}]
+      #14: act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras)
+        -20711d0h21m44s80ms dispatch +20711d0h21m44s89ms finish
+        enq=2026-09-14 19:21:44.080 disp=1969-12-31 18:00:00.000 fin=2026-09-14 19:21:44.089
+        extras: Bundle[{tag=system_server_strictmode, time=1789431702067, android.os.extra.DROPPED_COUNT=0}]
+>     #15: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +23s614ms dispatch +27ms finish
+        enq=2026-09-14 19:21:12.517 disp=2026-09-14 19:21:36.131 fin=2026-09-14 19:21:36.158
+        extras: Bundle[{appWidgetIds=[2]}]
+      #16: act=android.intent.action.MY_PACKAGE_REPLACED flg=0x4000010 pkg=dev.draftingroom5 (has extras)
+        +23s650ms dispatch +170ms finish
+        enq=2026-09-14 19:21:12.310 disp=2026-09-14 19:21:35.960 fin=2026-09-14 19:21:36.130
+        extras: Bundle[{android.intent.extra.user_handle=0}]
+      #17: act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010
+        +3ms dispatch 0 finish
+        enq=2026-09-14 19:21:36.023 disp=2026-09-14 19:21:36.026 fin=2026-09-14 19:21:36.026
+      #18: act=com.google.android.libraries.storage.protostore.SIGNAL_ACTION dat=android://com.google.android.gms/files/autofill/shared/AutofillLocalSettings.pb flg=0x10000010 pkg=com.google.android.gms
+        +228ms dispatch +430ms finish
+        enq=2026-09-14 19:21:25.817 disp=2026-09-14 19:21:26.045 fin=2026-09-14 19:21:26.475
+      #19: act=android.intent.action.PACKAGE_ADDED dat=package:dev.draftingroom5.test flg=0x4000010 pkg=com.google.android.permissioncontroller (has extras)
+        +1s495ms dispatch +77ms finish
+        +5ms dispatch +2s325ms finish
+        enq=2026-09-14 19:07:46.009 disp=2026-09-14 19:07:46.014 fin=2026-09-14 19:07:48.339
+        extras: Bundle[{STRIPPED=1}]
+>     #315: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +42s300ms dispatch +126ms finish
+        enq=2026-09-14 19:07:05.029 disp=2026-09-14 19:07:47.329 fin=2026-09-14 19:07:47.455
+        extras: Bundle[{appWidgetIds=[2]}]
+>     #316: act=android.appwidget.action.APPWIDGET_ENABLED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider
+        +42s198ms dispatch +102ms finish
+        enq=2026-09-14 19:07:05.029 disp=2026-09-14 19:07:47.227 fin=2026-09-14 19:07:47.329
+      #317: act=android.intent.action.SERVICE_STATE flg=0x1000010 (has extras)
+        -20711d0h7m46s741ms dispatch +20711d0h7m46s751ms finish
+        enq=2026-09-14 19:07:46.741 disp=1969-12-31 18:00:00.000 fin=2026-09-14 19:07:46.751
+        extras: Bundle[{android.telephony.extra.SUBSCRIPTION_INDEX=-1, CellBandwidths=[5000], radioTechnology=0, operator-alpha-long-raw=null, data-operator-alpha-long=null, operator-alpha-long=null, operator-numeric=null, ArfcnRsrpBoost=0, android.telephony.extra.SLOT_INDEX=0, manual=false, cdmaDefaultRoamingIndicator=-1, operator-alpha-short-raw=null, mNrFrequencyRange=0, cssIndicator=false, android.intent.extra.SERVICE_STATE={mVoiceRegState=1(OUT_OF_SERVICE), mDataRegState=1(OUT_OF_SERVICE), mChannelNumber=-1, duplexMode()=0, mCellBandwidths=[5000], mOperatorAlphaLong=null, mOperatorAlphaShort=null, isManualNetworkSelection=false(automatic), getRilVoiceRadioTechnology=0(Unknown), getRilDataRadioTechnology=0(Unknown), mCssIndicator=unsupported, mNetworkId=-1, mSystemId=-1, mCdmaRoamingIndicator=-1, mCdmaDefaultRoamingIndicator=-1, mIsEmergencyOnly=false, isUsingCarrierAggregation=false, mArfcnRsrpBoost=0, mNetworkRegistrationInfos=[NetworkRegistrationInfo{ domain=CS transportType=WWAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}, NetworkRegistrationInfo{ domain=PS transportType=WLAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}, NetworkRegistrationInfo{ domain=PS transportType=WWAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}], mNrFrequencyRange=0, mOperatorAlphaLongRaw=null, mOperatorAlphaShortRaw=null, mIsDataRoamingFromRegistration=false, mIsIwlanPreferred=false}, emergencyOnly=false, slot=0, subscription=-1, isDataRoamingFromRegistration=false, data-operator-numeric=null, dataRegState=1, dataRoamingType=0, isUsingCarrierAggregation=false, voiceRegState=1, dataRadioTechnology=0, cdmaRoamingIndicator=-1, voiceRoamingType=0, data-operator-alpha-short=null, systemId=-1, networkId=-1, operator-alpha-short=null, ChannelNumber=-1}]
+      #318: act=android.intent.action.SERVICE_STATE flg=0x1000010 (has extras)
+        -20711d0h7m46s741ms dispatch +20711d0h7m46s751ms finish
+        enq=2026-09-14 19:07:46.741 disp=1969-12-31 18:00:00.000 fin=2026-09-14 19:07:46.751
+        extras: Bundle[{android.telephony.extra.SUBSCRIPTION_INDEX=-1, CellBandwidths=[5000], radioTechnology=0, operator-alpha-long-raw=null, data-operator-alpha-long=null, operator-alpha-long=null, operator-numeric=null, ArfcnRsrpBoost=0, android.telephony.extra.SLOT_INDEX=0, manual=false, cdmaDefaultRoamingIndicator=-1, operator-alpha-short-raw=null, mNrFrequencyRange=0, cssIndicator=false, android.intent.extra.SERVICE_STATE={mVoiceRegState=1(OUT_OF_SERVICE), mDataRegState=1(OUT_OF_SERVICE), mChannelNumber=-1, duplexMode()=0, mCellBandwidths=[5000], mOperatorAlphaLong=null, mOperatorAlphaShort=null, isManualNetworkSelection=false(automatic), getRilVoiceRadioTechnology=0(Unknown), getRilDataRadioTechnology=0(Unknown), mCssIndicator=unsupported, mNetworkId=-1, mSystemId=-1, mCdmaRoamingIndicator=-1, mCdmaDefaultRoamingIndicator=-1, mIsEmergencyOnly=false, isUsingCarrierAggregation=false, mArfcnRsrpBoost=0, mNetworkRegistrationInfos=[NetworkRegistrationInfo{ domain=CS transportType=WWAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}, NetworkRegistrationInfo{ domain=PS transportType=WLAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}, NetworkRegistrationInfo{ domain=PS transportType=WWAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}], mNrFrequencyRange=0, mOperatorAlphaLongRaw=null, mOperatorAlphaShortRaw=null, mIsDataRoamingFromRegistration=false, mIsIwlanPreferred=false}, emergencyOnly=false, slot=0, subscription=-1, isDataRoamingFromRegistration=false, data-operator-numeric=null, dataRegState=1, dataRoamingType=0, isUsingCarrierAggregation=false, voiceRegState=1, dataRadioTechnology=0, cdmaRoamingIndicator=-1, voiceRoamingType=0, data-operator-alpha-short=null, systemId=-1, networkId=-1, operator-alpha-short=null, ChannelNumber=-1}]
+      #319: act=android.intent.action.SERVICE_STATE flg=0x1000010 (has extras)
+        -20711d0h7m46s723ms dispatch +20711d0h7m46s740ms finish
+        enq=2026-09-14 19:07:46.723 disp=1969-12-31 18:00:00.000 fin=2026-09-14 19:07:46.740
+        extras: Bundle[{android.telephony.extra.SUBSCRIPTION_INDEX=-1, CellBandwidths=[5000], radioTechnology=0, operator-alpha-long-raw=null, data-operator-alpha-long=null, operator-alpha-long=null, operator-numeric=null, ArfcnRsrpBoost=0, android.telephony.extra.SLOT_INDEX=0, manual=false, cdmaDefaultRoamingIndicator=-1, operator-alpha-short-raw=null, mNrFrequencyRange=0, cssIndicator=false, android.intent.extra.SERVICE_STATE={mVoiceRegState=1(OUT_OF_SERVICE), mDataRegState=1(OUT_OF_SERVICE), mChannelNumber=-1, duplexMode()=0, mCellBandwidths=[5000], mOperatorAlphaLong=null, mOperatorAlphaShort=null, isManualNetworkSelection=false(automatic), getRilVoiceRadioTechnology=0(Unknown), getRilDataRadioTechnology=0(Unknown), mCssIndicator=unsupported, mNetworkId=-1, mSystemId=-1, mCdmaRoamingIndicator=-1, mCdmaDefaultRoamingIndicator=-1, mIsEmergencyOnly=false, isUsingCarrierAggregation=false, mArfcnRsrpBoost=0, mNetworkRegistrationInfos=[NetworkRegistrationInfo{ domain=CS transportType=WWAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}, NetworkRegistrationInfo{ domain=PS transportType=WLAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}, NetworkRegistrationInfo{ domain=PS transportType=WWAN registrationState=UNKNOWN networkRegistrationState=UNKNOWN roamingType=NOT_ROAMING accessNetworkTechnology=UNKNOWN rejectCause=0 emergencyEnabled=false availableServices=[] cellIdentity=null voiceSpecificInfo=null dataSpecificInfo=null nrState=NONE rRplmn= isUsingCarrierAggregation=false isNonTerrestrialNetwork=TERRESTRIAL}], mNrFrequencyRange=0, mOperatorAlphaLongRaw=null, mOperatorAlphaShortRaw=null, mIsDataRoamingFromRegistration=false, mIsIwlanPreferred=false}, emergencyOnly=false, slot=0, subscription=-1, isDataRoamingFromRegistration=false, data-operator-numeric=null, dataRegState=1, dataRoamingType=0, isUsingCarrierAggregation=false, voiceRegState=1, dataRadioTechnology=0, cdmaRoamingIndicator=-1, voiceRoamingType=0, data-operator-alpha-short=null, systemId=-1, networkId=-1, operator-alpha-short=null, ChannelNumber=-1}]
+      #320: act=android.intent.action.SERVICE_STATE flg=0x1000010 (has extras)

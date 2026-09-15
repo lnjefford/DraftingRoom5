@@ -1,0 +1,11 @@
+PASS: framework broadcasts update two instances through the private receiver process
+PASS: 50 distinct native 56px renders, alpha corners, light/dark sheet
+PASS: host options callback and rectangular fitCenter preserve artwork; fixed-size picker contract
+PASS: boot/package/time/restore callback paths refresh bound host views (simulated callbacks)
+FAIL: java.lang.IllegalStateException: Timed out waiting for native host update
+	at dev.draftingroom5.WidgetAuditInstrumentation.await(WidgetAuditInstrumentation.kt:212)
+	at dev.draftingroom5.WidgetAuditInstrumentation.audit(WidgetAuditInstrumentation.kt:166)
+	at dev.draftingroom5.WidgetAuditInstrumentation.onStart(WidgetAuditInstrumentation.kt:35)
+	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2594)
+
+

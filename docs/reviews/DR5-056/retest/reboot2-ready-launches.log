@@ -1,0 +1,4 @@
+ERROR: null root node returned by UiTestAutomationBridge.
+{'round': 1, 'background_process_kill': True, 'tap_to_hierarchy_seconds': 13.438, 'settings_input': 'passed'}
+{'round': 2, 'background_process_kill': False, 'tap_to_hierarchy_seconds': 4.687, 'settings_input': 'passed'}
+PASS: repeated real widget launch, Settings input and unchanged ANR history

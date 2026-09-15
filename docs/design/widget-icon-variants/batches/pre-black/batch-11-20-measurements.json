@@ -1,0 +1,202 @@
+[
+  {
+    "id": "widget_11_kettlebell",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 12240,
+    "sha256": "c8b13fe18c4111df8e30d57dfac0c37dc0c1ed69c4cf1a08e70a2780a3cb745e"
+  },
+  {
+    "id": "widget_12_chalk_clap",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 23836,
+    "sha256": "3fde63b3ba14275dbfe58290da071af795f91a64eb4f34771ec356e755723f2b"
+  },
+  {
+    "id": "widget_13_lightning",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 13954,
+    "sha256": "702a8f91e31896af6951f057bcaf556a438575a7344219975aa59f8228a381b4"
+  },
+  {
+    "id": "widget_14_frost",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 22998,
+    "sha256": "a8061e0bfa80a2048eaede1c94c60cd591dae97ea8a0fd3c1bfaf506b01536af"
+  },
+  {
+    "id": "widget_15_alien_abduction",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 15582,
+    "sha256": "cb3154430ea25c0d827fbfcb9007356d942d5b68b20b9cdaba4d4a013f99f31d"
+  },
+  {
+    "id": "widget_16_lying_down",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 12514,
+    "sha256": "e4ef54f8373654f52ee7d82eb39248cfa2ae8a148775dfce6af98bd4914ff212"
+  },
+  {
+    "id": "widget_17_pole_vault",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 9546,
+    "sha256": "29ae614301225f6668cec5b64871e85feb8876a43789c668e56400840d8072c9"
+  },
+  {
+    "id": "widget_18_slingshot",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 18610,
+    "sha256": "0b42795b7573a882a7841da62fcd84f8c35c33935d22de4a25213f8441cb5361"
+  },
+  {
+    "id": "widget_19_umbrella",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 13350,
+    "sha256": "9d1ef5faab6fb0a7edba9a7661a0fabaa1834ec96134b57cad1dd8e3fa5d3510"
+  },
+  {
+    "id": "widget_20_butterfly",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 14184,
+    "sha256": "cecae56160c558f47e1ce240b9af91348222c7a4288225ff81326ea7b5ec1746"
+  }
+]

@@ -1,0 +1,362 @@
+[
+  {
+    "id": "widget_31_sprint_start",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      41,
+      23,
+      1224,
+      1230
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      78,
+      67,
+      1176,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 15226,
+    "sha256": "1169c2ee11d4af44a66f1a416b6739c7668ceafa78f4aed5d774d024014adc18"
+  },
+  {
+    "id": "widget_32_rowing",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      33,
+      23,
+      1226,
+      1198
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      75,
+      1187,
+      1178
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 13834,
+    "sha256": "c0547812f587471288b3091496d1ad5a339c3797f11e3c19d6deaa1c17364a90"
+  },
+  {
+    "id": "widget_33_rain_cloud",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      154,
+      39,
+      1172,
+      1172
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      124,
+      67,
+      1130,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 10492,
+    "sha256": "0cda31dd9c61e76cfc16a71a584ebf0b93922f8354df91378153df73c7ca9939"
+  },
+  {
+    "id": "widget_34_coral",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      49,
+      21,
+      1253,
+      1238
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      73,
+      67,
+      1181,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 18626,
+    "sha256": "afdefccfa7192a98fe0b3647a8b5726d462b8f33dcc713ac78d217f01a8dd8f5"
+  },
+  {
+    "id": "widget_35_impossible_stair",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      4,
+      1224,
+      1254
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      78,
+      67,
+      1175,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 16590,
+    "sha256": "c4a02aaf7296fd1496df9a88234e36662916d03e9493e971e9216d3d9b41b82d"
+  },
+  {
+    "id": "widget_36_origami",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      9,
+      1218,
+      1222
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      69,
+      1187,
+      1184
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 10312,
+    "sha256": "739e7b4fa105a10e51db6e5c01da897360ff00645f2fe4707455d12b29710040"
+  },
+  {
+    "id": "widget_37_spring",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      31,
+      21,
+      1230,
+      1230
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      71,
+      67,
+      1182,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 16030,
+    "sha256": "ec432dd21b066a4ab1d55028b63718a0381f08ad8dc90c24864d357c42e29142"
+  },
+  {
+    "id": "widget_38_domino",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      53,
+      1236,
+      1186
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      113,
+      1187,
+      1140
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 12302,
+    "sha256": "5309cdf94e3a9c8ab7d7d44a8987e80b834cd0594fa08f2afee99173816ba15a"
+  },
+  {
+    "id": "widget_39_juggling",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      21,
+      1200,
+      1232
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      72,
+      67,
+      1182,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 16962,
+    "sha256": "905abf0734320fb5af9796a5eea58c8764a1e4fcc3cfc9edc10a7b553b131fa0"
+  },
+  {
+    "id": "widget_40_treasure",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      20,
+      1253,
+      1254
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      75,
+      1187,
+      1178
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 15384,
+    "sha256": "efecc6bfa17d24f3ef558a140c6bbdf62ae9fb20a950e4197f43de79c84ac2d8"
+  }
+]

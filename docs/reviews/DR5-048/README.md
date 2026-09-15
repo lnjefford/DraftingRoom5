@@ -1,0 +1,15 @@
+# DR5-048 prototype evidence
+
+The widget requests a 1 × 1 tile on API 31+ and 40 dp minimum width and height on API 28–30. The platform owns its inexact 3,600,000 ms `updatePeriodMillis` schedule. Each update picks one of four looks from the current UTC hour; opening the app also refreshes installed tiles. No service, wake lock, or polling loop is started. When no widget is installed, the app-open path returns without decoding art or scheduling work.
+
+## Art and transparency
+
+The four approved 1254 px direction samples in `docs/design/widget-icon-variants/` were adapted into circular 1254 px prototype masters in `prototype-rounded/`, then resized into 256 px WebP resources (14–20 KB each). The generated ring is rounded rather than the old square frame. The generation prompt preserved the navy field and ivory 5 plus each dumbbell, flex, fire, or melt motif; it requested one clean warm-gold circular ring, transparent corners, and no added text, objects, or watermark. Two generated masters had opaque checkerboard pixels outside the disc despite that request. The provider therefore applies an anti-aliased circular bitmap mask when publishing each `RemoteViews` update. The widget layout has no background, and its static preview drawable has real alpha. The visible result has transparent corners for all four looks, independent of source alpha.
+
+`widget-prototype-preview.png` shows all four at 56 × 56 px. `pixel-launcher-api35-1x1.png` shows the actual widget on the API 35 Pixel Launcher; `pixel-launcher-api35-rotation.png` compares all four launcher captures at the same footprint. These images show the ring, 5, and effects remain legible without square corners or clipping.
+
+## Device check
+
+On 2026-09-14, the debug APK was installed on an API 35 Google APIs x86_64 emulator running Pixel Launcher. The picker advertised **1 × 1**, and placement occupied one grid cell (launcher accessibility bounds `[54,742][222,1025]`). Tapping both the art and empty upper space of the tile opened `dev.draftingroom5/.MainActivity`, the normal entry activity. Controlled emulator clock changes followed by app-open refresh displayed all four looks; this verifies selection and redraw, not elapsed-hour platform delivery. The platform's actual hourly callback was not observed over a real hour. Removing the original prototype widget left `dumpsys appwidget` with no installed widget; the final art update did not change removal or scheduling code.
+
+Focused `LivingIconWidgetTest` (4/4), `lintDebug`, and `assembleDebug` passed after the rounded-art change with JDK 17. The user authorized an emulator install or waiver of unavailable device checks. API 28, 30, 31, and 36 hosts, other launcher grids, and real elapsed-hour delivery remain outside this prototype's observed matrix; the 50-image production phase should retain those checks before release. Android's [widget sizing guidance](https://developer.android.com/develop/ui/views/appwidgets/layouts) covers cell targets and legacy minimums. The [provider reference](https://developer.android.com/reference/android/appwidget/AppWidgetProviderInfo) describes host-managed `updatePeriodMillis` updates.

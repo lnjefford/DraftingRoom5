@@ -162,6 +162,11 @@ import java.util.Locale
 import kotlin.reflect.KClass
 
 class MainActivity : ComponentActivity() {
+    override fun onResume() {
+        super.onResume()
+        LivingIconWidgetProvider.refreshIfPresent(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(

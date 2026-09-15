@@ -1,0 +1,206 @@
+{
+  "task": "DR5-058",
+  "user_correction": "Dark outer silhouette/backing black, not navy; retain ivory, gold, scene accents and historical generation sources/prompts.",
+  "items": [
+    {
+      "id": "widget_01_dumbbell",
+      "input": "masters/widget_01_dumbbell.png",
+      "historical_generated_source": "generated-source/widget_01_dumbbell.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-0bd9a0fc-d194-4372-84a6-21fe8b3b77f7.png",
+      "selected_edited_source": "edited-source-black/widget_01_dumbbell.png"
+    },
+    {
+      "id": "widget_02_flex",
+      "input": "masters/widget_02_flex.png",
+      "historical_generated_source": "generated-source/widget_02_flex.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-4580b13e-0a3f-4b0c-b70d-a3feb87366c3.png",
+      "selected_edited_source": "edited-source-black/widget_02_flex.png"
+    },
+    {
+      "id": "widget_03_fire",
+      "input": "masters/widget_03_fire.png",
+      "historical_generated_source": "generated-source/widget_03_fire.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-b6be1f0f-2926-4e46-afa8-c0d55e51ec33.png",
+      "selected_edited_source": "edited-source-black/widget_03_fire.png"
+    },
+    {
+      "id": "widget_04_melt",
+      "input": "masters/widget_04_melt.png",
+      "historical_generated_source": "generated-source/widget_04_melt.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-b66d12bb-e9ee-4d2b-9c8c-fe52df1a990f.png",
+      "selected_edited_source": "edited-source-black/widget_04_melt.png"
+    },
+    {
+      "id": "widget_05_orbit",
+      "input": "masters/widget_05_orbit.png",
+      "historical_generated_source": "generated-source/widget_05_orbit.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-7aa20f3c-b6b0-4d99-a496-f336deb8551a.png",
+      "selected_edited_source": "edited-source-black/widget_05_orbit.png"
+    },
+    {
+      "id": "widget_06_jump_rope",
+      "input": "masters/widget_06_jump_rope.png",
+      "historical_generated_source": "generated-source/widget_06_jump_rope.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-8ba645c2-251c-45df-9c14-602201061134.png",
+      "selected_edited_source": "edited-source-black/widget_06_jump_rope.png"
+    },
+    {
+      "id": "widget_07_wave",
+      "input": "masters/widget_07_wave.png",
+      "historical_generated_source": "generated-source/widget_07_wave.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-f5cef5f6-0c5d-4513-ab70-d4a4fb9a4fc5.png",
+      "selected_edited_source": "edited-source-black/widget_07_wave.png"
+    },
+    {
+      "id": "widget_08_skateboard",
+      "input": "masters/widget_08_skateboard.png",
+      "historical_generated_source": "generated-source/widget_08_skateboard.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-7c3dabaa-11cf-49f4-a93b-f3f3cc999ce0.png",
+      "selected_edited_source": "edited-source-black/widget_08_skateboard.png"
+    },
+    {
+      "id": "widget_09_spotlight",
+      "input": "masters/widget_09_spotlight.png",
+      "historical_generated_source": "generated-source/widget_09_spotlight.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-45ffe3ef-3184-4a7c-906a-62e42fde5108.png",
+      "selected_edited_source": "edited-source-black/widget_09_spotlight.png"
+    },
+    {
+      "id": "widget_10_paper_plane",
+      "input": "masters/widget_10_paper_plane.png",
+      "historical_generated_source": "generated-source/widget_10_paper_plane.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-7cf551fc-cffd-4397-ac0e-5f155a0d1260.png",
+      "selected_edited_source": "edited-source-black/widget_10_paper_plane.png"
+    },
+    {
+      "id": "widget_11_kettlebell",
+      "input": "masters/widget_11_kettlebell.png",
+      "historical_generated_source": "generated-source/widget_11_kettlebell.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-ebff8522-c70c-44c0-b31c-1be6160ebe0d.png",
+      "selected_edited_source": "edited-source-black/widget_11_kettlebell.png"
+    },
+    {
+      "id": "widget_12_chalk_clap",
+      "input": "masters/widget_12_chalk_clap.png",
+      "historical_generated_source": "generated-source/widget_12_chalk_clap.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-6336c2a8-98be-4fe2-8573-5b64e8a298cd.png",
+      "selected_edited_source": "edited-source-black/widget_12_chalk_clap.png"
+    },
+    {
+      "id": "widget_13_lightning",
+      "input": "masters/widget_13_lightning.png",
+      "historical_generated_source": "generated-source/widget_13_lightning.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-ec291323-8487-4091-b40b-f7691cddc7c7.png",
+      "selected_edited_source": "edited-source-black/widget_13_lightning.png"
+    },
+    {
+      "id": "widget_14_frost",
+      "input": "masters/widget_14_frost.png",
+      "historical_generated_source": "generated-source/widget_14_frost.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-fd71ccd2-bfa1-48eb-bee0-69d41b0d1856.png",
+      "selected_edited_source": "edited-source-black/widget_14_frost.png"
+    },
+    {
+      "id": "widget_15_alien_abduction",
+      "input": "masters/widget_15_alien_abduction.png",
+      "historical_generated_source": "generated-source/widget_15_alien_abduction.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-270e0a66-0194-4c69-89ac-59b3233aa333.png",
+      "selected_edited_source": "edited-source-black/widget_15_alien_abduction.png"
+    },
+    {
+      "id": "widget_16_lying_down",
+      "input": "masters/widget_16_lying_down.png",
+      "historical_generated_source": "generated-source/widget_16_lying_down.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-cc3051cb-e6f2-4a1c-ba02-1853fdb7352a.png",
+      "selected_edited_source": "edited-source-black/widget_16_lying_down.png"
+    },
+    {
+      "id": "widget_17_pole_vault",
+      "input": "masters/widget_17_pole_vault.png",
+      "historical_generated_source": "generated-source/widget_17_pole_vault.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-f1d533fc-4f94-4f0a-94bf-c449660dd243.png",
+      "selected_edited_source": "edited-source-black/widget_17_pole_vault.png"
+    },
+    {
+      "id": "widget_18_slingshot",
+      "input": "masters/widget_18_slingshot.png",
+      "historical_generated_source": "generated-source/widget_18_slingshot.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-c56b3af9-e58f-47d8-863c-71ed776da002.png",
+      "selected_edited_source": "edited-source-black/widget_18_slingshot.png"
+    },
+    {
+      "id": "widget_19_umbrella",
+      "input": "masters/widget_19_umbrella.png",
+      "historical_generated_source": "generated-source/widget_19_umbrella.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-4fb84f41-4855-4994-a701-9bde994532f1.png",
+      "selected_edited_source": "edited-source-black/widget_19_umbrella.png"
+    },
+    {
+      "id": "widget_20_butterfly",
+      "input": "masters/widget_20_butterfly.png",
+      "historical_generated_source": "generated-source/widget_20_butterfly.png",
+      "edit_prompt": "Use case: precise-object-edit\nAsset type: existing 1254 × 1254 transparent Android widget illustration master\nInput image: the supplied image is the edit target.\nPrimary request: Change only the dark midnight-navy/blue-black outer circular backing, including its darker rim, to true neutral black (#000000). The complete dark field must read black at 56 pixels on light and dark backgrounds. Do not replace black with charcoal, navy, blue highlights, or a gradient.\nConstraints: Preserve the exact existing scene, numeral 5, ivory highlights, gold ring and props, pose, scale, composition, crop, and genuine alpha outside the disc. Keep scene-specific accents and their colors. Do not redesign, move, add, or remove the artwork. Remove any checkerboard-like artifacts outside the actual silhouette so the corners remain truly transparent. No text, watermark, or new elements.",
+      "edit_tool": "built-in image_gen, referenced_image_paths",
+      "edit_date": "2026-09-14",
+      "run": "exec-b011db19-2a1f-45dd-be21-e573cf9e83fa.png",
+      "selected_edited_source": "edited-source-black/widget_20_butterfly.png"
+    }
+  ]
+}

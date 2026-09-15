@@ -1,0 +1,14 @@
+{
+  "all_histories_unchanged": true,
+  "historical_entries": 10,
+  "last_historical_entry": "2026-09-14 19:58:08 data_app_anr (compressed text, 24226 bytes)",
+  "compared_files": [
+    "initial-anr.txt",
+    "hostgpu-boot-anr.txt",
+    "hostgpu-launches-verified/anr-after.txt",
+    "reboot2-anr.txt",
+    "reboot2-ready-launches/anr-after.txt",
+    "api35-native-failure-anr.txt",
+    "final-release-launches/anr-after.txt"
+  ]
+}

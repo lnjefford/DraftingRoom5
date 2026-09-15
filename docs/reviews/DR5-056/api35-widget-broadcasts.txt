@@ -1,0 +1,426 @@
+        DELIVERED scheduled +1ms terminal 0 (-1) #2: BroadcastFilter{efe888b 10181/u0 ReceiverList{4ae1e5a 2321 com.android.systemui/10181/u0 remote:6103e05}}
+          reason: assuming delivered
+      Historical Broadcast modern #8:
+        BroadcastRecord{623bc9c android.appwidget.action.APPWIDGET_DELETED/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_DELETED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetId=5}]
+        caller=android 624:system/1000 pid=624 uid=1000
+        enqueueClockTime=2026-09-14 18:57:12.107 dispatchClockTime=2026-09-14 18:57:12.108
+        dispatchTime=-4m4s892ms (+1ms since enq) finishTime=-4m4s884ms (+8ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +1ms terminal +8ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #9:
+        BroadcastRecord{4c04e9 android.appwidget.action.APPWIDGET_DELETED/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_DELETED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetId=4}]
+        caller=android 624:system/1000 pid=624 uid=1000
+        enqueueClockTime=2026-09-14 18:57:12.071 dispatchClockTime=2026-09-14 18:57:12.081
+        dispatchTime=-4m4s921ms (+9ms since enq) finishTime=-4m4s906ms (+15ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +9ms terminal +13ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #10:
+>       BroadcastRecord{c5b30be android.appwidget.action.APPWIDGET_UPDATE_OPTIONS/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE_OPTIONS flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetId=4, appWidgetOptions=Bundle[{appWidgetMaxHeight=60, appWidgetCategory=1, appWidgetMaxWidth=120, appWidgetMinHeight=60, appWidgetMinWidth=120}]}]
+        caller=android 624:system/1000 pid=624 uid=1000
+        options=Bundle[{android:broadcast.flags=32}]
+        enqueueClockTime=2026-09-14 18:57:11.655 dispatchClockTime=2026-09-14 18:57:11.656
+        dispatchTime=-4m5s347ms (+1ms since enq) finishTime=-4m5s326ms (+21ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +1ms terminal +21ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #11:
+>       BroadcastRecord{ea2e47d android.appwidget.action.APPWIDGET_UPDATE/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetIds=[5]}]
+        caller=android 624:system/1000 pid=624 uid=1000
+        options=Bundle[{android:broadcast.flags=32}]
+        enqueueClockTime=2026-09-14 18:57:08.608 dispatchClockTime=2026-09-14 18:57:08.609
+        dispatchTime=-4m8s401ms (+1ms since enq) finishTime=-4m8s367ms (+34ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +2ms terminal +32ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #12:
+>       BroadcastRecord{f1371a android.appwidget.action.APPWIDGET_UPDATE/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetIds=[4]}]
+        caller=android 624:system/1000 pid=624 uid=1000
+        options=Bundle[{android:broadcast.flags=32}]
+        enqueueClockTime=2026-09-14 18:57:08.247 dispatchClockTime=2026-09-14 18:57:08.248
+        dispatchTime=-4m8s770ms (+1ms since enq) finishTime=-4m8s712ms (+58ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +1ms terminal +57ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #13:
+        BroadcastRecord{c563378 android.intent.action.TIME_TICK/u-1} to user -1
+        Intent { act=android.intent.action.TIME_TICK flg=0x50200010 }
+        caller=android 624:system/1000 pid=624 uid=1000
+        options=Bundle[{android:broadcast.deferralPolicy=2, android:broadcast.deliveryGroupPolicy=1}]
+        enqueueClockTime=2026-09-14 18:57:00.001 dispatchClockTime=2026-09-14 18:57:00.005
+        dispatchTime=-4m17s18ms (+4ms since enq) finishTime=-4m17s18ms (0 since disp)
+        nextReceiver=3
+        terminalCount=3
+        DELIVERED scheduled +4ms terminal 0 (-1) #0: BroadcastFilter{d0e9ab8 10181/u0 ReceiverList{a39991b 2321 com.android.systemui/10181/u0 remote:33fd72a}}
+          reason: assuming delivered
+          reason: assuming delivered
+        DELIVERED scheduled +8ms terminal +1ms (-1) #2: BroadcastFilter{efe888b 10181/u0 ReceiverList{4ae1e5a 2321 com.android.systemui/10181/u0 remote:6103e05}}
+          reason: assuming delivered
+      Historical Broadcast modern #23:
+>       BroadcastRecord{a178889 android.appwidget.action.APPWIDGET_UPDATE/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetIds=[2]}]
+        caller=android null pid=-1 uid=1000
+        options=Bundle[{android.pendingIntent.backgroundActivityAllowed=2, android:broadcast.flags=8}]
+        enqueueClockTime=2026-09-14 18:54:55.404 dispatchClockTime=2026-09-14 18:55:28.471
+        dispatchTime=-5m48s596ms (+33s66ms since enq) finishTime=-5m48s101ms (+495ms since disp)
+        resultTo=null resultCode=0 resultData=null
+        resultAbort=false ordered=true sticky=false initialSticky=false originalStickyCallingUid=-1
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +33s69ms terminal +485ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #24:
+        BroadcastRecord{49d5224 com.google.android.partnersetup.action.CONFIGURATION_UPDATE/u0} to user 0
+        Intent { act=com.google.android.partnersetup.action.CONFIGURATION_UPDATE flg=0x1000010 pkg=com.android.chrome (has extras) }
+          extras: Bundle[{STRIPPED=1}]
+        caller=com.google.android.partnersetup 4251:com.google.android.partnersetup/u0a131 pid=4251 uid=10131
+        enqueueClockTime=2026-09-14 18:55:02.741 dispatchClockTime=2026-09-14 18:55:23.603
+        dispatchTime=-5m53s466ms (+20s861ms since enq) finishTime=-5m53s418ms (+48ms since disp)
+        nextReceiver=1
+        terminalCount=0
+        DELIVERED scheduled +20s861ms terminal +45ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: skipped by policy at enqueue: Compat change filtered: broadcasting Intent { act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras) } from android (pid=624, uid=1000) to com.google.android.gms/.stats.service.DropBoxEntryAddedReceiver to uid 10143 due to compat change 296060945
+      Historical Broadcast modern #90:
+>       BroadcastRecord{449cab3 android.appwidget.action.APPWIDGET_UPDATE/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetIds=[2]}]
+        caller=android 624:system/1000 pid=624 uid=1000
+        enqueueClockTime=2026-09-14 18:22:14.020 dispatchClockTime=2026-09-14 18:22:14.020
+        dispatchTime=-39m3s176ms (+1ms since enq) finishTime=-39m3s12ms (+164ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +1ms terminal +163ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #91:
+        BroadcastRecord{fba4f40 android.intent.action.PACKAGE_CHANGED/u0} to user 0
+        Intent { act=android.intent.action.PACKAGE_CHANGED dat=package:dev.draftingroom5 flg=0x45000010 (has extras) }
+          extras: Bundle[{android.intent.extra.changed_component_name=androidx.work.impl.background.systemalarm.RescheduleReceiver, android.intent.extra.DONT_KILL_APP=true, android.intent.extra.UID=10210, android.intent.extra.changed_component_name_list=[androidx.work.impl.background.systemalarm.RescheduleReceiver], android.intent.extra.user_handle=0}]
+        caller=null null pid=624 uid=1000
+        enqueueClockTime=2026-09-14 18:22:13.662 dispatchClockTime=2026-09-14 18:22:13.667
+        dispatchTime=-39m3s530ms (+6ms since enq) finishTime=-39m3s22ms (+508ms since disp)
+        resultTo=null resultCode=0 resultData=null
+        nextReceiver=38
+        terminalCount=38
+        DELIVERED scheduled +6ms terminal 0 (0) #0: BroadcastFilter{d1522fc 1000/u-1 ReceiverList{d07c7ef 624 system/1000/u-1 local:2c8ecce}}
+          reason: remote app
+        DELIVERED scheduled +425ms terminal +103ms (-1) #29: (manifest)
+          priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #154:
+        BroadcastRecord{3dff57a android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED/u0} to user 0
+        Intent { act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010 }
+        caller=android 624:system/1000 pid=624 uid=1000
+        options=Bundle[{android:broadcast.deferralPolicy=2, android:broadcast.deliveryGroupPolicy=1}]
+        enqueueClockTime=2026-09-14 18:03:06.761 dispatchClockTime=2026-09-14 18:03:06.768
+        dispatchTime=-58m10s611ms (+6ms since enq) finishTime=-58m10s610ms (+1ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +6ms terminal +1ms (-1) #0: BroadcastFilter{504f13 1000/u-1 ReceiverList{3784a02 624 system/1000/u-1 local:e4eaf4d}}
+          reason: assuming delivered
+          reason: remote app
+        DELIVERED scheduled +906ms terminal +160ms (-1) #28: (manifest)
+          priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #191:
+        BroadcastRecord{71cad8c android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED/u0} to user 0
+        Intent { act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010 }
+        caller=android 624:system/1000 pid=624 uid=1000
+        options=Bundle[{android:broadcast.deferralPolicy=2, android:broadcast.deliveryGroupPolicy=1}]
+        enqueueClockTime=2026-09-15 01:10:02.110 dispatchClockTime=2026-09-15 01:10:02.110
+        dispatchTime=-59m12s254ms (0 since enq) finishTime=-59m12s254ms (0 since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled 0 terminal 0 (-1) #0: BroadcastFilter{504f13 1000/u-1 ReceiverList{3784a02 624 system/1000/u-1 local:e4eaf4d}}
+          reason: assuming delivered
+        terminalCount=1
+        DELIVERED scheduled +5s831ms terminal +56ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #220:
+        BroadcastRecord{67c9e96 android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED/u0} to user 0
+        Intent { act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010 }
+        caller=android 624:system/1000 pid=624 uid=1000
+        options=Bundle[{android:broadcast.deferralPolicy=2, android:broadcast.deliveryGroupPolicy=1}]
+        enqueueClockTime=2026-09-14 18:00:28.523 dispatchClockTime=2026-09-14 18:00:28.525
+        dispatchTime=-1h0m48s139ms (+2ms since enq) finishTime=-1h0m48s139ms (0 since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +2ms terminal 0 (-1) #0: BroadcastFilter{504f13 1000/u-1 ReceiverList{3784a02 624 system/1000/u-1 local:e4eaf4d}}
+          reason: assuming delivered
+      Historical Broadcast modern #221:
+>       BroadcastRecord{90ab53b android.appwidget.action.APPWIDGET_UPDATE/u0} to user 0
+>       Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }
+          extras: Bundle[{appWidgetIds=[2]}]
+        caller=android 624:system/1000 pid=624 uid=1000
+        enqueueClockTime=2026-09-14 18:00:22.527 dispatchClockTime=2026-09-14 18:00:28.440
+        dispatchTime=-1h0m48s226ms (+5s914ms since enq) finishTime=-1h0m48s148ms (+78ms since disp)
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +5s914ms terminal +77ms (-1) #0: (manifest)
+          priority=0 preferredOrder=0 match=0x0 specificIndex=-1 isDefault=false
+          ActivityInfo:
+>           name=dev.draftingroom5.LivingIconWidgetProvider
+            packageName=dev.draftingroom5
+            labelRes=0x7f0b001a nonLocalizedLabel=null icon=0x0 banner=0x0
+            enabled=true exported=true directBootAware=false
+            launchMode=LAUNCH_MULTIPLE flags=0x10000 privateFlags=0x0 theme=0x0
+            resizeMode=RESIZE_MODE_RESIZEABLE
+            knownActivityEmbeddingCerts={}
+          reason: remote app
+      Historical Broadcast modern #222:
+        BroadcastRecord{4c4af85 android.intent.action.PACKAGE_ADDED/u0} to user 0
+        Intent { act=android.intent.action.PACKAGE_ADDED dat=package:dev.draftingroom5 flg=0x4000010 pkg=com.google.android.permissioncontroller (has extras) }
+          extras: Bundle[{android.intent.extra.UID=10210, android.content.pm.extra.DATA_LOADER_TYPE=0, android.intent.extra.REPLACING=true, android.intent.extra.user_handle=0}]
+        caller=null null pid=624 uid=1000
+        enqueueClockTime=2026-09-14 18:00:22.528 dispatchClockTime=2026-09-14 18:00:23.214
+        dispatchTime=-1h0m53s454ms (+686ms since enq) finishTime=-1h0m51s576ms (+1s878ms since disp)
+        resultTo=null resultCode=0 resultData=null
+        nextReceiver=1
+        terminalCount=1
+        DELIVERED scheduled +686ms terminal +1s877ms (-1) #0: (manifest)
+        enq=2026-09-14 18:59:00.001 disp=2026-09-14 18:59:00.002 fin=2026-09-14 18:59:00.003
+      #7: act=android.intent.action.TIME_TICK flg=0x50200010
+        0 dispatch +1ms finish
+        enq=2026-09-14 18:58:00.003 disp=2026-09-14 18:58:00.003 fin=2026-09-14 18:58:00.004
+>     #8: act=android.appwidget.action.APPWIDGET_DELETED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +1ms dispatch +9ms finish
+        enq=2026-09-14 18:57:12.107 disp=2026-09-14 18:57:12.108 fin=2026-09-14 18:57:12.117
+        extras: Bundle[{appWidgetId=5}]
+>     #9: act=android.appwidget.action.APPWIDGET_DELETED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +10ms dispatch +14ms finish
+        enq=2026-09-14 18:57:12.071 disp=2026-09-14 18:57:12.081 fin=2026-09-14 18:57:12.095
+        extras: Bundle[{appWidgetId=4}]
+>     #10: act=android.appwidget.action.APPWIDGET_UPDATE_OPTIONS flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +1ms dispatch +22ms finish
+        enq=2026-09-14 18:57:11.655 disp=2026-09-14 18:57:11.656 fin=2026-09-14 18:57:11.678
+        extras: Bundle[{appWidgetId=4, appWidgetOptions=Bundle[{appWidgetMaxHeight=60, appWidgetCategory=1, appWidgetMaxWidth=120, appWidgetMinHeight=60, appWidgetMinWidth=120}]}]
+>     #11: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +1ms dispatch +34ms finish
+        enq=2026-09-14 18:57:08.608 disp=2026-09-14 18:57:08.609 fin=2026-09-14 18:57:08.643
+        extras: Bundle[{appWidgetIds=[5]}]
+>     #12: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +1ms dispatch +58ms finish
+        enq=2026-09-14 18:57:08.247 disp=2026-09-14 18:57:08.248 fin=2026-09-14 18:57:08.306
+        extras: Bundle[{appWidgetIds=[4]}]
+      #13: act=android.intent.action.TIME_TICK flg=0x50200010
+        +4ms dispatch 0 finish
+        enq=2026-09-14 18:57:00.001 disp=2026-09-14 18:57:00.005 fin=2026-09-14 18:57:00.005
+      #14: act=android.intent.action.PACKAGE_ADDED dat=package:dev.draftingroom5.test flg=0x5000010 pkg=com.google.android.packageinstaller (has extras)
+        +6s814ms dispatch +69ms finish
+        enq=2026-09-14 18:56:41.397 disp=2026-09-14 18:56:48.211 fin=2026-09-14 18:56:48.280
+        extras: Bundle[{android.intent.extra.UID=10209, android.content.pm.extra.DATA_LOADER_TYPE=0, android.intent.extra.user_handle=0}]
+      #15: act=android.intent.action.PACKAGE_ADDED dat=package:dev.draftingroom5.test flg=0x4000010 pkg=com.google.android.permissioncontroller (has extras)
+        0 dispatch +3s181ms finish
+        enq=2026-09-14 18:56:40.349 disp=2026-09-14 18:56:40.349 fin=2026-09-14 18:56:43.530
+        extras: Bundle[{android.intent.extra.UID=10209, android.content.pm.extra.DATA_LOADER_TYPE=0, android.intent.extra.user_handle=0}]
+      #16: act=android.intent.action.PACKAGE_CHANGED dat=package:dev.draftingroom5.test flg=0x5000010 (has extras)
+        +2ms dispatch +328ms finish
+        enq=2026-09-14 18:56:41.592 disp=2026-09-14 18:56:41.594 fin=2026-09-14 18:56:41.922
+        extras: Bundle[{android.intent.extra.changed_component_name=dev.draftingroom5.test, android.intent.extra.DONT_KILL_APP=true, android.intent.extra.UID=10209, android.intent.extra.changed_component_name_list=[dev.draftingroom5.test], android.intent.extra.user_handle=0, android.intent.extra.REASON=android.intent.action.OVERLAY_CHANGED}]
+        extras: Bundle[{android.content.pm.extra.VERIFICATION_INSTALLER_UID=2000, android.content.pm.extra.VERIFICATION_ID=1, android.intent.extra.PACKAGE_NAME=dev.draftingroom5.test, android.intent.extra.VERSION_CODE=0, android.content.pm.extra.VERIFICATION_INSTALLER_PACKAGE=com.android.shell, android.intent.extra.LONG_VERSION_CODE=0}]
+      #22: act=android.intent.action.TIME_TICK flg=0x50200010
+        +1ms dispatch +8ms finish
+        enq=2026-09-14 18:56:00.008 disp=2026-09-14 18:56:00.009 fin=2026-09-14 18:56:00.017
+>     #23: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +33s67ms dispatch +494ms finish
+        enq=2026-09-14 18:54:55.404 disp=2026-09-14 18:55:28.471 fin=2026-09-14 18:55:28.965
+        extras: Bundle[{appWidgetIds=[2]}]
+      #24: act=com.google.android.partnersetup.action.CONFIGURATION_UPDATE flg=0x1000010 pkg=com.android.chrome (has extras)
+        +20s862ms dispatch +47ms finish
+        enq=2026-09-14 18:55:02.741 disp=2026-09-14 18:55:23.603 fin=2026-09-14 18:55:23.650
+        extras: Bundle[{STRIPPED=1}]
+      #25: act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras)
+        -20710d23h55m22s362ms dispatch +20710d23h55m22s865ms finish
+        enq=2026-09-14 18:55:22.362 disp=1969-12-31 18:00:00.000 fin=2026-09-14 18:55:22.865
+        extras: Bundle[{tag=data_app_anr, time=1789430122354, android.os.extra.DROPPED_COUNT=0}]
+      #26: act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras)
+        -20710d23h55m22s359ms dispatch +20710d23h55m22s361ms finish
+        enq=2026-09-14 18:55:22.359 disp=1969-12-31 18:00:00.000 fin=2026-09-14 18:55:22.361
+        extras: Bundle[{tag=data_app_anr, time=1789430122354, android.os.extra.DROPPED_COUNT=0}]
+      #27: act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras)
+        -20710d23h55m22s359ms dispatch +20710d23h55m22s360ms finish
+        enq=2026-09-14 18:55:22.359 disp=1969-12-31 18:00:00.000 fin=2026-09-14 18:55:22.360
+      #89: act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras)
+        -20710d23h22m22s264ms dispatch +20710d23h22m22s274ms finish
+        enq=2026-09-14 18:22:22.264 disp=1969-12-31 18:00:00.000 fin=2026-09-14 18:22:22.274
+        extras: Bundle[{tag=data_app_anr, time=1789428142239, android.os.extra.DROPPED_COUNT=0}]
+>     #90: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        0 dispatch +164ms finish
+        enq=2026-09-14 18:22:14.020 disp=2026-09-14 18:22:14.020 fin=2026-09-14 18:22:14.184
+        extras: Bundle[{appWidgetIds=[2]}]
+      #91: act=android.intent.action.PACKAGE_CHANGED dat=package:dev.draftingroom5 flg=0x45000010 (has extras)
+        +5ms dispatch +509ms finish
+        enq=2026-09-14 18:22:13.662 disp=2026-09-14 18:22:13.667 fin=2026-09-14 18:22:14.176
+        extras: Bundle[{android.intent.extra.changed_component_name=androidx.work.impl.background.systemalarm.RescheduleReceiver, android.intent.extra.DONT_KILL_APP=true, android.intent.extra.UID=10210, android.intent.extra.changed_component_name_list=[androidx.work.impl.background.systemalarm.RescheduleReceiver], android.intent.extra.user_handle=0}]
+      #92: act=android.intent.action.TIME_TICK flg=0x50200010
+        +1ms dispatch +5ms finish
+        enq=2026-09-14 18:22:00.016 disp=2026-09-14 18:22:00.017 fin=2026-09-14 18:22:00.022
+      #93: act=android.net.conn.CONNECTIVITY_CHANGE flg=0x4200010 (has extras)
+        +503ms dispatch +1ms finish
+        enq=2026-09-14 18:21:45.834 disp=2026-09-14 18:21:46.337 fin=2026-09-14 18:21:46.338
+        extras: Bundle[{networkInfo=[type: MOBILE[HSPA], state: CONNECTED/CONNECTED, reason: (unspecified), extra: fast.t-mobile.com, failover: false, available: true, roaming: false], networkType=0, inetCondition=0, extraInfo=fast.t-mobile.com}]
+      #94: act=android.intent.action.TIME_TICK flg=0x50200010
+        +6ms dispatch +7ms finish
+        enq=2026-09-14 18:21:00.010 disp=2026-09-14 18:21:00.016 fin=2026-09-14 18:21:00.023
+      #95: act=android.intent.action.TIME_TICK flg=0x50200010
+        extras: Bundle[{android.intent.extra.user_handle=0}]
+      #220: act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010
+        +2ms dispatch 0 finish
+        enq=2026-09-14 18:00:28.523 disp=2026-09-14 18:00:28.525 fin=2026-09-14 18:00:28.525
+>     #221: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +5s913ms dispatch +78ms finish
+        enq=2026-09-14 18:00:22.527 disp=2026-09-14 18:00:28.440 fin=2026-09-14 18:00:28.518
+        extras: Bundle[{appWidgetIds=[2]}]
+      #222: act=android.intent.action.PACKAGE_ADDED dat=package:dev.draftingroom5 flg=0x4000010 pkg=com.google.android.permissioncontroller (has extras)
+        +686ms dispatch +1s878ms finish
+        enq=2026-09-14 18:00:22.528 disp=2026-09-14 18:00:23.214 fin=2026-09-14 18:00:25.092
+        extras: Bundle[{android.intent.extra.UID=10210, android.content.pm.extra.DATA_LOADER_TYPE=0, android.intent.extra.REPLACING=true, android.intent.extra.user_handle=0}]
+      #223: act=android.intent.action.CLOSE_SYSTEM_DIALOGS flg=0x50000010 (has extras)
+        +807ms dispatch +157ms finish
+        enq=2026-09-14 18:00:23.574 disp=2026-09-14 18:00:24.381 fin=2026-09-14 18:00:24.538
+        extras: Bundle[{reason=homekey}]
+      #224: act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010
+        +129ms dispatch 0 finish
+        enq=2026-09-14 18:00:22.561 disp=2026-09-14 18:00:22.690 fin=2026-09-14 18:00:22.690
+      #225: act=android.intent.action.PACKAGE_REMOVED_INTERNAL dat=package:dev.draftingroom5 flg=0x4000010 pkg=android (has extras)
+        +61ms dispatch 0 finish
+        enq=2026-09-14 18:00:22.336 disp=2026-09-14 18:00:22.397 fin=2026-09-14 18:00:22.397
+        extras: Bundle[{android.intent.extra.REMOVED_FOR_ALL_USERS=true, android.intent.extra.DONT_KILL_APP=false, android.intent.extra.UID=10210, android.intent.extra.SYSTEM_UPDATE_UNINSTALL=false, android.intent.extra.USER_INITIATED=true, android.intent.extra.DATA_REMOVED=false, android.intent.extra.REPLACING=true, android.intent.extra.user_handle=0, android.intent.extra.VISIBILITY_ALLOW_LIST=[10091, 10093, 10095, 10096, 10097, 10099, 10100, 10102, 10103, 10105, 10106, 10118, 10126, 10127, 10130, 10131, 10133, 10134, 10136, 10138, 10140, 10141, 10142, 10143, 10144, 10145, 10153, 10159, 10165, 10166, 10173, 10175, 10179, 10181, 10184, 10186, 10190, 10191, 10192, 10195, 10196, 10198, 10199, 10203, 10210]}]
+      #417: act=com.google.android.apps.wellbeing.action.SCREEN_TURNING_OFF cat=[] dat= typ=*/* flg=0x10 pkg=com.google.android.apps.wellbeing cmp=com.google.android.apps.wellbeing/.fences.screen.ScreenTurningOffReceiver_Receiver (has extras)
+        +45ms dispatch +431ms finish
+        enq=2026-09-14 17:51:11.471 disp=2026-09-14 17:51:11.516 fin=2026-09-14 17:51:11.947
+        extras: Bundle[{STRIPPED=1}]
+>     #418: act=android.appwidget.action.APPWIDGET_UPDATE_OPTIONS flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +28s541ms dispatch +41ms finish
+        enq=2026-09-14 17:50:43.226 disp=2026-09-14 17:51:11.767 fin=2026-09-14 17:51:11.808
+        extras: Bundle[{appWidgetId=2, appWidgetOptions=Bundle[{appWidgetMaxHeight=102, appWidgetCategory=1, appWidgetMaxWidth=116, appWidgetMinHeight=59, appWidgetMinWidth=61, appWidgetSizes=[61.090908x102.90909, 61.090908x102.90909, 116.0x59.272728, 116.0x59.272728]}]}]
+>     #419: act=android.appwidget.action.APPWIDGET_UPDATE flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras)
+        +47s776ms dispatch +55ms finish
+        enq=2026-09-14 17:50:23.936 disp=2026-09-14 17:51:11.712 fin=2026-09-14 17:51:11.767
+        extras: Bundle[{appWidgetIds=[2]}]
+>     #420: act=android.appwidget.action.APPWIDGET_ENABLED flg=0x10 cmp=dev.draftingroom5/.LivingIconWidgetProvider
+        +47s603ms dispatch +173ms finish
+        enq=2026-09-14 17:50:23.936 disp=2026-09-14 17:51:11.539 fin=2026-09-14 17:51:11.712
+      #421: act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010
+        +4ms dispatch +5ms finish
+        enq=2026-09-14 17:51:11.547 disp=2026-09-14 17:51:11.551 fin=2026-09-14 17:51:11.556
+      #422: act=com.google.com.android.gms.contextmanager.CONTEXT_MANAGER_RESTARTED flg=0x10000010 pkg=com.google.android.apps.wellbeing
+        +2s798ms dispatch +571ms finish
+        enq=2026-09-14 17:51:08.147 disp=2026-09-14 17:51:10.945 fin=2026-09-14 17:51:11.516
+      #423: act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras)
+        +1ms dispatch +6ms finish
+        enq=2026-09-14 17:51:11.443 disp=2026-09-14 17:51:11.444 fin=2026-09-14 17:51:11.450
+        extras: Bundle[{technology=Li-ion, icon-small=17303884, max_charging_voltage=5000000, health=2, max_charging_current=5000000, status=2, plugged=1, present=true, android.os.extra.CHARGING_STATUS=0, seq=3, charge_counter=10000, level=100, scale=100, temperature=250, voltage=5000, android.os.extra.CYCLE_COUNT=10, invalid_charger=0, battery_low=false}]
+      #424: act=android.os.action.POWER_SAVE_TEMP_WHITELIST_CHANGED flg=0x40000010
+        +2ms dispatch +1ms finish
+        enq=2026-09-14 17:51:11.118 disp=2026-09-14 17:51:11.120 fin=2026-09-14 17:51:11.121
+      #425: act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras)
+        -20710d22h51m10s951ms dispatch +20710d22h51m10s952ms finish
+        enq=2026-09-14 17:51:10.951 disp=1969-12-31 18:00:00.000 fin=2026-09-14 17:51:10.952

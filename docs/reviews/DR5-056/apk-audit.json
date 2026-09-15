@@ -1,0 +1,9 @@
+{
+  "apk_bytes": 70688221,
+  "apk_sha256": "138d5c72b51e4e5499f2965e5d8045b9fd06babda5595f09be5974234d9907f0",
+  "runtime_widget_count": 50,
+  "widget_uncompressed_bytes": 693818,
+  "widget_zip_bytes": 693818,
+  "all_widget_hashes_match": true,
+  "source_art_excluded": true
+}

@@ -1,0 +1,362 @@
+[
+  {
+    "id": "widget_41_punching_bag",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      52,
+      58,
+      1206,
+      1192
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 13906,
+    "sha256": "3a021c4cf9f48d583f4d723b21bfdc1d29d46294e26b63ab58a734fbc46331bf"
+  },
+  {
+    "id": "widget_42_yoga",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      45,
+      58,
+      1209,
+      1220
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 8466,
+    "sha256": "80039b21434fc639a87010a3652b9796e2d1acbc464e24d84d193615ee1f47c1"
+  },
+  {
+    "id": "widget_43_prism",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      35,
+      36,
+      1222,
+      1215
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 11154,
+    "sha256": "60ff7271fc61f450b22bdb337ce6a39c893546cbc6850d1930e2746283ceb326"
+  },
+  {
+    "id": "widget_44_sandstorm",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      49,
+      53,
+      1181,
+      1214
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 13020,
+    "sha256": "1e265a779e2edf7f7ea8b2836a2f5dca4b00c5bcd02e1c9d840804e1471cd36b"
+  },
+  {
+    "id": "widget_45_moonwalk",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      74,
+      82,
+      1180,
+      1193
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 8384,
+    "sha256": "5ade4f78bbd8a542fb33da86c93a1ac743a0f1941ad59ad122a7edda434b52e0"
+  },
+  {
+    "id": "widget_46_genie_lamp",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      103,
+      53,
+      1134,
+      1182
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 7468,
+    "sha256": "c9bae5459ee65b771c46b2e551e3cdbbc7e0692e819f1dc470a732ccad79a624"
+  },
+  {
+    "id": "widget_47_roller_coaster",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      72,
+      74,
+      1183,
+      1185
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 10954,
+    "sha256": "e6de0ed33115b9e705dc95abbff4bf96f97732027a95c877deadd83b4b54302c"
+  },
+  {
+    "id": "widget_48_compass",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      86,
+      53,
+      1168,
+      1182
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 9796,
+    "sha256": "d7091a174c24dec7fc191c238b246a7dc8bcf01b417fc6ff17dabf9c8860ab13"
+  },
+  {
+    "id": "widget_49_kite",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      69,
+      83,
+      1185,
+      1196
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 5298,
+    "sha256": "29b3a1c4fed8fb9544db7374bc230b1fe6ffe3fe37b63faa026249f223ad3bff"
+  },
+  {
+    "id": "widget_50_curtain_call",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      83,
+      53,
+      1174,
+      1182
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      67,
+      1187,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 11794,
+    "sha256": "0efb52f419035d362c7d961f047ddee0f544a6da2fb5336b432ac51e5e3ced54"
+  }
+]

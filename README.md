@@ -2,7 +2,7 @@
 
 DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
-The current production release is v0.24.2. The schedule editor now assigns activities one day at a time, including changes to older multi-day entries. Its Phase 6 interaction and visual polish passed the independent product audit and full Android build gate. The launcher uses a round-first measured 5 on black with a hatched gold ring. Physical-device checks that require Health Connect/Withings, TalkBack, external apps, touch dragging, process termination, real timers/feedback, Android backup/installation, or OEM icon masks remain explicitly device-dependent; use the checklist in `docs/reviews/DR5-038-phase-6-product-audit.md` rather than treating host screenshots as device certification.
+The current production release is v0.25.0. It adds a one-cell living-icon home-screen widget whose 50 distinct still images rotate on Android's battery-conscious, inexact approximately-hourly schedule and refresh when the app opens or relevant widget lifecycle events occur. Tapping anywhere on the tile opens DraftingRoom5 normally; the launcher icon itself is unchanged. Phase 7 passed its independent API 28/35 widget audit and full Android build gate. Physical-device and unavailable-device checks remain documented honestly in `docs/reviews/DR5-056/`; earlier Phase 6 device-dependent checks remain in `docs/reviews/DR5-038-phase-6-product-audit.md`.
 
 ## Current scope
 
@@ -25,6 +25,7 @@ The current production release is v0.24.2. The schedule editor now assigns activ
 - Configurable workout haptics mark timer starts, countdown and timer completion, each completed set, and workout completion while respecting the phone's system haptic setting.
 - Optional text-to-speech announces the final countdown, timer start and completion, set transitions, and workout completion with an adjustable voice rate.
 - Round-first black-and-gold DraftingRoom5 launcher artwork with adaptive, round, themed, and notification-safe icon assets.
+- A one-cell, tap-to-open living-icon widget with 50 optimized looks, true-alpha silhouettes, deterministic hourly selection, and Android-managed inexact updates without a foreground service or wake lock.
 - Branded navy interface with ivory typography, blue/mint/gold accents, responsive cards, bundled DM Serif Display, and edge-to-edge system bars.
 - A short first-launch brand-title animation that never blocks navigation and follows Android's reduced-motion setting.
 - Opens Fitbod (`com.fitbod.fitbod`) and Just Run (`com.jupli.run`) when installed.
@@ -33,6 +34,8 @@ The current production release is v0.24.2. The schedule editor now assigns activ
 ## Local build
 
 Open the project in Android Studio with Android SDK 36 and Java 17 installed, then run `./gradlew testDebugUnitTest lintDebug assembleDebug`.
+
+Add **DraftingRoom5 living icon** from the launcher's widget picker to place the one-cell tile. Android controls the exact delivery time of its approximately-hourly refresh, so the image is not promised to change on the hour; opening the app and system widget lifecycle events can also refresh the current time-selected look. The whole tile opens the normal app route.
 
 Open **Settings → Customize dashboard** to choose which training and metric sections appear, move them into the exact order you want, or restore the default layout. At least one section always remains visible. Open **Settings → Schedules & routines** to manage recurring weekday entries and both routine types. You can create, rename, illustrate, edit, schedule, reorder, launch, and delete guided and linked-app routines; changes persist on-device across restarts. Linked-app launch failures offer change-app and store recovery instead of a dead action.
 

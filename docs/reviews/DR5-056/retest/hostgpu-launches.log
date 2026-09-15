@@ -1,0 +1,9 @@
+ERROR: null root node returned by UiTestAutomationBridge.
+Traceback (most recent call last):
+  File "C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\docs\reviews\DR5-056\retest-launch.py", line 45, in <module>
+    settings=find(screen,'Settings')
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\docs\reviews\DR5-056\retest-launch.py", line 26, in find
+    return next(n for n in tree.iter('node') if label in (n.get('text'),n.get('content-desc')))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StopIteration

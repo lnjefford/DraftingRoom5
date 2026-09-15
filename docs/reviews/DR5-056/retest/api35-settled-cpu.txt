@@ -1,0 +1,99 @@
+Load: 24.13 / 7.06 / 2.45
+CPU usage from 250285ms to 227214ms ago (2026-09-14 21:23:34.729 to 2026-09-14 21:23:57.799):
+  62% 617/system_server: 29% user + 33% kernel / faults: 17272 minor
+  32% 1248/com.google.android.gms.persistent: 16% user + 15% kernel / faults: 12414 minor 110 major
+  27% 1435/com.google.android.googlequicksearchbox:search: 14% user + 13% kernel / faults: 13012 minor 313 major
+  19% 1192/com.google.android.apps.nexuslauncher: 5.2% user + 14% kernel / faults: 7334 minor 278 major
+  19% 883/com.android.systemui: 10% user + 8.3% kernel / faults: 7059 minor 19 major
+  19% 1332/com.google.android.as: 8.2% user + 10% kernel / faults: 9028 minor 286 major
+  16% 1624/com.google.android.gms: 9.4% user + 7.1% kernel / faults: 7770 minor 149 major
+  10% 1014/com.android.phone: 5.1% user + 5.1% kernel / faults: 5803 minor 5 major
+  9.1% 1376/com.google.android.apps.messaging:rcs: 4.1% user + 4.9% kernel / faults: 4719 minor 154 major
+  8.5% 1265/com.google.android.apps.wellbeing: 4.5% user + 3.9% kernel / faults: 4169 minor
+  7.5% 515/logcat: 0.1% user + 7.3% kernel
+  7.3% 470/surfaceflinger: 1.4% user + 5.8% kernel / faults: 155 minor
+  4.6% 421/android.hardware.graphics.composer3-service.ranchu: 0.3% user + 4.3% kernel / faults: 12 minor
+  1% 64/kswapd0: 0% user + 1% kernel
+  3.8% 1801/com.google.android.as.oss: 1.4% user + 2.3% kernel / faults: 2438 minor 41 major
+  3.2% 1636/com.google.android.permissioncontroller: 1.2% user + 1.9% kernel / faults: 1220 minor 2 major
+  2.8% 173/logd: 0.6% user + 2.1% kernel / faults: 557 minor
+  2.5% 427/kworker/1:2-virtio_vsock: 0% user + 2.5% kernel
+  2.3% 1302/com.google.android.providers.media.module: 1.3% user + 0.9% kernel / faults: 1092 minor
+  1.5% 1026/com.android.settings: 0.7% user + 0.7% kernel / faults: 1156 minor 1 major
+  1.2% 410/android.hardware.graphics.allocator@3.0-service.ranchu: 0% user + 1.2% kernel
+  1% 396/statsd: 0.2% user + 0.8% kernel
+  1% 398/zygote64: 0% user + 1% kernel / faults: 528 minor
+  1% 479/adbd: 0% user + 0.9% kernel / faults: 2734 minor 1 major
+  0.9% 602/kworker/u12:3-loop10: 0% user + 0.9% kernel
+  0.6% 1158/com.google.android.cellbroadcastreceiver: 0.2% user + 0.3% kernel / faults: 577 minor 872 major
+  0.8% 239/jbd2/dm-46-8: 0% user + 0.8% kernel
+  0.7% 175/servicemanager: 0.1% user + 0.5% kernel / faults: 4 minor
+  0.7% 534/libgoldfish-rild: 0% user + 0.6% kernel / faults: 5 minor
+  0.5% 316/kworker/u11:3-loop18: 0% user + 0.5% kernel
+  0.5% 956/com.google.android.bluetooth: 0.2% user + 0.3% kernel / faults: 270 minor 2 major
+  0.5% 413/android.hardware.sensors-service.multihal: 0% user + 0.4% kernel
+  0.4% 624/kworker/1:5H-kblockd: 0% user + 0.4% kernel
+  0.4% 1/init: 0% user + 0.3% kernel / faults: 97 minor
+  0.4% 528/mediaserver: 0% user + 0.4% kernel / faults: 54 minor
+  0.4% 1730/com.google.android.apps.wallpaper: 0% user + 0.3% kernel / faults: 354 minor 18 major
+  0.3% 536/media.swcodec: 0.1% user + 0.2% kernel / faults: 37 minor
+  0.3% 1051/com.google.android.ext.services: 0% user + 0.2% kernel / faults: 429 minor
+  0.3% 1324/android.process.acore: 0.1% user + 0.2% kernel / faults: 240 minor
+  0.3% 174/lmkd: 0.1% user + 0.1% kernel / faults: 6 minor 1 major
+  0.2% 523/installd: 0% user + 0.2% kernel / faults: 2 minor
+  0.3% 526/media.extractor: 0% user + 0.2% kernel / faults: 55 minor
+  0.3% 55/kworker/2:1-virtio_vsock: 0% user + 0.3% kernel
+  0.2% 63/kworker/3:1H-kverityd: 0% user + 0.2% kernel
+  0.2% 635/kworker/0:11H-kblockd: 0% user + 0.2% kernel
+  0.2% 943/com.android.networkstack.process: 0% user + 0.1% kernel / faults: 138 minor
+  0.2% 1541/com.android.keychain: 0.1% user + 0.1% kernel / faults: 317 minor
+  0.2% 83/kworker/2:1H-kverityd: 0% user + 0.2% kernel
+  0.1% 1686/kworker/u8:2-phy1: 0% user + 0.1% kernel
+  0.1% 303/kworker/u10:2-loop34: 0% user + 0.1% kernel
+  0% 15/ksoftirqd/0: 0% user + 0% kernel
+  0.1% 112/kworker/3:2-virtio_vsock: 0% user + 0.1% kernel
+  0.1% 170/kworker/0:2: 0% user + 0.1% kernel
+  0% 16/rcu_preempt: 0% user + 0% kernel
+  0% 26/ksoftirqd/1: 0% user + 0% kernel
+  0% 32/ksoftirqd/2: 0% user + 0% kernel
+  0% 171/prng_seeder: 0% user + 0% kernel / faults: 1 minor
+  0% 429/iptables-restore: 0% user + 0% kernel
+  0% 458/audioserver: 0% user + 0% kernel / faults: 3 minor
+  0% 488/drmserver: 0% user + 0% kernel
+  0% 496/mdnsd: 0% user + 0% kernel / faults: 1 minor
+  0% 519/cameraserver: 0% user + 0% kernel / faults: 2 minor
+  0% 18/rcu_exp_gp_kthread_worker: 0% user + 0% kernel
+  0% 25/migration/1: 0% user + 0% kernel
+  0% 65/kworker/u13:0-hci0: 0% user + 0% kernel
+  0% 177/psimon: 0% user + 0% kernel
+  0% 204/keystore2: 0% user + 0% kernel / faults: 13 minor
+  0% 225/kworker/u14:3-fscrypt_read_queue: 0% user + 0% kernel
+  0% 228/kworker/u15:3-fscrypt_read_queue: 0% user + 0% kernel
+  0% 230/kworker/u17:4-blk_crypto_wq: 0% user + 0% kernel
+  0% 231/kworker/u14:4-blk_crypto_wq: 0% user + 0% kernel
+  0% 237/kworker/u16:2-blk_crypto_wq: 0% user + 0% kernel
+  0% 245/tombstoned: 0% user + 0% kernel / faults: 6 minor
+  0% 397/netd: 0% user + 0% kernel
+  0% 419/android.hardware.bluetooth-service.default: 0% user + 0% kernel
+  0% 424/android.hardware.power-service.example: 0% user + 0% kernel
+  0% 430/ip6tables-restore: 0% user + 0% kernel
+  0% 518/bt_vhci_forwarder: 0% user + 0% kernel
+  0% 531/wificond: 0% user + 0% kernel
+  0% 868/wpa_supplicant: 0% user + 0% kernel / faults: 1 minor
+  0% 1424/abb: 0% user + 0% kernel / faults: 28 minor
+  0% 1591/kworker/1:3-virtio_vsock: 0% user + 0% kernel
+ +0% 1878/com.google.android.deskclock: 0% user + 0% kernel
+ +0% 1949/com.android.traceur: 0% user + 0% kernel
+ +0% 1967/artd: 0% user + 0% kernel
+ +0% 2033/com.google.android.apps.messaging: 0% user + 0% kernel
+ +0% 2064/android.process.media: 0% user + 0% kernel
+ +0% 2158/com.google.android.onetimeinitializer: 0% user + 0% kernel
+ +0% 2170/app_process: 0% user + 0% kernel
+ +0% 2179/com.android.externalstorage: 0% user + 0% kernel
+ +0% 2212/com.android.camera2: 0% user + 0% kernel
+ +0% 2216/dev.draftingroom5: 0% user + 0% kernel
+ +0% 2257/com.android.dynsystem: 0% user + 0% kernel
+ +0% 2276/com.android.dynsystem:dynsystem: 0% user + 0% kernel
+ +0% 2278/com.android.imsserviceentitlement: 0% user + 0% kernel
+ +0% 2312/com.google.android.googlequicksearchbox:interactor: 0% user + 0% kernel
+97% TOTAL: 33% user + 49% kernel + 1.4% iowait + 12% irq + 0.7% softirq

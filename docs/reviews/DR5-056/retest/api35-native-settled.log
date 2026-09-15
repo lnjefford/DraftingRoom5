@@ -1,0 +1,11 @@
+Performing Streamed Install
+Success
+PASS: framework broadcasts update two instances through the private receiver process
+PASS: 50 distinct native 56px renders, alpha corners, light/dark sheet
+PASS: host options callback and rectangular fitCenter preserve artwork; fixed-size picker contract
+PASS: boot/package/time/restore callback paths refresh bound host views (simulated callbacks)
+PASS: cold private-process framework callback in 774 ms
+PASS: recreated host receives cached artwork; removing one instance preserves the other
+PASS: audit host removed; original widget IDs preserved; no-widget refresh exercised when initial IDs empty
+PASS: all native widget assertions on API 35
+

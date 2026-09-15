@@ -1,0 +1,7 @@
+{
+  "time": "2026-09-14T19:14:02.6497581-05:00",
+  "elapsed_ms": 3558,
+  "result": "Broadcasting: Intent { act=android.appwidget.action.APPWIDGET_UPDATE flg=0x400000 cmp=dev.draftingroom5/.LivingIconWidgetProvider (has extras) }",
+  "valid_measurement": false,
+  "reason": "Android rejected the shell sender for protected APPWIDGET_UPDATE. Elapsed time is not callback latency; use the actual alarm/ANR trace and native framework host probe."
+}

@@ -1,0 +1,8 @@
+ERROR: null root node returned by UiTestAutomationBridge.
+Traceback (most recent call last):
+  File "C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\docs\reviews\DR5-056\retest-launch.py", line 40, in <module>
+    home=dump(f'{i+1}-home')
+         ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\docs\reviews\DR5-056\retest-launch.py", line 21, in dump
+    raise RuntimeError('No fresh UI hierarchy: '+status)
+RuntimeError: No fresh UI hierarchy: 

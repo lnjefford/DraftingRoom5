@@ -1,0 +1,362 @@
+[
+  {
+    "id": "widget_21_climbing",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      33,
+      16,
+      1228,
+      1254
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      86,
+      67,
+      1167,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 11484,
+    "sha256": "5a2f54b321e31746b0859548cc8a35d0e29b4bbc378ddabd22ed922787097afd"
+  },
+  {
+    "id": "widget_22_balance_beam",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      21,
+      1202,
+      1228
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      69,
+      67,
+      1184,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 10364,
+    "sha256": "6b9012a4dd83102b306a03240d90102ea67d710651cb55aa9f9d6efe9ee6551a"
+  },
+  {
+    "id": "widget_23_tornado",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      23,
+      1236,
+      1208
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      90,
+      1187,
+      1164
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 17988,
+    "sha256": "69ed07288430baf250b6c62de53168f6036c623a178ff4bc5145c5346e0de3ea"
+  },
+  {
+    "id": "widget_24_geode",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      23,
+      1224,
+      1254
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      70,
+      67,
+      1184,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 20892,
+    "sha256": "f850d82641fefd303136cad7403f421bc517b0bfc6c8ebbb1c4e447c980c2dfb"
+  },
+  {
+    "id": "widget_25_portal",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      21,
+      1199,
+      1254
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      82,
+      67,
+      1171,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 13094,
+    "sha256": "6998addbe6f00e0a9adeb55e34562720c18c9d9826304b891bb0c03535fa6c4d"
+  },
+  {
+    "id": "widget_26_shadow_puppet",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      113,
+      1232,
+      1131
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      164,
+      1187,
+      1089
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 11064,
+    "sha256": "5f4ee067b5f9a7fde6942f093cfc74495f1e66ff2a8c25a192f1ccd9abb59d1f"
+  },
+  {
+    "id": "widget_27_pendulum",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      55,
+      20,
+      1224,
+      1238
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      89,
+      67,
+      1164,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 16194,
+    "sha256": "8148d01349c5c35c0fba3fe32e0c3cf5f0550704d155dd825f09218a2dc6b941"
+  },
+  {
+    "id": "widget_28_pinwheel",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      20,
+      1236,
+      1254
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      67,
+      68,
+      1187,
+      1186
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 23842,
+    "sha256": "1847711a02149607ba86246b36220f21ac8a1505eeb378783eb007dd313047a4"
+  },
+  {
+    "id": "widget_29_balloon",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      37,
+      36,
+      1198,
+      1216
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      76,
+      67,
+      1178,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 12308,
+    "sha256": "7d7429103448bbfa344a5f89c434126bfa26e2a74d0a732fa7d979f44367f682"
+  },
+  {
+    "id": "widget_30_windup_toy",
+    "source_px": [
+      1254,
+      1254
+    ],
+    "source_alpha_bbox": [
+      0,
+      43,
+      1195,
+      1254
+    ],
+    "master_px": [
+      1254,
+      1254
+    ],
+    "master_alpha_bbox": [
+      74,
+      67,
+      1179,
+      1187
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 22376,
+    "sha256": "63418f5e02cd6ea0cb0d421ba5d2f71ae0823c388fad8b616e30e51a7cfc9348"
+  }
+]

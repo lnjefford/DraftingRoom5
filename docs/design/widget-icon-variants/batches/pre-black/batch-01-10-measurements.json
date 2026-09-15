@@ -1,0 +1,202 @@
+[
+  {
+    "id": "widget_01_dumbbell",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 14800,
+    "sha256": "c9f801a8413cc7bbd2e4efdb9215cb8e15c89156582ef4c10cc0fe51d068b189"
+  },
+  {
+    "id": "widget_02_flex",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 17250,
+    "sha256": "431f928bbbe6f09b568293bf21ec86231d836948b2d7ff254efca520216d1775"
+  },
+  {
+    "id": "widget_03_fire",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 14386,
+    "sha256": "be11e293f1f41242a3672c0424224ee851acda9e31e03b832aaae49241ae6fd5"
+  },
+  {
+    "id": "widget_04_melt",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 12206,
+    "sha256": "5c4e62c1b052d4907b955c89fe9210df417828fa3833b9fb45f24a1f5fa299d9"
+  },
+  {
+    "id": "widget_05_orbit",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 13194,
+    "sha256": "bd93a667d8517943d25358b128ed649ed0881a4907b1c69685d15d9373e4dce6"
+  },
+  {
+    "id": "widget_06_jump_rope",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 11724,
+    "sha256": "13f240fcfea1a2870b7316ac23a1bf8bda7c37a805d74e6fe314c6c2ace0a569"
+  },
+  {
+    "id": "widget_07_wave",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 18190,
+    "sha256": "5b1ea2486c10a0059dead61240807e4277108431ae4dfea0e44a9c57a458f77f"
+  },
+  {
+    "id": "widget_08_skateboard",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 14488,
+    "sha256": "bca9163717a64266fcaab558b708d96b23853c087ff4170074517f3015e6c4f5"
+  },
+  {
+    "id": "widget_09_spotlight",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 15252,
+    "sha256": "858797c2d730b70180f28c2094b470623afc66609ff256dfc91a54b2905a7e9b"
+  },
+  {
+    "id": "widget_10_paper_plane",
+    "master_px": [
+      1254,
+      1254
+    ],
+    "derivative_px": [
+      256,
+      256
+    ],
+    "format": "WebP RGBA",
+    "alpha_corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "bytes": 14398,
+    "sha256": "d1ddd7e9853a55d0e43df1fa8bf83a20ee16e381c3c99299655e6587e3e75137"
+  }
+]

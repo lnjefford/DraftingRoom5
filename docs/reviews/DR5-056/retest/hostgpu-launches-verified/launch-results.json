@@ -1,0 +1,38 @@
+[
+  {
+    "round": 1,
+    "background_process_kill": true,
+    "tap_to_hierarchy_seconds": 9.36,
+    "settings_input": "passed"
+  },
+  {
+    "round": 2,
+    "background_process_kill": false,
+    "tap_to_hierarchy_seconds": 3.515,
+    "settings_input": "passed"
+  },
+  {
+    "round": 3,
+    "background_process_kill": true,
+    "tap_to_hierarchy_seconds": 7.297,
+    "settings_input": "passed"
+  },
+  {
+    "round": 4,
+    "background_process_kill": false,
+    "tap_to_hierarchy_seconds": 3.438,
+    "settings_input": "passed"
+  },
+  {
+    "round": 5,
+    "background_process_kill": true,
+    "tap_to_hierarchy_seconds": 8.187,
+    "settings_input": "passed"
+  },
+  {
+    "round": 6,
+    "background_process_kill": false,
+    "tap_to_hierarchy_seconds": 3.968,
+    "settings_input": "passed"
+  }
+]

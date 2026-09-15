@@ -1,0 +1,10 @@
+        operation=PendingIntent{720d5e9: PendingIntentRecord{55e426e android broadcastIntent}}
+      ELAPSED_WAKEUP #6: Alarm{73fd0f type 2 origWhen 3717341 whenElapsed 3717341 android}
+>       tag=*walarm*:android.appwidget.action.APPWIDGET_UPDATE
+        type=ELAPSED_WAKEUP origWhen=+7m55s726ms window=+45m0s0ms repeatInterval=3600000 count=0 flags=0x8
+        policyWhenElapsed: requester=+7m55s726ms app_standby=-52m4s274ms device_idle=-- battery_saver=--
+        whenElapsed=+7m55s726ms maxWhenElapsed=+52m55s726ms
+        operation=PendingIntent{117819c: PendingIntentRecord{b27e7a5 android broadcastIntent}}
+      ELAPSED_WAKEUP #7: Alarm{730177a type 2 origWhen 3782227 whenElapsed 3782227 android}
+        tag=*walarm*:*job.deadline*
+        type=ELAPSED_WAKEUP origWhen=+9m0s612ms window=+15m28s443ms repeatInterval=0 count=0 flags=0x0

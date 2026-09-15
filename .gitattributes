@@ -1,0 +1,3 @@
+# Preserve raw device/audit captures exactly; their system-formatted whitespace is evidence.
+docs/reviews/DR5-*/**/*.txt -whitespace
+docs/reviews/DR5-*/**/*.log -whitespace

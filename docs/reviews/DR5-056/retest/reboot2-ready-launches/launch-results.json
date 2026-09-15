@@ -1,0 +1,14 @@
+[
+  {
+    "round": 1,
+    "background_process_kill": true,
+    "tap_to_hierarchy_seconds": 13.438,
+    "settings_input": "passed"
+  },
+  {
+    "round": 2,
+    "background_process_kill": false,
+    "tap_to_hierarchy_seconds": 4.687,
+    "settings_input": "passed"
+  }
+]

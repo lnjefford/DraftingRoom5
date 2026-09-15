@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="living_icon_widget_label">DraftingRoom5 living icon</string>
+    <string name="living_icon_widget_description">Open DraftingRoom5</string>
     <string name="routine_artwork_generic">General training</string>
     <string name="routine_artwork_dumbbell">Dumbbell</string>
     <string name="routine_artwork_grip_trainer">Grip trainer</string>
