@@ -9,6 +9,49 @@ internal enum class ScheduleRepeat { WEEKLY, WEEKDAYS, DAILY, CUSTOM }
 
 internal data class AppLink(val packageName: String, val deepLink: String?)
 
+internal data class ExerciseMeasurements(
+    val weightPounds: Double? = null,
+    val durationSeconds: Int? = null,
+)
+
+internal data class ExercisePrescription(
+    val name: String,
+    val notes: String,
+    val setCount: Int,
+    val target: String,
+    val timerSeconds: Int?,
+    val artworkId: String,
+    val measurements: ExerciseMeasurements = ExerciseMeasurements(),
+)
+
+internal sealed interface ExerciseProgression
+
+internal data class AutomaticPoundsProgression(
+    val increment: Double,
+    val minimum: Double? = null,
+    val maximum: Double? = null,
+)
+
+internal data class AutomaticSecondsProgression(
+    val increment: Int,
+    val minimum: Int? = null,
+    val maximum: Int? = null,
+)
+
+internal data class AutomaticExerciseProgression(
+    val weightPounds: AutomaticPoundsProgression? = null,
+    val durationSeconds: AutomaticSecondsProgression? = null,
+) : ExerciseProgression
+
+internal data class CustomProgressionStep(
+    val replacement: ExercisePrescription,
+    val insertedExercises: List<Exercise> = emptyList(),
+)
+
+internal data class CustomExerciseProgression(
+    val steps: List<CustomProgressionStep>,
+) : ExerciseProgression
+
 internal data class Exercise(
     val id: String,
     val name: String,
@@ -17,6 +60,18 @@ internal data class Exercise(
     val target: String,
     val timerSeconds: Int?,
     val artworkId: String,
+    val measurements: ExerciseMeasurements = ExerciseMeasurements(),
+    val progression: ExerciseProgression? = null,
+)
+
+internal fun Exercise.prescription() = ExercisePrescription(
+    name = name,
+    notes = notes,
+    setCount = setCount,
+    target = target,
+    timerSeconds = timerSeconds,
+    artworkId = artworkId,
+    measurements = measurements,
 )
 
 internal data class Routine(

@@ -1,0 +1,11 @@
+Performing Streamed Install
+Success
+Performing Streamed Install
+Success
+FAIL: java.lang.IllegalStateException: Native condition timed out
+	at dev.draftingroom5.ProgressionNativeAudit.await(ProgressionNativeAudit.kt:157)
+	at dev.draftingroom5.ProgressionNativeAudit.run(ProgressionNativeAudit.kt:29)
+	at dev.draftingroom5.WidgetAuditInstrumentation.onStart(WidgetAuditInstrumentation.kt:37)
+	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2594)
+
+

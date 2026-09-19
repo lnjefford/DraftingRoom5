@@ -1,0 +1,107 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableScreenshotTest=true' is experimental.
+The current default is 'false'.
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :app:generateDebugAndroidTestLintModel
+> Task :app:extractProguardFiles
+> Task :app:generateDebugLintReportModel
+> Task :app:generateDebugUnitTestLintModel
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:lintAnalyzeDebug
+> Task :app:lintAnalyzeDebugAndroidTest
+> Task :app:lintAnalyzeDebugUnitTest
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so.
+
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:preDebugScreenshotTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugScreenshotTest
+> Task :app:checkDebugDuplicateClasses
+> Task :app:packageDebugScreenshotTestForScreenshotTest
+> Task :app:mergeLibDexDebug
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:compileDebugScreenshotTestKotlin
+> Task :app:mergeExtDexDebug
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:testDebugUnitTest
+> Task :app:compileDebugScreenshotTestJavaWithJavac NO-SOURCE
+> Task :app:packageDebug
+> Task :app:validateDebugScreenshotTest
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots_Compact_{heightDp=800, widthDp=320} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots_Tall_{heightDp=1100, widthDp=412} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots_Landscape_{heightDp=360, widthDp=800} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > AutomaticProgressionEditorScreenshots > AutomaticProgressionEditorScreenshots > AutomaticProgressionEditorScreenshots_Tall_{heightDp=1100, widthDp=412} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+291 tests completed, 5 failed
+
+> Task :app:validateDebugScreenshotTest FAILED
+> Task :app:createDebugApkListingFileRedirect
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:validateDebugScreenshotTest'.
+> There were failing tests. See the report at: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/.tooling/dr5-065-build/app/reports/screenshotTest/preview/debug/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 13m 21s
+55 actionable tasks: 30 executed, 25 up-to-date

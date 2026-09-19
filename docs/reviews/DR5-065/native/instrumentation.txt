@@ -1,0 +1,6 @@
+PASS: native Continue persists handled completion and leaves live prescription unchanged
+PASS: native timer starts after Continue, retains run/deadline across background/foreground, and does not replay start voice/haptic callbacks
+PASS: native custom apply inserts once; snackbar Undo restores source and removes addition
+PASS: native exact heavier/shorter selection applies 32.5 lb and 25 seconds without changing snapshot
+PASS: Android API 35; production Compose destination and accessibility actions
+

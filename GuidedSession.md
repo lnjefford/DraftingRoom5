@@ -121,6 +121,16 @@ Persist at least the routine ID, a session ID, routine-content revision or snaps
 
 An incomplete session changes the associated dashboard action from `Start` to `Resume` and exposes concise progress such as `3 of 7 exercises`. Resuming restores the focused exercise and set progress. Editing or deleting a routine with an incomplete session requires explicit confirmation; deletion clears that session, while safe edits create a new routine revision for the next session.
 
+### Per-exercise progression decision
+
+Completing the final set of an eligible exercise opens a compact sheet titled `<Exercise name> complete`. It has no explanatory subtitle or rating scale: outlined **Ready for more** is secondary and filled-blue **Continue workout** is primary. Dismissing the sheet has the same safe effect as Continue.
+
+Continue changes no routine data, records that this completion was handled in the saved session, and permits the exercise to ask again in a later workout (undoing and recompleting its last set can also reopen a declined decision). Ready applies a single custom or single-measure result immediately, with its result and additions shown inside the outlined action; multiple available results first show an exact chooser for weight-only, duration-only, and heavier/shorter results. The full resulting prescription is visible and exposed to TalkBack before commitment. A successful write advances the future routine once, continues the current snapshot normally, and offers nonblocking Undo. Failed writes remain visible in the sheet; a failed Undo offers the Undo action again. Workout cards show structured pounds and seconds alongside the unchanged free-text target. Voice/timer feedback pauses while the decision sheet owns interaction.
+
+No sheet appears when progression is disabled, the next custom step is unavailable, every automatic choice is at its bound, the routine is linked-app based, the completion was already handled, a progression receipt already exists, or the live exercise no longer exactly matches the session snapshot. Repeated taps, stale revisions, restart, rotation, backgrounding, and process recreation cannot apply a step twice. Undo is immediate-only: a later routine edit or progression expires it.
+
+The active session and completed history are immutable routine snapshots. Applying, undoing, reordering, editing, or deleting exercises affects future sessions only. Restarting a saved session is the explicit way to discard that snapshot and adopt the current live routine.
+
 ### Completion screen
 
 - Show a terminal `Session complete` screen only after all required sets have been explicitly completed.

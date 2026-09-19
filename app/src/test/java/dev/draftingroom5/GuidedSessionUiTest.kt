@@ -3,10 +3,56 @@ package dev.draftingroom5
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GuidedSessionUiTest {
+    @Test fun continueDecisionIsDurableIdempotentAndUndoingTheSetMakesItEligibleAgain() {
+        val clock = SessionClockSample(100_000, 200_000, 7)
+        val complete = fixture().copy(completedSets = mapOf("A" to 2, "B" to 0, "C" to 0))
+        val continued = (reduceGuidedSession(complete, SessionEvent.ContinueWorkout("A"), clock) as SessionReduction.Changed).session
+        assertEquals(setOf("A"), continued.handledProgressionExerciseIds)
+        assertTrue(reduceGuidedSession(continued, SessionEvent.ContinueWorkout("A"), clock) is SessionReduction.Unchanged)
+
+        val undone = (reduceGuidedSession(continued, SessionEvent.UndoLastSet("A", 2), clock) as SessionReduction.Changed).session
+        assertTrue(undone.handledProgressionExerciseIds.isEmpty())
+        assertEquals(1, undone.completedSets.getValue("A"))
+    }
+
+    @Test fun pendingOfferSurvivesCodecRecreationAndContinueSuppressesOnlyThisWorkout() {
+        val complete = progressionDocumentFixture().let { document ->
+            document.copy(partialSessions = document.partialSessions.map { session ->
+                val source = session.snapshot.exercises.first { it.progression != null }
+                session.copy(completedSets = session.completedSets.toMutableMap().apply { this[source.id] = source.setCount })
+            })
+        }
+        val restored = decodeAppDocument(encodeAppDocument(complete))
+        val session = restored.partialSessions.single()
+        val offer = progressionOfferForSession(restored, session)
+        assertEquals(session.snapshot.exercises.first { it.progression != null }.id, offer?.exerciseId)
+
+        val handled = session.copy(handledProgressionExerciseIds = setOf(requireNotNull(offer).exerciseId))
+        assertNull(progressionOfferForSession(restored.copy(partialSessions = listOf(handled)), handled))
+        assertNull(restored.copy(partialSessions = listOf(handled)).progressionOffer(handled.id, offer.exerciseId))
+
+        val nextSession = handled.copy(id = "next-session", handledProgressionExerciseIds = emptySet())
+        val nextDocument = restored.copy(partialSessions = listOf(nextSession))
+        assertEquals(offer.exerciseId, progressionOfferForSession(nextDocument, nextSession)?.exerciseId)
+    }
+
+    @Test fun exactPrescriptionAndChoiceLabelsExposeAllResultingMeasures() {
+        val option = Exercise(
+            "result", "Loaded hold", "", 3, "Heavy hold", 25, "farmers_walk",
+            ExerciseMeasurements(32.5, 25),
+        )
+        assertEquals("Loaded hold, 3 sets, Heavy hold, 32.5 lb, 25 seconds", progressionPrescription(option))
+        assertEquals("More weight", progressionChoiceLabel(ProgressionChoice.WEIGHT))
+        assertEquals("More time", progressionChoiceLabel(ProgressionChoice.DURATION))
+        assertEquals("Heavier, shorter", progressionChoiceLabel(ProgressionChoice.HEAVIER_SHORTER))
+        assertEquals("Next custom step", progressionChoiceLabel(ProgressionChoice.CUSTOM))
+    }
+
     @Test fun longestSupportedTimerKeepsEveryDigitWithoutChangingTheDuration() {
         val base = fixture()
         val longest = base.copy(snapshot = base.snapshot.copy(exercises = base.snapshot.exercises.map {

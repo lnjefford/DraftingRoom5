@@ -40,6 +40,7 @@ internal sealed interface SessionEvent {
     data class Focus(val exerciseId: String) : SessionEvent
     data class CompleteSet(val exerciseId: String, val setNumber: Int) : SessionEvent
     data class UndoLastSet(val exerciseId: String, val expectedCompletedCount: Int) : SessionEvent
+    data class ContinueWorkout(val exerciseId: String) : SessionEvent
     data class StartTimer(val newRunId: String, val expectedRunId: String? = null) : SessionEvent
     data class CancelTimer(val expectedRunId: String) : SessionEvent
     data class Reconcile(
@@ -87,7 +88,7 @@ internal fun reduceGuidedSession(
     }
     val reconciled = reconcileTimer(committed, clock, sameProcess, previousElapsedMillis)
     val effective = reconciled.session
-    val suppressTimerCue = event is SessionEvent.Focus || event is SessionEvent.CompleteSet ||
+    val suppressTimerCue = event is SessionEvent.Focus || event is SessionEvent.CompleteSet || event is SessionEvent.ContinueWorkout ||
         event is SessionEvent.UndoLastSet || event is SessionEvent.CancelTimer
 
     val candidate = when (event) {
@@ -128,6 +129,17 @@ internal fun reduceGuidedSession(
                 completedSets = effective.completedSets.toMutableMap().apply { this[exercise.id] = completed - 1 },
                 focusedExerciseId = exercise.id,
                 timer = SessionTimer(),
+                handledProgressionExerciseIds = effective.handledProgressionExerciseIds - exercise.id,
+            )
+        }
+        is SessionEvent.ContinueWorkout -> {
+            val exercise = effective.snapshot.exercises.firstOrNull { it.id == event.exerciseId }
+                ?: return SessionReduction.Rejected("Exercise is missing from the session snapshot.", committed)
+            if (effective.completedSets.getValue(exercise.id) != exercise.setCount) {
+                return SessionReduction.Rejected("Progression decision is unavailable before exercise completion.", committed)
+            }
+            if (exercise.id in effective.handledProgressionExerciseIds) effective else effective.copy(
+                handledProgressionExerciseIds = effective.handledProgressionExerciseIds + exercise.id,
             )
         }
         is SessionEvent.StartTimer -> {

@@ -1,0 +1,27 @@
+text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 0 - 1080, 2280)
+  text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 0 - 1080, 2280)
+    text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 0 - 1080, 2280)
+      text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 0 - 1080, 2280)
+        text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 0 - 1080, 2280)
+          text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 0 - 1080, 2280)
+            text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 0 - 1080, 2280)
+              text=null; description=Close sheet; clickable=true; selected=false; bounds=Rect(0, 0 - 1080, 1338)
+              text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 1338 - 1080, 2280)
+                text=null; description=null; clickable=false; selected=false; bounds=Rect(496, 1338 - 584, 1471)
+                  text=null; description=Drag handle; clickable=false; selected=false; bounds=Rect(496, 1474 - 584, 1485)
+                text=null; description=null; clickable=false; selected=false; bounds=Rect(0, 1487 - 1080, 2230)
+                  text=25 mm edge complete; description=null; clickable=false; selected=false; bounds=Rect(55, 1487 - 716, 1575)
+                  text=null; description=null; clickable=true; selected=false; bounds=Rect(55, 1592 - 1025, 1955)
+                    text=null; description=Ready for more. Apply 20 mm edge, 1 set, Controlled hold, 32.5 lb, 25 seconds
+Half crimp
+Timer: 25 seconds
+Add: Three-finger drag, 1 set, Controlled hold, 30 lb, 30 seconds; clickable=false; selected=false; bounds=Rect(55, 1592 - 1025, 1955)
+                    text=Ready for more; description=null; clickable=false; selected=false; bounds=Rect(406, 1614 - 675, 1669)
+                    text=20 mm edge, 1 set, Controlled hold, 32.5 lb, 25 seconds
+Half crimp
+Timer: 25 seconds
+Add: Three-finger drag, 1 set, Controlled hold, 30 lb, 30 seconds; description=null; clickable=false; selected=false; bounds=Rect(121, 1669 - 959, 1933)
+                    text=null; description=null; clickable=false; selected=false; bounds=Rect(55, 1592 - 1025, 1955)
+                  text=null; description=null; clickable=true; selected=false; bounds=Rect(55, 1988 - 1025, 2137)
+                    text=Continue workout; description=null; clickable=false; selected=false; bounds=Rect(384, 2035 - 696, 2090)
+                    text=null; description=null; clickable=false; selected=false; bounds=Rect(55, 1988 - 1025, 2137)

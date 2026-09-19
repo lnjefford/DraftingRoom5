@@ -9,3 +9,8 @@ release. Do not release each intermediate edit separately.
 This is the user's standing preference; no additional confirmation is needed
 for these delivery steps. Never commit signing keys, credentials, or generated
 build files.
+
+On Windows, invoke Gradle through `./gradlew.ps1`. The bootstrap rejects Java
+versions older than 17, discovers the ignored repository-local JDK or Android
+Studio JBR when needed, and keeps Gradle state under the ignored workspace
+cache. Do not call `gradlew.bat` directly from Codex tasks.

@@ -44,6 +44,14 @@ class AppDocumentCodecTest {
         assertThrows(IllegalArgumentException::class.java) { decodeAppDocument(root.toString()) }
     }
 
+    @Test fun progressionNumbersAreStrictAndNeverRecoveredFromTargetText() {
+        val root = JSONObject(encodeAppDocument(progressionDocumentFixture()))
+        val exercise = root.getJSONObject("plan").getJSONArray("routines").getJSONObject(2)
+            .getJSONArray("exercises").getJSONObject(1)
+        exercise.getJSONObject("measurements").put("weightPounds", "25 lb")
+        assertThrows(IllegalArgumentException::class.java) { decodeAppDocument(root.toString()) }
+    }
+
     @Test fun danglingScheduleReferenceIsCorruption() {
         val root = JSONObject(encodeAppDocument(defaultAppDocument()))
         root.getJSONObject("plan").getJSONArray("schedule").getJSONObject(0).put("routineId", "missing")

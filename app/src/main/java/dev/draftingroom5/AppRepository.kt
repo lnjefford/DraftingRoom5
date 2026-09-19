@@ -246,13 +246,21 @@ internal class AppRepository(
         require(acknowledgeSavedSessions || current.partialSessions.none { it.routineId in changedIds }) {
             "Confirm changes to routines with saved sessions before saving."
         }
-        current.copy(plan = plan, partialSessions = current.partialSessions.filter { session -> plan.routines.any { it.id == session.routineId } }).pruneOccurrenceExceptions()
+        val retainedRoutineIds = plan.routines.mapTo(hashSetOf()) { it.id }
+        current.copy(
+            plan = plan,
+            partialSessions = current.partialSessions.filter { it.routineId in retainedRoutineIds },
+            progressionReceipts = current.progressionReceipts.filter { it.routineId in retainedRoutineIds },
+        ).pruneOccurrenceExceptions()
     }
 
     fun deleteRoutine(expectedGeneration: Long, routineId: String) = update(expectedGeneration) {
         require(it.plan.routines.any { routine -> routine.id == routineId }) { "Routine does not exist." }
-        it.copy(plan = it.plan.removeRoutine(routineId),
-            partialSessions = it.partialSessions.filterNot { session -> session.routineId == routineId }).pruneOccurrenceExceptions()
+        it.copy(
+            plan = it.plan.removeRoutine(routineId),
+            partialSessions = it.partialSessions.filterNot { session -> session.routineId == routineId },
+            progressionReceipts = it.progressionReceipts.filterNot { receipt -> receipt.routineId == routineId },
+        ).pruneOccurrenceExceptions()
     }
 
     fun deleteScheduleEntry(expectedGeneration: Long, scheduleEntryId: String) = update(expectedGeneration) {
@@ -262,7 +270,7 @@ internal class AppRepository(
 
     fun resetPlan(expectedGeneration: Long): RepositoryResult<AppDocument> = synchronized(processLock) {
         val result = update(expectedGeneration) {
-            it.copy(plan = defaultTrainingPlan(), partialSessions = emptyList(), history = emptyList(), occurrenceExceptions = emptyList())
+            it.copy(plan = defaultTrainingPlan(), partialSessions = emptyList(), history = emptyList(), occurrenceExceptions = emptyList(), progressionReceipts = emptyList())
         }
         if (result is RepositoryResult.Success) {
             nextLease()
@@ -270,6 +278,69 @@ internal class AppRepository(
             pendingSessionOutputs.clear()
         }
         result
+    }
+
+    /** The receipt and the live routine are published only after one successful atomic write. */
+    fun applyProgression(lease: SessionLease, request: ProgressionRequest): RepositoryResult<ProgressionReceipt> = synchronized(processLock) {
+        val current = readyForSession(lease)
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Refresh the workout before progressing."))
+        current.progressionReceipts.firstOrNull { it.sessionId == request.sessionId && it.before.id == request.exerciseId }?.let {
+            return@synchronized RepositoryResult.Success(it)
+        }
+        val offer = current.progressionOffer(request.sessionId, request.exerciseId)
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("This completion cannot progress the current exercise."))
+        if (offer.sessionRevision != request.expectedSessionRevision || offer.routineRevision != request.expectedRoutineRevision) {
+            return@synchronized RepositoryResult.Conflict(current.generation)
+        }
+        val option = offer.options.firstOrNull { it.choice == request.choice }
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("This progression choice is unavailable."))
+        val session = current.partialSessions.single { it.id == request.sessionId }
+        val routine = current.plan.routines.single { it.id == session.routineId }
+        val index = routine.exercises.indexOfFirst { it.id == request.exerciseId }
+        val receipt = ProgressionReceipt(session.id, routine.id, routine.exercises[index], request.choice, routine.revision + 1)
+        val progressed = routine.copy(revision = receipt.appliedRevision, exercises =
+            routine.exercises.take(index) + option.source + option.additions + routine.exercises.drop(index + 1))
+        when (val result = update(current.generation) { it.copy(
+            plan = it.plan.copy(routines = it.plan.routines.map { old -> if (old.id == routine.id) progressed else old }),
+            progressionReceipts = it.progressionReceipts + receipt,
+        ) }) {
+            is RepositoryResult.Success -> RepositoryResult.Success(receipt)
+            is RepositoryResult.Conflict -> result
+            is RepositoryResult.Invalid -> result
+            is RepositoryResult.Failed -> result
+        }
+    }
+
+    /** Routine edits/other progression expire immediate Undo; session and preference writes do not. */
+    fun undoProgression(lease: SessionLease, sessionId: String, exerciseId: String): RepositoryResult<ProgressionReceipt> = synchronized(processLock) {
+        val current = readyForSession(lease)
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Refresh the workout before undoing."))
+        val receipt = current.progressionReceipts.firstOrNull { it.sessionId == sessionId && it.before.id == exerciseId }
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Progression receipt is missing."))
+        if (receipt.undone) return@synchronized RepositoryResult.Success(receipt)
+        val routine = current.plan.routines.firstOrNull { it.id == receipt.routineId }
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Routine no longer exists."))
+        if (routine.revision != receipt.appliedRevision || routine.revision == Long.MAX_VALUE) {
+            return@synchronized RepositoryResult.Conflict(current.generation)
+        }
+        val option = receipt.option()
+        if (routine.exercises.firstOrNull { it.id == exerciseId } != option.source ||
+            option.additions.any { added -> routine.exercises.firstOrNull { it.id == added.id } != added }) {
+            return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Progressed exercises changed; Undo has expired."))
+        }
+        val addedIds = option.additions.mapTo(hashSetOf()) { it.id }
+        val restored = routine.copy(revision = routine.revision + 1, exercises = routine.exercises
+            .filterNot { it.id in addedIds }.map { if (it.id == exerciseId) receipt.before else it })
+        val undone = receipt.copy(undone = true)
+        when (val result = update(current.generation) { it.copy(
+            plan = it.plan.copy(routines = it.plan.routines.map { old -> if (old.id == routine.id) restored else old }),
+            progressionReceipts = it.progressionReceipts.map { old -> if (old == receipt) undone else old },
+        ) }) {
+            is RepositoryResult.Success -> RepositoryResult.Success(undone)
+            is RepositoryResult.Conflict -> result
+            is RepositoryResult.Invalid -> result
+            is RepositoryResult.Failed -> result
+        }
     }
 
     fun openGuidedSession(
@@ -304,7 +375,8 @@ internal class AppRepository(
             return@synchronized SessionRepositoryResult.Invalid("Displayed occurrence is stale or is not guided.")
         }
         if (newSessionId.isBlank() || newSessionId.length > 128) return@synchronized SessionRepositoryResult.Invalid("Session ID is invalid.")
-        if (current.partialSessions.any { it.id == newSessionId } || current.history.any { it.id == newSessionId }) {
+        if (current.partialSessions.any { it.id == newSessionId } || current.history.any { it.id == newSessionId } ||
+            current.progressionReceipts.any { it.sessionId == newSessionId }) {
             return@synchronized SessionRepositoryResult.Invalid("Session ID already exists.")
         }
         val now = sampleClock() ?: return@synchronized SessionRepositoryResult.Invalid("Session clock is unavailable.")
@@ -402,7 +474,8 @@ internal class AppRepository(
         if (live.execution != RoutineExecution.GUIDED || live.revision != expectedLiveRoutineRevision) {
             return@synchronized SessionRepositoryResult.Invalid("Routine changed; refresh restart confirmation.")
         }
-        if (newSessionId.isBlank() || newSessionId.length > 128 || current.partialSessions.any { it.id == newSessionId } || current.history.any { it.id == newSessionId }) {
+        if (newSessionId.isBlank() || newSessionId.length > 128 || current.partialSessions.any { it.id == newSessionId } ||
+            current.history.any { it.id == newSessionId } || current.progressionReceipts.any { it.sessionId == newSessionId }) {
             return@synchronized SessionRepositoryResult.Invalid("New session ID is invalid or already used.")
         }
         val now = sampleClock() ?: return@synchronized SessionRepositoryResult.Invalid("Session clock is unavailable.")

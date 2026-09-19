@@ -25,11 +25,16 @@ import java.io.File
 
 /** Dependency-free native audit runner. See docs/reviews/DR5-056 for emulator setup. */
 class WidgetAuditInstrumentation : Instrumentation() {
+    private var progressionAudit = false
     private val report = StringBuilder()
     private lateinit var output: File
-    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) {
+        progressionAudit = arguments?.getString("audit") == "progression"
+        super.onCreate(arguments); start()
+    }
 
     override fun onStart() {
+        if (progressionAudit) { ProgressionNativeAudit(this).run(); return }
         output = File(targetContext.filesDir, "widget-audit").apply { mkdirs() }
         try {
             audit()

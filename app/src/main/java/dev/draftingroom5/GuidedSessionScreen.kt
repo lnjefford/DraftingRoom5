@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -41,13 +43,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,7 +84,9 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontFamily
@@ -171,6 +182,31 @@ internal fun guidedSessionPresentation(session: GuidedSession, elapsedMillis: Lo
 
 internal fun formatSessionTimer(seconds: Int): String = "%02d:%02d".format(seconds / 60, seconds % 60)
 
+internal fun progressionPrescription(exercise: Exercise): String = buildList {
+    add(exercise.name)
+    add("${exercise.setCount} ${if (exercise.setCount == 1) "set" else "sets"}")
+    add(exercise.target)
+    exercise.measurements.weightPounds?.let { add("${formatProgressionPounds(it)} lb") }
+    exercise.measurements.durationSeconds?.let { add("$it seconds") }
+}.joinToString(", ")
+
+private fun formatProgressionPounds(value: Double): String =
+    java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
+
+internal fun progressionResult(option: ProgressionOption): String = buildList {
+    add(progressionPrescription(option.source))
+    if (option.source.notes.isNotBlank()) add(option.source.notes)
+    option.source.timerSeconds?.let { add("Timer: $it seconds") }
+    option.additions.forEach { add("Add: ${progressionPrescription(it)}") }
+}.joinToString("\n")
+
+internal fun progressionOfferForSession(document: AppDocument, session: GuidedSession): ProgressionOffer? =
+    session.snapshot.exercises.firstNotNullOfOrNull { exercise ->
+        if (exercise.id in session.handledProgressionExerciseIds ||
+            session.completedSets.getValue(exercise.id) != exercise.setCount) null
+        else document.progressionOffer(session.id, exercise.id)
+    }
+
 internal data class SessionFeedbackOwner(
     val sessionId: String,
     val leaseValue: Long,
@@ -262,6 +298,7 @@ internal fun GuidedSessionDestination(
     val context = LocalContext.current
     val clock = remember(context) { AndroidSessionClock(context.applicationContext) }
     val feedback = remember { SessionFeedbackController() }
+    val repositoryState by repository.state.collectAsState()
     val scope = rememberCoroutineScope()
     var saving by remember { mutableStateOf(false) }
     var session by remember(occurrence) { mutableStateOf<GuidedSession?>(null) }
@@ -273,6 +310,7 @@ internal fun GuidedSessionDestination(
     var restartRequested by rememberSaveable(scheduleEntryId, scheduledDate.toString()) { mutableStateOf(false) }
     var owner by remember { mutableStateOf<SessionFeedbackOwner?>(null) }
     var foregroundEpoch by remember { mutableLongStateOf(0L) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     fun syncDocument() {
         (repository.state.value as? LoadState.Ready)?.value?.let(onDocumentChanged)
@@ -358,6 +396,54 @@ internal fun GuidedSessionDestination(
         }
     }
 
+    fun applyProgression(offer: ProgressionOffer, choice: ProgressionChoice) {
+        val currentLease = lease ?: return
+        if (saving) return
+        val committed = (repository.state.value as? LoadState.Ready)?.value ?: return
+        if (committed.progressionReceipts.any { it.sessionId == offer.sessionId && it.before.id == offer.exerciseId }) return
+        error = null
+        saving = true
+        scope.launch {
+            val result = try {
+                withContext(Dispatchers.IO) { repository.applyProgression(currentLease, offer.request(choice)) }
+            } finally {
+                saving = false
+            }
+            when (result) {
+                is RepositoryResult.Success -> {
+                    syncDocument()
+                    onBackupRequested()
+                    scope.launch {
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                        var undoMessage = "Future prescription updated"
+                        while (snackbarHostState.showSnackbar(
+                                message = undoMessage,
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Long,
+                            ) == SnackbarResult.ActionPerformed) {
+                            val undo = withContext(Dispatchers.IO) {
+                                repository.undoProgression(currentLease, result.value.sessionId, result.value.before.id)
+                            }
+                            when (undo) {
+                                is RepositoryResult.Success -> {
+                                    syncDocument()
+                                    onBackupRequested()
+                                    break
+                                }
+                                is RepositoryResult.Conflict -> { error = "Undo expired because the routine changed."; break }
+                                is RepositoryResult.Invalid -> { error = undo.error.message ?: "Undo is no longer available."; break }
+                                is RepositoryResult.Failed -> undoMessage = "Could not save Undo. Try again."
+                            }
+                        }
+                    }
+                }
+                is RepositoryResult.Conflict -> error = "The routine changed. Review the latest progression choice."
+                is RepositoryResult.Invalid -> error = result.error.message ?: "This progression choice is no longer available."
+                is RepositoryResult.Failed -> error = "Could not update the future prescription. Try again."
+            }
+        }
+    }
+
     fun saveAndExit() {
         val current = session ?: return
         val currentLease = lease ?: return
@@ -421,7 +507,12 @@ internal fun GuidedSessionDestination(
         }
     }
 
-    val feedbackAllowed = isForeground && !exitRequested && !restartRequested
+    val currentSession = session
+    val currentDocument = (repositoryState as? LoadState.Ready)?.value
+    val progressionOffer = if (currentSession != null && currentDocument != null) {
+        progressionOfferForSession(currentDocument, currentSession)
+    } else null
+    val feedbackAllowed = isForeground && !exitRequested && !restartRequested && progressionOffer == null
     DisposableEffect(feedbackAllowed, session?.id, lease) {
         if (feedbackAllowed && session != null && lease != null) {
             foregroundEpoch += 1
@@ -489,6 +580,17 @@ internal fun GuidedSessionDestination(
             },
             onExit = { exitRequested = true },
             onRestart = { restartRequested = true },
+            snackbarHostState = snackbarHostState,
+        )
+    }
+    progressionOffer?.let { offer ->
+        ProgressionDecisionSheet(
+            exercise = currentSession!!.snapshot.exercises.first { it.id == offer.exerciseId },
+            options = offer.options,
+            busy = saving,
+            error = error,
+            onContinue = { apply(SessionEvent.ContinueWorkout(offer.exerciseId), requestBackup = true) },
+            onApply = { applyProgression(offer, it) },
         )
     }
     if (exitRequested) AppConfirmationDialog(
@@ -524,6 +626,7 @@ internal fun GuidedSessionScreen(
     onFinish: () -> Unit,
     onExit: () -> Unit,
     onRestart: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val presentation = guidedSessionPresentation(session, elapsedMillis)
     var overflow by remember { mutableStateOf(false) }
@@ -558,6 +661,7 @@ internal fun GuidedSessionScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
@@ -605,6 +709,157 @@ internal fun GuidedSessionScreen(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProgressionDecisionSheet(
+    exercise: Exercise,
+    options: List<ProgressionOption>,
+    busy: Boolean,
+    error: String?,
+    onContinue: () -> Unit,
+    onApply: (ProgressionChoice) -> Unit,
+) {
+    var choosing by rememberSaveable(exercise.id) { mutableStateOf(false) }
+    var selectedName by rememberSaveable(exercise.id) { mutableStateOf<String?>(null) }
+    val selected = options.firstOrNull { it.choice.name == selectedName } ?: options.firstOrNull()
+    ModalBottomSheet(
+        onDismissRequest = { if (!busy) { if (choosing) choosing = false else onContinue() } },
+        containerColor = AppSurface,
+    ) {
+        ProgressionDecisionSheetContent(
+            exercise = exercise,
+            options = options,
+            choosing = choosing,
+            selected = selected?.choice,
+            busy = busy,
+            error = error,
+            onReady = {
+                if (options.size == 1) onApply(options.single().choice)
+                else {
+                    selectedName = selected?.choice?.name
+                    choosing = true
+                }
+            },
+            onContinue = onContinue,
+            onSelect = { selectedName = it.name },
+            onApply = { selected?.choice?.let(onApply) },
+            onBack = { choosing = false },
+        )
+    }
+}
+
+@Composable
+internal fun ProgressionDecisionSheetContent(
+    exercise: Exercise,
+    options: List<ProgressionOption>,
+    choosing: Boolean,
+    selected: ProgressionChoice?,
+    busy: Boolean,
+    onReady: () -> Unit,
+    onContinue: () -> Unit,
+    onSelect: (ProgressionChoice) -> Unit,
+    onApply: () -> Unit,
+    onBack: () -> Unit,
+    error: String? = null,
+) {
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
+        if (!choosing) {
+            Text(
+                "${exercise.name} complete",
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            OutlinedButton(
+                onClick = onReady,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).semantics {
+                    contentDescription = if (options.size == 1) {
+                        "Ready for more. Apply ${progressionResult(options.single())}"
+                    } else "Ready for more. Choose the exact future prescription."
+                },
+                border = BorderStroke(1.dp, AppBlue),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(if (options.size == 1) 16.dp else 28.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AppBlue),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Ready for more")
+                    if (options.size == 1) Text(progressionResult(options.single()),
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Button(
+                onClick = onContinue,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
+            ) { Text("Continue workout") }
+        } else {
+            Text(
+                "Choose the exact next prescription",
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            options.forEach { option ->
+                val isSelected = option.choice == selected
+                AppSurfaceCard(
+                    Modifier.fillMaxWidth().heightIn(min = 88.dp)
+                        .clickable(enabled = !busy, role = Role.RadioButton) { onSelect(option.choice) }
+                        .semantics {
+                            this.selected = isSelected
+                            contentDescription = "${progressionChoiceLabel(option.choice)}. ${progressionPrescription(option.source)}"
+                        },
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        RadioButton(selected = isSelected, onClick = null, enabled = !busy)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(progressionChoiceLabel(option.choice), fontWeight = FontWeight.Bold)
+                            Text(
+                                progressionPrescription(option.source),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                }
+            }
+            OutlinedButton(
+                onClick = onBack,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) { Text("Back") }
+            Button(
+                onClick = onApply,
+                enabled = !busy && selected != null,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).semantics {
+                    options.firstOrNull { it.choice == selected }?.let {
+                        contentDescription = "Apply ${progressionPrescription(it.source)}"
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
+            ) { Text("Apply progression") }
+        }
+    }
+}
+
+internal fun progressionChoiceLabel(choice: ProgressionChoice): String = when (choice) {
+    ProgressionChoice.WEIGHT -> "More weight"
+    ProgressionChoice.DURATION -> "More time"
+    ProgressionChoice.HEAVIER_SHORTER -> "Heavier, shorter"
+    ProgressionChoice.CUSTOM -> "Next custom step"
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.sessionExerciseSection(
@@ -672,7 +927,7 @@ private fun CurrentExerciseHeader(exercise: Exercise, motionEnabled: Boolean) {
             }
             Text(exercise.name, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
             if (exercise.notes.isNotBlank()) Text(exercise.notes, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${exercise.setCount} sets · ${exercise.target}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
+            Text("${exercise.setCount} sets · ${exercise.targetSummary()}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -848,7 +1103,7 @@ private fun UpcomingExerciseRow(exercise: Exercise, completedSets: Int, onFocus:
             Column(Modifier.weight(1f)) {
                 Text(exercise.name, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    if (completed) "Completed · ${exercise.target}" else "$completedSets of ${exercise.setCount} sets · ${exercise.target}",
+                    if (completed) "Completed · ${exercise.targetSummary()}" else "$completedSets of ${exercise.setCount} sets · ${exercise.targetSummary()}",
                     color = if (completed) AppMint else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -965,6 +1220,41 @@ internal fun GuidedSessionArtworkReviewPreview(artworkId: String) {
     DraftingRoom5Theme {
         LazyColumn(Modifier.fillMaxSize().appScreenBackground().padding(20.dp)) {
             item { CurrentExerciseHeader(exercise, motionEnabled = false) }
+        }
+    }
+}
+
+@Composable
+internal fun ProgressionDecisionReviewPreview(choosing: Boolean) {
+    val source = Exercise(
+        id = "progression-sheet",
+        name = "Loaded farmer hold",
+        notes = "Keep shoulders down",
+        setCount = 3,
+        target = "Heavy timed hold",
+        timerSeconds = 30,
+        artworkId = "farmers_walk",
+        measurements = ExerciseMeasurements(30.0, 30),
+        progression = AutomaticExerciseProgression(
+            AutomaticPoundsProgression(2.5),
+            AutomaticSecondsProgression(5, minimum = 20),
+        ),
+    )
+    val options = source.progressionOptions()
+    DraftingRoom5Theme {
+        Box(Modifier.fillMaxSize().appScreenBackground(), contentAlignment = Alignment.BottomCenter) {
+            ProgressionDecisionSheetContent(
+                exercise = source,
+                options = options,
+                choosing = choosing,
+                selected = ProgressionChoice.HEAVIER_SHORTER,
+                busy = false,
+                onReady = {},
+                onContinue = {},
+                onSelect = {},
+                onApply = {},
+                onBack = {},
+            )
         }
     }
 }

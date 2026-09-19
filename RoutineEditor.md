@@ -84,6 +84,25 @@ Prefer a modal bottom sheet or dedicated editor on compact phones over a crowded
 
 The approved builder uses a dedicated scrollable screen with one artwork row. `Change` opens the exercise-artwork picker described in [GuidedSession.md](GuidedSession.md). The picker shows a curated grid and a paired preview labeled `LIST` and `HEADER`; users make one selection and never manage the two exports separately. A new exercise is not persisted until `Save exercise` succeeds. Editing an existing exercise may retain the current autosave model only if Cancel still restores the original value predictably.
 
+### Exercise progression
+
+Progression belongs to a guided exercise, never to the routine or to a separate dashboard. The exercise editor supports disabled progression, bounded automatic pounds and/or seconds rules, and an ordered custom sequence. Pounds are the only weight unit. A selected structured duration and the exercise timer stay synchronized; arbitrary target text remains available and is never parsed to recover a number.
+
+Automatic progression requires the matching current value and a positive increment; optional minimum and maximum values must contain the current value. The editor previews the exact bounded next result. When both measures exist, workout application deliberately offers weight-only, duration-only, and heavier/shorter results instead of an implicit increase-both choice.
+
+Editor previews use the same decimal calculation and available alternatives as workout application, including an explicit message at the configured limits. Disabling progression or editing after a final custom step preserves current structured measurements; retained values remain editable without re-enabling progression. Unsaved custom steps and inserted exercises participate in Android saved-state restoration.
+
+Custom progression shows the current prescription separately from future steps. Each ordered step replaces the source prescription and may insert zero or more complete exercises immediately after it. Future insertions reserve stable IDs across the whole routine, including nested progression, so a live or future exercise cannot reuse one. Step and insertion editing uses the same menus, 48 dp actions, drag/keyboard/TalkBack reorder semantics, discard confirmation, and automatic-save language as the routine editor.
+
+Deletion and ordering are deterministic:
+
+- Reordering a source moves that live exercise only; its unconsumed custom steps and future insertions remain attached to it.
+- Deleting a source also deletes its not-yet-inserted custom additions.
+- Once progression inserts an exercise, it is an ordinary independent live exercise. Reordering or deleting the source does not move or remove that inserted exercise, and editing/deleting the inserted exercise does not rewrite the source.
+- Deleting a routine removes its unusable progression receipts and incomplete sessions while preserving completed history snapshots.
+
+Editing a routine that has a saved incomplete session keeps the existing acknowledgement. Approval changes only the future live routine: the saved session remains on its original exercise order, prescriptions, rules, set counts, and focus.
+
 ## Linked-app routine editor
 
 Use the same app bar, header, Rename, Change artwork, schedule summary, autosave status, and visual tokens as the guided editor. Replace the exercise list with an `APP CONNECTION` group:

@@ -123,6 +123,26 @@ class BackupSupportTest {
         assertEquals(snapshot, decodeBackupSnapshot(encodeBackupSnapshot(snapshot)))
     }
 
+    @Test fun backupRoundTripRetainsEveryProgressionRuleValueAndHandledDecision() {
+        val document = progressionDocumentFixture().let { current ->
+            val session = current.partialSessions.single()
+            val source = session.snapshot.exercises.first { it.progression is CustomExerciseProgression }
+            current.copy(partialSessions = listOf(session.copy(
+                completedSets = session.completedSets.toMutableMap().apply { this[source.id] = source.setCount },
+                handledProgressionExerciseIds = setOf(source.id),
+            )))
+        }
+
+        val restored = decodeBackupSnapshot(encodeBackupSnapshot(BackupSnapshot(123, document))).document
+
+        assertEquals(document, restored)
+        val live = restored.plan.routines.single { it.id == "routine-forearm" }
+        assertTrue(live.exercises.any { it.progression is AutomaticExerciseProgression })
+        assertTrue(live.exercises.any { it.progression is CustomExerciseProgression })
+        assertEquals(document.partialSessions.single().handledProgressionExerciseIds,
+            restored.partialSessions.single().handledProgressionExerciseIds)
+    }
+
     @Test fun backupRejectsTheSupersededEnvelopeName() {
         val root = JSONObject(encodeBackupSnapshot(BackupSnapshot(1L, defaultAppDocument())))
         root.put("format", "draftingroom5.backup-current")

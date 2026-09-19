@@ -6,10 +6,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.android.tools.screenshot.PreviewTest
+import androidx.compose.ui.unit.dp
 import java.time.DayOfWeek
 
 class CoreShellScreens : PreviewParameterProvider<String> {
@@ -208,6 +211,104 @@ fun RiceBagArtworkScreenshots(@PreviewParameter(RiceBagArtworkCases::class) scre
             "Routines" -> PlanManagementScreen(plan, emptyMap(), { true }, {}, {}, {}, {}, { _, _ -> }, {}, { _, _ -> }, {}, { _, _ -> }, {}, initialTab = 1)
             "Editor" -> GuidedRoutineEditorScreen(routine, "Not scheduled", false, onPersist = { true }, onDelete = {}, onBack = {})
             else -> ExerciseEditorScreen(riceExercise, {}, {})
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun AutomaticProgressionEditorScreenshots() {
+    val exercise = Exercise(
+        id = "progression-preview",
+        name = "Loaded farmer hold",
+        notes = "Keep shoulders down and walk smoothly",
+        setCount = 3,
+        target = "Heavy timed hold",
+        timerSeconds = 30,
+        artworkId = "farmers_walk",
+        measurements = ExerciseMeasurements(weightPounds = 35.0, durationSeconds = 30),
+        progression = AutomaticExerciseProgression(
+            weightPounds = AutomaticPoundsProgression(increment = 2.5, minimum = 20.0, maximum = 50.0),
+            durationSeconds = AutomaticSecondsProgression(increment = 5, minimum = 20, maximum = 45),
+        ),
+    )
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val initialScrollPx = with(density) {
+        when {
+            density.fontScale > 1.3f -> 720.dp.roundToPx()
+            configuration.screenHeightDp <= 400 -> 430.dp.roundToPx()
+            else -> 400.dp.roundToPx()
+        }
+    }
+    DraftingRoom5Theme { ExerciseEditorScreen(exercise, {}, {}, initialScrollPx) }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun CustomProgressionEditorScreenshots() {
+    val added = Exercise(
+        id = "future-three-finger", name = "Three-finger drag", notes = "Open hand", setCount = 3,
+        target = "15 sec", timerSeconds = 15, artworkId = "hangboard",
+        measurements = ExerciseMeasurements(durationSeconds = 15),
+        progression = AutomaticExerciseProgression(durationSeconds = AutomaticSecondsProgression(5, maximum = 30)),
+    )
+    val source = Exercise(
+        id = "fingerboard-source", name = "25 mm edge", notes = "Half crimp · shoulders engaged", setCount = 3,
+        target = "20 sec", timerSeconds = 20, artworkId = "hangboard", measurements = ExerciseMeasurements(durationSeconds = 20),
+        progression = CustomExerciseProgression(listOf(
+            CustomProgressionStep(
+                ExercisePrescription("20 mm edge", "Half crimp", 3, "20 sec", 20, "hangboard", ExerciseMeasurements(durationSeconds = 20)),
+                listOf(added),
+            ),
+            CustomProgressionStep(
+                ExercisePrescription("15 mm edge", "Controlled grip", 4, "15 sec", 15, "hangboard", ExerciseMeasurements(weightPounds = 5.0, durationSeconds = 15)),
+            ),
+        )),
+    )
+    DraftingRoom5Theme {
+        CustomProgressionEditorScreen(source, source.progression as CustomExerciseProgression, {}, {})
+    }
+}
+
+class ProgressionDecisionCases : PreviewParameterProvider<Boolean> {
+    override val values = sequenceOf(false, true)
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun ProgressionDecisionScreenshots(@PreviewParameter(ProgressionDecisionCases::class) choosing: Boolean) {
+    ProgressionDecisionReviewPreview(choosing)
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun CustomProgressionDecisionScreenshots() {
+    val source = Exercise("source", "25 mm edge", "Half crimp", 3, "Controlled hold", 20, "hangboard",
+        ExerciseMeasurements(5.0, 20))
+    val next = source.copy(name = "20 mm edge", measurements = ExerciseMeasurements(7.5, 15), timerSeconds = 15)
+    val option = ProgressionOption(ProgressionChoice.CUSTOM, next,
+        listOf(source.copy(id = "addition", name = "Three-finger drag")))
+    DraftingRoom5Theme {
+        androidx.compose.material3.Surface {
+            ProgressionDecisionSheetContent(source, listOf(option), false, ProgressionChoice.CUSTOM,
+                false, {}, {}, {}, {}, {})
         }
     }
 }

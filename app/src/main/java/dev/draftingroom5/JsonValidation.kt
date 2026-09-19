@@ -4,16 +4,16 @@ import org.json.JSONTokener
 
 // Android's JSONTokener accepts non-JSON syntax and silently replaces duplicate keys.
 // Validate the grammar before handing a bounded document to that platform parser.
-internal fun inspectJsonStructure(value: String) {
+internal fun inspectJsonStructure(value: String, rootDepth: Int = 0) {
     require(value.toByteArray(Charsets.UTF_8).size <= MAX_DOCUMENT_BYTES) { "Document exceeds the 16 MiB limit." }
-    StrictJsonReader(value).read()
+    StrictJsonReader(value).read(rootDepth)
 }
 
 private class StrictJsonReader(private val text: String) {
     private var position = 0
 
-    fun read() {
-        value(0)
+    fun read(rootDepth: Int) {
+        value(rootDepth)
         whitespace()
         require(position == text.length) { "Trailing JSON content." }
     }

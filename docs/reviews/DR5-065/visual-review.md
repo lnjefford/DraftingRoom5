@@ -1,0 +1,17 @@
+# Progression visual review
+
+The references are actual Compose host renders, not design mockups. Dimensions are specified in `CoreShellScreenshots.kt`: compact 320×800 dp, tall 412×1100 dp, landscape 800×360 dp, and 360×1100 dp at 2× font scale. Native emulator captures are recorded separately.
+
+| Surface | Reviewed result |
+|---|---|
+| Completion decision | Compact and tall show the exercise-complete heading, secondary outlined Ready and primary blue Continue, with no explanatory subtitle or rating scale. The existing dual-rule entry remains visually unchanged. |
+| Exact chooser | Large text wraps each prescription without overlapping radio controls. Weight-only, time-only and heavier/shorter retain their exact resulting values. The landscape viewport shows the choices and uses vertical scrolling to reach the lower actions; the static image alone does not establish scroll interaction. |
+| Automatic editor | Compact and landscape preserve readable fields and large controls within the scroll viewport. At 2× text the optional bounds stack vertically. The tall corrected reference now shows three actual alternatives: 37.5 lb/30 seconds, 35 lb/35 seconds, and 37.5 lb/25 seconds. The old combined 37.5 lb/35 seconds preview was not an available option. |
+| Custom overview | Compact and tall distinguish current prescription from ordered steps, with Save/Cancel and ordinary card menus. Landscape scrolls below the first step. Large text wraps the prescription, keeps controls separate, and truncates the addition-name summary with an ellipsis; opening the step provides its full details. |
+| Single custom decision | Four new cases show the future source, its timer and the inserted exercise inside the outlined action, before acceptance. Continue remains the filled-blue action. The initial pill shape clipped 2× text; `custom-preview-clipping-before.png` preserves this rejected render. The accepted rounded rectangle retains all text inside its bounds in the reviewed compact and 2× renders. |
+
+The first full comparison ran 291 cases: 286 passed; four new cases had no reference yet and the tall automatic editor correctly differed. Only progression tests were selected for reference update. `baseline-before.json` records the incoming hashes, and `baseline-changes.json` confirms exactly one changed reference and four additions. No tolerance was relaxed, unrelated baseline overwritten, or failed comparison counted as a pass. Final full validation is reported in `README.md`.
+
+Accessibility assessment combines source semantics/touch geometry, host rendering and the native accessibility-action test. It does not claim spoken TalkBack, physical keyboard traversal, switch access or physical haptic perception was observed.
+
+Native API 35 captures at 1080×2280, density 440 and font scale 1.0 confirm that the custom replacement and insertion fit inside the outlined Ready action, Continue remains primary, and application exposes a readable Undo snackbar without changing the current workout prescription. The dual chooser initially opens partially expanded; the instrumented upward swipe exposes its lower Apply action and successfully commits the selected heavier/shorter result. The timer-resumed tree records the existing countdown after a real background/foreground transition. These native observations complement the four host layout sizes; they do not establish four native device configurations.

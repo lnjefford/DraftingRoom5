@@ -14,6 +14,13 @@ internal fun encodeAppDocument(document: AppDocument): String {
         put("preferences", encodePreferences(document.preferences))
         put("partialSessions", JSONArray().apply { document.partialSessions.forEach { put(encodeSession(it)) } })
         put("history", JSONArray().apply { document.history.forEach { put(encodeHistory(it)) } })
+        put("progressionReceipts", JSONArray().apply { document.progressionReceipts.forEach { receipt ->
+            put(JSONObject().apply {
+                put("sessionId", receipt.sessionId); put("routineId", receipt.routineId)
+                put("before", encodeExercise(receipt.before)); put("choice", receipt.choice.name)
+                put("appliedRevision", receipt.appliedRevision); put("undone", receipt.undone)
+            })
+        } })
         put("occurrenceExceptions", JSONArray().apply { document.occurrenceExceptions.forEach { exception ->
             put(JSONObject().apply {
                 put("occurrence", encodeOccurrence(exception.occurrence))
@@ -23,13 +30,15 @@ internal fun encodeAppDocument(document: AppDocument): String {
         } })
     }.toString()
     require(value.toByteArray(Charsets.UTF_8).size <= MAX_DOCUMENT_BYTES) { "Document exceeds the 16 MiB limit." }
+    // Recursive custom additions must remain readable, including inside a backup envelope.
+    inspectJsonStructure(value, rootDepth = 1)
     return value
 }
 
 internal fun decodeAppDocument(value: String): AppDocument = try {
     require(value.toByteArray(Charsets.UTF_8).size <= MAX_DOCUMENT_BYTES) { "Document exceeds the 16 MiB limit." }
     inspectJsonStructure(value)
-    val root = JSONObject(value).exact("format", "generation", "plan", "preferences", "partialSessions", "history", "occurrenceExceptions")
+    val root = JSONObject(value).exact("format", "generation", "plan", "preferences", "partialSessions", "history", "occurrenceExceptions", "progressionReceipts")
     val document = AppDocument(
         format = root.strictString("format"),
         generation = root.strictLong("generation"),
@@ -37,6 +46,12 @@ internal fun decodeAppDocument(value: String): AppDocument = try {
         preferences = decodePreferences(root.strictObject("preferences")),
         partialSessions = root.strictArray("partialSessions").objects(::decodeSession),
         history = root.strictArray("history").objects(::decodeHistory),
+        progressionReceipts = root.strictArray("progressionReceipts").objects {
+            it.exact("sessionId", "routineId", "before", "choice", "appliedRevision", "undone")
+            ProgressionReceipt(it.strictString("sessionId"), it.strictString("routineId"),
+                decodeExercise(it.strictObject("before")), ProgressionChoice.valueOf(it.strictString("choice")),
+                it.strictLong("appliedRevision"), it.strictBoolean("undone"))
+        },
         occurrenceExceptions = root.strictArray("occurrenceExceptions").objects {
             it.exact("occurrence", "disposition", "effectiveDate")
             OccurrenceException(decodeOccurrence(it.strictObject("occurrence")),
@@ -88,12 +103,7 @@ internal fun encodeRoutine(routine: Routine) = JSONObject().apply {
     put("id", routine.id); put("revision", routine.revision); put("name", routine.name); put("artworkId", routine.artworkId)
     put("execution", routine.execution.name)
     put("appLink", routine.appLink?.let { JSONObject().apply { put("packageName", it.packageName); put("deepLink", it.deepLink ?: JSONObject.NULL) } } ?: JSONObject.NULL)
-    put("exercises", JSONArray().apply { routine.exercises.forEach { exercise ->
-        put(JSONObject().apply {
-            put("id", exercise.id); put("name", exercise.name); put("notes", exercise.notes); put("setCount", exercise.setCount)
-            put("target", exercise.target); put("timerSeconds", exercise.timerSeconds ?: JSONObject.NULL); put("artworkId", exercise.artworkId)
-        })
-    } })
+    put("exercises", JSONArray().apply { routine.exercises.forEach { put(encodeExercise(it)) } })
 }
 
 internal fun decodeRoutine(value: JSONObject): Routine {
@@ -105,15 +115,113 @@ internal fun decodeRoutine(value: JSONObject): Routine {
             it.exact("packageName", "deepLink")
             AppLink(it.strictString("packageName"), it.nullableString("deepLink"))
         },
-        exercises = value.strictArray("exercises").objects { exercise ->
-            exercise.exact("id", "name", "notes", "setCount", "target", "timerSeconds", "artworkId")
-            Exercise(
-                exercise.strictString("id"), exercise.strictString("name"), exercise.strictString("notes"),
-                exercise.strictInt("setCount"), exercise.strictString("target"), exercise.nullableInt("timerSeconds"),
-                exercise.strictString("artworkId"),
-            )
-        },
+        exercises = value.strictArray("exercises").objects(::decodeExercise),
     )
+}
+
+internal fun encodeExercise(exercise: Exercise) = encodePrescription(exercise.prescription()).apply {
+    put("id", exercise.id)
+    put("progression", exercise.progression?.let(::encodeProgression) ?: JSONObject.NULL)
+}
+
+internal fun decodeExercise(value: JSONObject): Exercise {
+    value.exact("id", "name", "notes", "setCount", "target", "timerSeconds", "artworkId", "measurements", "progression")
+    val prescription = decodePrescription(value)
+    return Exercise(
+        id = value.strictString("id"),
+        name = prescription.name,
+        notes = prescription.notes,
+        setCount = prescription.setCount,
+        target = prescription.target,
+        timerSeconds = prescription.timerSeconds,
+        artworkId = prescription.artworkId,
+        measurements = prescription.measurements,
+        progression = value.nullableObject("progression")?.let(::decodeProgression),
+    )
+}
+
+private fun encodePrescription(value: ExercisePrescription) = JSONObject().apply {
+    put("name", value.name); put("notes", value.notes); put("setCount", value.setCount)
+    put("target", value.target); put("timerSeconds", value.timerSeconds ?: JSONObject.NULL); put("artworkId", value.artworkId)
+    put("measurements", encodeMeasurements(value.measurements))
+}
+
+private fun decodePrescription(value: JSONObject): ExercisePrescription {
+    val measurements = value.strictObject("measurements").also { it.exact("weightPounds", "durationSeconds") }
+    return ExercisePrescription(
+        name = value.strictString("name"),
+        notes = value.strictString("notes"),
+        setCount = value.strictInt("setCount"),
+        target = value.strictString("target"),
+        timerSeconds = value.nullableInt("timerSeconds"),
+        artworkId = value.strictString("artworkId"),
+        measurements = ExerciseMeasurements(
+            weightPounds = measurements.nullableFiniteDouble("weightPounds"),
+            durationSeconds = measurements.nullableInt("durationSeconds"),
+        ),
+    )
+}
+
+private fun encodeMeasurements(value: ExerciseMeasurements) = JSONObject().apply {
+    put("weightPounds", value.weightPounds ?: JSONObject.NULL)
+    put("durationSeconds", value.durationSeconds ?: JSONObject.NULL)
+}
+
+internal fun encodeProgression(value: ExerciseProgression): JSONObject = when (value) {
+    is AutomaticExerciseProgression -> JSONObject().apply {
+        put("kind", "AUTOMATIC")
+        put("weightPounds", value.weightPounds?.let { rule -> JSONObject().apply {
+            put("increment", rule.increment); put("minimum", rule.minimum ?: JSONObject.NULL); put("maximum", rule.maximum ?: JSONObject.NULL)
+        } } ?: JSONObject.NULL)
+        put("durationSeconds", value.durationSeconds?.let { rule -> JSONObject().apply {
+            put("increment", rule.increment); put("minimum", rule.minimum ?: JSONObject.NULL); put("maximum", rule.maximum ?: JSONObject.NULL)
+        } } ?: JSONObject.NULL)
+    }
+    is CustomExerciseProgression -> JSONObject().apply {
+        put("kind", "CUSTOM")
+        put("steps", JSONArray().apply { value.steps.forEach { step -> put(JSONObject().apply {
+            put("replacement", encodePrescription(step.replacement))
+            put("insertedExercises", JSONArray().apply { step.insertedExercises.forEach { put(encodeExercise(it)) } })
+        }) } })
+    }
+}
+
+internal fun decodeProgression(value: JSONObject): ExerciseProgression = when (value.strictString("kind")) {
+    "AUTOMATIC" -> {
+        value.exact("kind", "weightPounds", "durationSeconds")
+        AutomaticExerciseProgression(
+            weightPounds = value.nullableObject("weightPounds")?.let { rule ->
+                rule.exact("increment", "minimum", "maximum")
+                AutomaticPoundsProgression(
+                    increment = rule.strictFiniteDouble("increment"),
+                    minimum = rule.nullableFiniteDouble("minimum"),
+                    maximum = rule.nullableFiniteDouble("maximum"),
+                )
+            },
+            durationSeconds = value.nullableObject("durationSeconds")?.let { rule ->
+                rule.exact("increment", "minimum", "maximum")
+                AutomaticSecondsProgression(
+                    increment = rule.strictInt("increment"),
+                    minimum = rule.nullableInt("minimum"),
+                    maximum = rule.nullableInt("maximum"),
+                )
+            },
+        )
+    }
+    "CUSTOM" -> {
+        value.exact("kind", "steps")
+        CustomExerciseProgression(value.strictArray("steps").objects { step ->
+            step.exact("replacement", "insertedExercises")
+            val replacement = step.strictObject("replacement").also {
+                it.exact("name", "notes", "setCount", "target", "timerSeconds", "artworkId", "measurements")
+            }
+            CustomProgressionStep(
+                replacement = decodePrescription(replacement),
+                insertedExercises = step.strictArray("insertedExercises").objects(::decodeExercise),
+            )
+        })
+    }
+    else -> throw IllegalArgumentException("Unsupported exercise progression kind.")
 }
 
 private fun encodePreferences(value: AppPreferences) = JSONObject().apply {
@@ -165,10 +273,11 @@ private fun encodeSession(value: GuidedSession) = JSONObject().apply {
     put("timer", encodeTimer(value.timer)); put("startedAtMillis", value.startedAtMillis); put("updatedAtMillis", value.updatedAtMillis)
     put("eventRevision", value.eventRevision)
     put("effectiveDate", value.effectiveDate.toString())
+    put("handledProgressionExerciseIds", JSONArray(value.handledProgressionExerciseIds.sorted()))
 }
 
 private fun decodeSession(value: JSONObject): GuidedSession {
-    value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision", "effectiveDate")
+    value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision", "effectiveDate", "handledProgressionExerciseIds")
     val sets = value.strictObject("completedSets")
     return GuidedSession(
         value.strictString("id"), decodeOccurrence(value.strictObject("occurrence")), value.strictString("routineId"),
@@ -176,6 +285,7 @@ private fun decodeSession(value: JSONObject): GuidedSession {
         sets.keys().asSequence().associateWith { sets.strictInt(it) }, decodeTimer(value.strictObject("timer")),
         value.strictLong("startedAtMillis"), value.strictLong("updatedAtMillis"), value.strictLong("eventRevision"),
         LocalDate.parse(value.strictString("effectiveDate")),
+        value.strictArray("handledProgressionExerciseIds").strings().toSet(),
     )
 }
 
@@ -226,6 +336,7 @@ private fun JSONObject.nullableInt(name: String) = if (isNull(name)) null else s
 private fun JSONObject.strictLong(name: String) = get(name).let { require(it is Int || it is Long) { "$name must be an integer." }; (it as Number).toLong() }
 private fun JSONObject.nullableLong(name: String) = if (isNull(name)) null else strictLong(name)
 private fun JSONObject.strictFiniteDouble(name: String) = get(name).let { require(it is Number && it.toDouble().isFinite()) { "$name must be finite." }; it.toDouble() }
+private fun JSONObject.nullableFiniteDouble(name: String) = if (isNull(name)) null else strictFiniteDouble(name)
 private fun JSONObject.strictObject(name: String) = get(name).let { require(it is JSONObject) { "$name must be an object." }; it }
 private fun JSONObject.nullableObject(name: String) = if (isNull(name)) null else strictObject(name)
 private fun JSONObject.strictArray(name: String) = get(name).let { require(it is JSONArray) { "$name must be an array." }; it }

@@ -2,7 +2,7 @@
 
 DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
-The current production release is v0.25.1. It aligns the in-app brand mark with the circular launcher icon and includes the one-cell living-icon home-screen widget whose 50 distinct still images rotate on Android's battery-conscious, inexact approximately-hourly schedule. Tapping anywhere on the widget opens DraftingRoom5 normally. Phase 7 passed its independent API 28/35 widget audit and full Android build gate. Physical-device and unavailable-device checks remain documented honestly in `docs/reviews/DR5-056/`; earlier Phase 6 device-dependent checks remain in `docs/reviews/DR5-038-phase-6-product-audit.md`.
+The current production release is v0.26.0. It adds audited exercise-by-exercise progression while preserving the matching in-app/launcher brand mark and the one-cell living-icon widget whose 50 distinct still images rotate on Android's battery-conscious, inexact approximately-hourly schedule. Tapping anywhere on the widget opens DraftingRoom5 normally. Phase 8 audit evidence is in `docs/reviews/DR5-065/`; earlier Phase 7 and Phase 6 device-dependent checks remain documented in `docs/reviews/DR5-056/` and `docs/reviews/DR5-038-phase-6-product-audit.md`.
 
 ## Current scope
 
@@ -15,6 +15,7 @@ The current production release is v0.25.1. It aligns the in-app brand mark with 
 - Guided-routine exercise editing with ordered exercises, positive set counts, targets, notes, optional timers, and paired list/session artwork.
 - Curated hangboard routine and exercise artwork includes a seeded grip routine; rice-bag artwork is available for custom exercises.
 - Durable guided sessions with exact occurrence identity, automatic progress checkpoints, resumable exercise/set focus, partial-set correction, and saved completion history.
+- Exercise-by-exercise progression for guided routines: bounded automatic pounds/seconds changes or ordered custom prescriptions with independent inserted exercises, exact future-value review, and immediate Undo.
 - Fixed-state exercise timers with a distinct 10-second readiness countdown, elapsed-clock recovery, explicit cancellation/restart, and foreground-only voice/haptic cues.
 - Persistent dashboard customization: show, hide, reorder, and reset metric and training cards.
 - Per-metric Health Connect sync time, source app, stale-data warning, and distinct missing/unavailable states.
@@ -33,13 +34,15 @@ The current production release is v0.25.1. It aligns the in-app brand mark with 
 
 ## Local build
 
-Open the project in Android Studio with Android SDK 36 and Java 17 installed, then run `./gradlew testDebugUnitTest lintDebug assembleDebug`.
+Open the project in Android Studio with Android SDK 36 and Java 17 or newer installed. On Windows, run `./gradlew.ps1 testDebugUnitTest lintDebug assembleDebug`; the bootstrap validates `JAVA_HOME`, then searches `%USERPROFILE%/.jdks`, a repository-local JDK under `.tooling/jdk17/`, and Android Studio's JBR, and uses the ignored `.gradle-user-home` cache when no cache is configured. It fails early with installation guidance instead of silently using an older system Java. Linux and macOS builds, including CI, continue to use `./gradlew testDebugUnitTest lintDebug assembleDebug`.
 
 Add **DraftingRoom5 living icon** from the launcher's widget picker to place the one-cell tile. Android controls the exact delivery time of its approximately-hourly refresh, so the image is not promised to change on the hour; opening the app and system widget lifecycle events can also refresh the current time-selected look. The whole tile opens the normal app route.
 
 Open **Settings → Customize dashboard** to choose which training and metric sections appear, move them into the exact order you want, or restore the default layout. At least one section always remains visible. Open **Settings → Schedules & routines** to manage recurring weekday entries and both routine types. You can create, rename, illustrate, edit, schedule, reorder, launch, and delete guided and linked-app routines; changes persist on-device across restarts. Linked-app launch failures offer change-app and store recovery instead of a dead action.
 
 The dashboard opens on today’s training, supports selecting nearby dates, and presents one quiet Start or Resume action for each session. Today's unstarted scheduled cards can be deferred to tomorrow or skipped for today without changing their recurrence; an exact Undo is available after either action. Linked-app cards can be opened and marked complete, with Undo for the exact occurrence. Guided progress is saved after each change and resumes the exact session, exercise, completed sets, and occurrence date. Finishing every required set durably records completion before showing the completion screen; incomplete sessions remain available under their scheduled day or Saved sessions. Its health snapshot follows the saved dashboard order and always plots the latest 30 days. Tap a metric to choose an independent time range and inspect recorded readings or activity totals.
+
+Progression is configured inside each guided exercise; linked-app routines never offer it. After the final set, eligible exercises show a compact choice where **Continue workout** leaves the future routine unchanged and **Ready for more** previews and applies one exact next prescription. Automatic rules can advance pounds, seconds, or a deliberate heavier/shorter alternative; custom steps can replace the source and add ordered exercises immediately after it. Added exercises then behave independently. Saved incomplete sessions and completed history keep their original snapshots, while new sessions use the current progressed routine. Current-format recovery backups retain rules, current values, handled decisions, receipts, sessions, and history.
 
 Open **Settings → Workout feedback** to turn workout haptics on or off. Guided sessions focus one exercise while keeping every remaining exercise reachable, allow correction of completed sets, and save ordinary exits for later resumption. Timed exercises use a distinct readiness countdown and running/finished states; timers never complete a set automatically. Completing a set produces one short cue, while timer and workout milestones use distinct cues. Duplicate or restored events are deduplicated, and the app stays silent when Android system haptics are disabled or the phone has no vibrator.
 

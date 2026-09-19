@@ -37,6 +37,7 @@ internal data class GuidedSession(
     val updatedAtMillis: Long,
     val eventRevision: Long,
     val effectiveDate: java.time.LocalDate = occurrence.scheduledDate,
+    val handledProgressionExerciseIds: Set<String> = emptySet(),
 )
 
 internal data class AppDocument(
@@ -47,6 +48,7 @@ internal data class AppDocument(
     val partialSessions: List<GuidedSession> = emptyList(),
     val history: List<WorkoutHistoryEntry> = emptyList(),
     val occurrenceExceptions: List<OccurrenceException> = emptyList(),
+    val progressionReceipts: List<ProgressionReceipt> = emptyList(),
 )
 
 internal fun defaultAppDocument() = AppDocument()
@@ -79,6 +81,24 @@ internal fun validateAppDocument(document: AppDocument) {
     document.partialSessions.forEach { validateSession(it, document.plan) }
     document.history.forEach(::validateHistory)
     validateOccurrenceExceptions(document)
+    require(document.progressionReceipts.map { it.sessionId to it.before.id }.distinct().size == document.progressionReceipts.size) {
+        "An exercise completion can have only one progression receipt."
+    }
+    require(document.progressionReceipts.map { it.routineId to it.appliedRevision }.distinct().size == document.progressionReceipts.size) {
+        "A routine revision can have only one progression receipt."
+    }
+    document.progressionReceipts.forEach { receipt ->
+        validateId(receipt.sessionId)
+        validateId(receipt.routineId)
+        validateExercise(receipt.before, hashSetOf())
+        require(receipt.appliedRevision > 1) { "Progression revision is invalid." }
+        document.plan.routines.firstOrNull { it.id == receipt.routineId }?.let { live ->
+            require(receipt.appliedRevision <= live.revision && (!receipt.undone || receipt.appliedRevision < live.revision)) {
+                "Progression receipt is newer than its routine."
+            }
+        }
+        require(receipt.before.progressionOptions().any { it.choice == receipt.choice }) { "Progression choice is unavailable." }
+    }
 }
 
 private fun validateRoutine(routine: Routine) {
@@ -86,7 +106,6 @@ private fun validateRoutine(routine: Routine) {
     require(routine.revision >= 1) { "Routine revision must be positive." }
     validateText(routine.name, 200, "Routine name")
     validateText(routine.artworkId, 128, "Routine artwork")
-    require(routine.exercises.map { it.id }.distinct().size == routine.exercises.size) { "Exercise IDs must be unique." }
     when (routine.execution) {
         RoutineExecution.GUIDED -> require(routine.appLink == null && routine.exercises.isNotEmpty()) { "Guided routines need exercises and no app link." }
         RoutineExecution.LINKED_APP -> require(routine.appLink != null && routine.exercises.isEmpty()) { "Linked routines need an app link and no exercises." }
@@ -95,15 +114,72 @@ private fun validateRoutine(routine: Routine) {
         validateText(link.packageName, 255, "Package name")
         link.deepLink?.let { validateText(it, 2_048, "Deep link") }
     }
-    routine.exercises.forEach { exercise ->
-        validateId(exercise.id)
-        validateText(exercise.name, 200, "Exercise name")
-        require(exercise.notes.length <= 4_000) { "Exercise notes are too long." }
-        require(exercise.setCount > 0) { "Set count must be positive." }
-        validateText(exercise.target, 500, "Exercise target")
-        require(exercise.timerSeconds == null || exercise.timerSeconds > 0) { "Timer duration must be positive." }
-        validateText(exercise.artworkId, 128, "Exercise artwork")
+    val exerciseIds = hashSetOf<String>()
+    routine.exercises.forEach { validateExercise(it, exerciseIds) }
+}
+
+private fun validateExercise(exercise: Exercise, exerciseIds: MutableSet<String>) {
+    validateId(exercise.id)
+    require(exerciseIds.add(exercise.id)) { "Exercise IDs, including custom insertions, must be unique." }
+    validatePrescription(exercise.prescription())
+    when (val progression = exercise.progression) {
+        null -> Unit
+        is AutomaticExerciseProgression -> validateAutomaticProgression(exercise, progression)
+        is CustomExerciseProgression -> {
+            require(progression.steps.isNotEmpty()) { "Custom progression needs at least one step." }
+            progression.steps.forEach { step ->
+                validatePrescription(step.replacement)
+                step.insertedExercises.forEach { validateExercise(it, exerciseIds) }
+            }
+        }
     }
+}
+
+private fun validatePrescription(prescription: ExercisePrescription) {
+    validateText(prescription.name, 200, "Exercise name")
+    require(prescription.notes.length <= 4_000) { "Exercise notes are too long." }
+    require(prescription.setCount > 0) { "Set count must be positive." }
+    validateText(prescription.target, 500, "Exercise target")
+    require(prescription.timerSeconds == null || prescription.timerSeconds > 0) { "Timer duration must be positive." }
+    validateText(prescription.artworkId, 128, "Exercise artwork")
+    prescription.measurements.weightPounds?.let {
+        require(it.isFinite() && it > 0.0) { "Weight in pounds must be finite and positive." }
+    }
+    prescription.measurements.durationSeconds?.let {
+        require(it > 0) { "Structured duration must be positive." }
+    }
+}
+
+private fun validateAutomaticProgression(exercise: Exercise, progression: AutomaticExerciseProgression) {
+    require(progression.weightPounds != null || progression.durationSeconds != null) {
+        "Automatic progression needs at least one measurement rule."
+    }
+    progression.weightPounds?.let { rule ->
+        val current = requireNotNull(exercise.measurements.weightPounds) {
+            "Automatic weight progression needs a current weight."
+        }
+        require(rule.increment.isFinite() && rule.increment > 0.0) { "Weight increment must be finite and positive." }
+        validatePoundsBound(rule.minimum, "minimum")
+        validatePoundsBound(rule.maximum, "maximum")
+        require(rule.minimum == null || rule.maximum == null || rule.minimum <= rule.maximum) { "Weight bounds are invalid." }
+        require(rule.minimum == null || current >= rule.minimum) { "Current weight is below its minimum." }
+        require(rule.maximum == null || current <= rule.maximum) { "Current weight is above its maximum." }
+    }
+    progression.durationSeconds?.let { rule ->
+        val current = requireNotNull(exercise.measurements.durationSeconds) {
+            "Automatic duration progression needs a current duration."
+        }
+        require(rule.increment > 0) { "Duration increment must be positive." }
+        require(rule.minimum == null || rule.minimum > 0) { "Duration minimum must be positive." }
+        require(rule.maximum == null || rule.maximum > 0) { "Duration maximum must be positive." }
+        require(rule.minimum == null || rule.maximum == null || rule.minimum <= rule.maximum) { "Duration bounds are invalid." }
+        require(rule.minimum == null || current >= rule.minimum) { "Current duration is below its minimum." }
+        require(rule.maximum == null || current <= rule.maximum) { "Current duration is above its maximum." }
+    }
+}
+
+private fun validatePoundsBound(value: Double?, label: String) {
+    require(value == null || value.isFinite() && value > 0.0) { "Weight $label must be finite and positive." }
 }
 
 private fun validateSession(session: GuidedSession, plan: TrainingPlan) {
@@ -118,6 +194,9 @@ private fun validateSession(session: GuidedSession, plan: TrainingPlan) {
     require(session.focusedExerciseId in exercises) { "Focused exercise is missing." }
     require(session.completedSets.keys == exercises.keys) { "Completed sets must cover exactly the snapshot exercises." }
     session.completedSets.forEach { (id, count) -> require(count in 0..checkNotNull(exercises[id]).setCount) { "Completed set count is invalid." } }
+    require(session.handledProgressionExerciseIds.all { id ->
+        exercises[id]?.let { session.completedSets.getValue(id) == it.setCount } == true
+    }) { "Handled progression decisions must reference completed snapshot exercises." }
     require(session.startedAtMillis >= 0 && session.updatedAtMillis >= session.startedAtMillis && session.eventRevision >= 0 && session.eventRevision < Long.MAX_VALUE) { "Session timestamps or revision are invalid." }
     validateTimer(session.timer, session)
 }

@@ -19,8 +19,8 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
 
 - `minimum_completion_interval_minutes`: `60`
 - `max_concurrency`: `1`
-- `last_completion_at`: `2026-09-14T22:40:22-05:00`
-- `next_eligible_dispatch_at`: `2026-09-14T23:40:22-05:00`
+- `last_completion_at`: `2026-09-18T20:20:12-05:00`
+- `next_eligible_dispatch_at`: `2026-09-18T21:20:12-05:00`
 - `processor_lease`: empty
 - For active queued work, dispatch only a task whose `Status` is `ready`, and never dispatch while another task is `running` or before `next_eligible_dispatch_at`.
 - When claiming an active task, set its `Status` to `running` and fill `Executor thread ID` and `Started at`; the checkbox claim marker remains `[~]` for compatibility with the worker protocol above.
@@ -217,89 +217,129 @@ Approved direction: a one-cell home-screen widget that opens the app normally on
 
 Approved direction: progression belongs to each guided exercise rather than to the routine. Exercises may use repeatable automatic increments or an ordered custom sequence. Pounds and seconds are stored as structured values instead of being recoverable only from target text; pounds are the only weight unit. After the final set of a progression-enabled exercise, a compact prompt says `<Exercise name> complete` with only secondary **Ready for more** and primary **Continue workout** actions. Continuing changes nothing and asks again after the next completion. If no further progression is available, skip the prompt and continue normally. Applying progression is immediate, previews the exact future prescription, and is undoable. The detailed acceptance below is authoritative; earlier exploratory mockups are not implementation assets.
 
-- [ ] **DR5-059 — Add structured exercise prescriptions and progression state**
+- [x] **DR5-059 — Add structured exercise prescriptions and progression state**
   - Outcome: the domain and current-document codec can represent independent exercise progression without parsing numbers from display text.
   - Scope: guided-exercise prescription types, pounds and seconds measurements, automatic/custom progression definitions, validation, JSON codec, fixtures, and focused domain/codec tests only; no editor or workout UI.
   - Model: `gpt-5.6-sol`
   - Model reason: bounded Kotlin domain and persistence work with deterministic invariants.
   - Depends on: none
-  - Status: `ready`
+  - Status: `complete`
+  - Executor thread ID: `01a0b438-acba-7891-90d6-2c64f98476d3`
+  - Started at: `2026-09-18T06:14:15-05:00`
+  - Completed at: `2026-09-18T06:39:15-05:00`
   - Acceptance: a guided exercise may have no progression, automatic progression, or ordered custom steps; structured optional weight-in-pounds and duration-in-seconds values coexist with the readable target and existing timer behavior without extracting numbers from strings; automatic rules store independent positive increments and optional minimum/maximum bounds for weight and duration; custom steps store the complete replacement prescription for the source exercise and zero or more exercises to insert immediately after it; inserted exercises have stable unique identities and their own optional progression; validation rejects non-finite/non-positive values, invalid bounds, empty custom steps, duplicate IDs, and unsupported linked-app progression; round trips retain progression exactly in live routines and session/history snapshots; current clean-slate strict-schema conventions are preserved; focused tests pass.
   - Push: `NO`
+  - Claimed: 2026-09-18T06:14:15-05:00 by gpt-5.6-sol; user explicitly requested immediate manual queue execution.
+  - Completed: Added explicit exercise measurements, complete prescriptions, automatic weight/time rules, ordered custom replacement steps, and recursive independently progressing insertions. Strict validation covers positive finite values, bounds, required current measures, nonempty custom sequences, routine-wide future ID uniqueness, and linked-app exclusion. The strict current JSON codec round-trips live, partial-session, and history snapshots with no legacy reader. Focused progression/codec/domain tests and all 236 unit tests passed with zero failures; `git diff --check` passed.
   - Notes: use pounds only. Preserve arbitrary target text for exercises that do not opt into structured progression. Do not add compatibility readers or migrations for development data.
 
-- [ ] **DR5-060 — Build automatic progression configuration**
+- [x] **DR5-060 — Build automatic progression configuration**
   - Outcome: a user can configure common weight- and time-based exercises once instead of authoring every future step.
   - Scope: native Compose exercise-editor progression entry, automatic-rule form, structured current values, increments, optional bounds, validation, persistence wiring, previews, and focused editor screenshots/tests.
   - Model: `gpt-5.6-sol`
   - Model reason: focused Compose form and state-management implementation using the existing editor patterns.
   - Depends on: DR5-059
-  - Status: `blocked`
+  - Status: `complete`
+  - Executor thread ID: `01a0b451-57db-7470-9e77-f06cf05cd98a`
+  - Started at: `2026-09-18T06:41:03-05:00`
+  - Completed at: `2026-09-18T07:26:44-05:00`
   - Acceptance: the existing exercise editor exposes progression without adding a routine-level progression control; the user can select automatic progression, enter current pounds and/or seconds, configure independent increments and optional minimum/maximum values, and disable progression; timer duration and a structured timed target remain intentionally synchronized when selected rather than accidentally diverging; the UI previews exact next prescriptions; pounds are the only weight unit; single- and dual-measure exercises save and restore correctly; invalid, incomplete, or contradictory rules cannot be saved; existing no-progression exercises retain their current editing workflow; compact, tall, landscape, and large-text screenshot coverage plus focused tests pass.
   - Push: `NO`
+  - Claimed: 2026-09-18T06:41:03-05:00 by gpt-5.6-sol; user explicitly requested immediate manual queue execution.
+  - Completed: The exercise editor now configures disabled, weight-only, duration-only, and dual-measure automatic progression with pounds/seconds current values, independent positive increments, optional bounds, strict save gating, exact bounded previews, and explicit timer-duration synchronization. Draft conversion preserves automatic rules across edits while disabling progression restores the ordinary target/timer workflow. Five focused editor tests, all 241 unit tests, all 275 screenshot validations (including four dedicated compact/tall/landscape/large-text references), lint, debug assembly, visual inspection, and `git diff --check` passed; large-text optional bounds stack without overlap.
   - Notes: progression is configured per exercise. Do not add rating scales or routine-wide levels.
 
-- [ ] **DR5-061 — Build ordered custom progression for fingerboard exercises**
+- [x] **DR5-061 — Build ordered custom progression for fingerboard exercises**
   - Outcome: complex fingerboard work can change grips over time and introduce additional grip exercises without forcing numeric auto-progression.
   - Scope: native custom-progression overview, ordered step management, step editor, add/edit/delete/reorder behavior, optional exercise insertion, persistence wiring, and focused screenshots/tests.
   - Model: `gpt-5.6-sol`
   - Model reason: bounded but interaction-heavy Compose editor work following the routine/exercise editor conventions.
   - Depends on: DR5-059
-  - Status: `blocked`
+  - Status: `complete`
+  - Executor thread ID: `01a09848-5d39-7670-8013-394782400976`
+  - Started at: `2026-09-18T09:54:14-05:00`
+  - Completed at: `2026-09-18T11:04:32-05:00`
   - Acceptance: an exercise can select custom progression and show its current prescription plus ordered next steps; each step can change the source exercise's name/grip description, notes, sets, target, timer, artwork, and structured measurements; a step can add zero or more fully valid exercises immediately after the source; added exercises may receive their own progression during creation or later through the ordinary exercise editor; steps and additions use the existing cards, menus, add actions, drag semantics, automatic-save messaging, accessibility actions, and discard safeguards; the overview clearly distinguishes current and future prescriptions; compact, tall, landscape, and large-text screenshots plus focused tests pass.
   - Push: `NO`
+  - Claimed: 2026-09-18T09:54:14-05:00 by gpt-5.6-sol; user explicitly overrode the queue cooldown for immediate manual execution.
+  - Completed: Added mutually exclusive custom progression configuration, a clear current-versus-future overview, complete ordered replacement-step editing, stable independently progressing exercise insertions, card menus, pointer/keyboard/TalkBack reordering, confirmation-backed deletion/discard, and routine-editor save messaging. Three focused custom editor tests plus all 244 unit tests and all 279 screenshot validations passed; compact, tall, landscape, and corrected large-text references were visually inspected; lint, debug assembly with a 4 GB verification heap, and `git diff --check` passed. Main implementation is in `CustomProgressionEditor.kt` with exercise-editor wiring in `GuidedRoutineEditor.kt`.
   - Notes: once inserted, each added grip is an ordinary independent exercise. Advancing the original later must not silently modify or remove it.
 
-- [ ] **DR5-062 — Apply progression atomically and preserve exercise independence**
+- [x] **DR5-062 — Apply progression atomically and preserve exercise independence**
   - Outcome: accepting a progression produces exactly one safe future-routine update while completed and in-progress workout snapshots remain historically correct.
   - Scope: repository mutations, automatic next-target calculations, custom-step consumption, insertion lineage, idempotency, undo, partial-session isolation, history behavior, failure handling, and focused repository/state tests; no final workout-sheet polish.
   - Model: `gpt-6-astra`
   - Model reason: atomic cross-aggregate transitions, snapshots, retries, and undo require careful invariant reasoning.
   - Depends on: DR5-059, DR5-060, DR5-061
-  - Status: `blocked`
+  - Status: `complete`
   - Acceptance: applying a single-measure automatic rule advances only that measure within its configured bound; dual-measure rules can calculate exact alternatives that increase weight, increase duration, or increase weight while reducing duration without changing an unselected value unexpectedly; custom advancement replaces only the source exercise and inserts each configured addition exactly once immediately after it; newly inserted exercises progress independently on future completions; routine revision advances once per accepted mutation; the active/completed workout keeps its original snapshot; retries, process recreation, duplicate taps, and stale revisions cannot double-advance or duplicate inserted exercises; immediate Undo restores the previous source prescription and removes only additions created by that transition; write failure leaves the live routine unchanged and recoverable; focused tests cover bounds, final steps, IDs, ordering, restart, stale events, undo, and history integrity.
+  - Executor thread ID: `01a0b64a-0393-76b3-815c-e0821b620a38`
+  - Started at: `2026-09-18T15:52:27-05:00`
+  - Claimed: 2026-09-18T15:52:27-05:00 by gpt-6-astra; user authorized immediate manual execution overriding cooldown.
+  - Completed at: `2026-09-18T16:16:31-05:00`
+  - Completed: Atomic progression application, bounded weight/duration/heavier-shorter alternatives, ordered custom-step consumption and stable independent insertions, durable per-session/exercise receipts, stale-event protection, selective immediate Undo, and write-failure recovery are implemented in `ExerciseProgression.kt`, `AppRepository.kt`, and the strict current document/codec. All 265 unit tests (including 21 new application tests and 6 existing progression tests), `lintDebug`, `assembleDebug`, and `git diff --check` passed. Active/completed snapshots remain unchanged. Handoff and API semantics are in `docs/reviews/DR5-062.md`. Existing Phase 8 and unrelated edits were preserved; no commit, push, tag, release, or UI changes.
   - Push: `NO`
   - Notes: progression is intentional movement between prescriptions, not a scalar difficulty score; one measure may decrease while another increases.
 
-- [ ] **DR5-063 — Add the in-workout progression decision flow**
+- [x] **DR5-063 — Add the in-workout progression decision flow**
   - Outcome: each completed eligible exercise can be advanced with minimal interruption while continuing the workout remains the clear default.
   - Scope: guided-session completion hook, progression bottom sheets, exact-result selection for single/dual measurements and custom steps, application/undo feedback, resume behavior, haptics/voice boundaries, accessibility, screenshots, and focused UI/state tests.
   - Model: `gpt-5.6-sol`
   - Model reason: bounded guided-session UI integration after transition semantics are proven.
   - Depends on: DR5-062
-  - Status: `blocked`
+  - Status: `complete`
   - Acceptance: after the final set of an exercise with an available next progression, show the concise title `<Exercise name> complete` with no explanatory subtitle, a secondary outlined **Ready for more** action, and a primary filled-blue **Continue workout** action; no Too hard/About right scale appears; Continue changes nothing, proceeds to the next exercise, and allows the prompt again after the next workout's completion; Ready applies a single unambiguous next prescription directly or, when weight and duration both vary, opens an exact-result chooser that supports weight-only, duration-only, and heavier/shorter outcomes without offering an accidental increase-both default; the selected future pounds/seconds are shown before commitment; successful application proceeds normally and offers Undo without blocking the workout; exercises at an automatic bound, final custom step, or with progression disabled skip the sheet entirely; rotations, backgrounding, process recreation, repeated taps, timers, voice cues, and incomplete-session restoration do not repeat or lose the decision; semantics state the full resulting prescription; compact, tall, landscape, and large-text screenshots and focused tests pass.
+  - Executor thread ID: `01a0b662-9005-7902-a552-d1c83f5bbb09`
+  - Started at: `2026-09-18T16:18:54-05:00`
+  - Completed at: `2026-09-18T17:30:29-05:00`
   - Push: `NO`
+  - Claimed: 2026-09-18T16:18:54-05:00 by gpt-5.6-sol; user explicitly overrode the queue cooldown for immediate manual execution.
+  - Completed: Added durable per-exercise decision handling, the concise completion sheet, exact weight/time/heavier-shorter chooser, atomic progression application, nonblocking Undo, full-result semantics, and eight compact/tall/landscape/large-text references in `GuidedSessionScreen.kt` and `GuidedSessionState.kt`. All 268 unit tests and 287 screenshot validations passed with zero failures; `lintDebug`, `assembleDebug`, visual inspection, and `git diff --check` passed. Rotation/recreation, resume, repeat-tap, timer, voice, bounds, final-step, disabled, and unavailable behavior follow the saved session and existing durable progression receipts.
   - Notes: do not move this decision to whole-routine completion. Continue workout is always the visually primary action.
 
-- [ ] **DR5-064 — Harden progression across editing and workout lifecycles**
+- [x] **DR5-064 — Harden progression across editing and workout lifecycles**
   - Outcome: progression remains coherent under real editing, deletion, scheduling, backup, and session edge cases.
   - Scope: cross-feature integration, backup/current-document coverage, exercise deletion/reordering, routine edits with partial sessions, added-exercise management, accessibility and exceptional layouts, performance, documentation updates, and full regression tests.
   - Model: `gpt-5.6-sol`
   - Model reason: broad but concrete integration pass across established app workflows.
   - Depends on: DR5-063
-  - Status: `blocked`
+  - Status: `complete`
+  - Executor thread ID: `01a09848-5d39-7670-8013-394782400976`
+  - Started at: `2026-09-18T17:38:27-05:00`
+  - Completed at: `2026-09-18T18:09:27-05:00`
   - Acceptance: routine/exercise edits cannot leave dangling custom additions or duplicate progression identities; deleting or reordering a source/inserted exercise has explicit deterministic behavior; saved incomplete sessions remain immutable snapshots while future sessions use the progressed routine; backup/export/import retains every rule and current value; no prompt appears for linked-app routines, unavailable next steps, or already-handled completions; all new controls meet touch-target, TalkBack, keyboard, large-text, compact, tall, and landscape requirements; README, `RoutineEditor.md`, `GuidedSession.md`, and `TechnicalDesign.md` describe the shipped behavior and limits; focused tests, all unit tests, screenshot tests, lint, assemble, and `git diff --check` pass.
   - Push: `NO`
+  - Claimed: 2026-09-18T17:38:27-05:00 by gpt-5.6-sol; user explicitly overrode the queue cooldown for immediate manual execution.
+  - Completed: Hardened the live/future exercise identity namespace, editor collision rejection, deterministic source/future/inserted deletion and reordering, handled-completion suppression at the repository boundary, routine-deletion receipt pruning, immutable partial/history behavior, and full progression backup round trips. Updated README, `RoutineEditor.md`, `GuidedSession.md`, and `TechnicalDesign.md` with shipped behavior and limits. Focused tests, all 272 unit tests, all 287 screenshot validations, lint (0 errors), debug assembly, and `git diff --check` passed. Existing Phase 8 and unrelated work were preserved; no separate dashboard, commit, push, tag, or release was created.
   - Notes: keep the interaction inside existing DraftingRoom5 workflows and visual language; do not introduce a separate progression dashboard.
 
-- [ ] **DR5-065 — Audit exercise progression independently**
+- [x] **DR5-065 — Audit exercise progression independently**
   - Outcome: an independent review verifies progression correctness, workout safety, usability, accessibility, and regression quality before release.
   - Scope: Phase 8 diff, domain/repository invariant review, native UI and lifecycle evidence, screenshot inspection, full regression gate, and a review artifact under `docs/reviews/`; fixes remain within Phase 8 scope.
   - Model: `gpt-6-astra`
   - Model reason: independent review of stateful progression, atomic insertion, undo, and lifecycle behavior benefits from difficult cross-cutting reasoning.
   - Depends on: DR5-064
-  - Status: `blocked`
+  - Status: `complete`
   - Acceptance: the audit traces no/automatic/custom progression through codec, editor, repository, active session, completed history, backup, undo, and recreation; proves exercise-by-exercise independence and exactly-once custom insertion; exercises weight-only, duration-only, dual-measure heavier/shorter, bounds, final-step prompt skipping, Continue behavior, and failure recovery; inspects real compact/tall/landscape/large-text screens for the approved concise hierarchy; verifies accessibility and timer/voice/haptic coexistence; records emulator/device evidence or limitations honestly; all relevant unit, screenshot, lint, build, and whitespace checks pass; unresolved correctness or usability findings block release.
+  - Executor thread ID: `01a0b6ce-336b-7d01-a2ee-03d1f153f308`
+  - Started at: `2026-09-18T18:16:56-05:00`
+  - Claimed: 2026-09-18T18:16:56-05:00 by gpt-6-astra; immediate execution explicitly authorized by user.
+  - Completed at: `2026-09-18T19:28:25-05:00`
+  - Completed: Independent audit corrected eight findings covering visible measurements, retained terminal values, exact previews, custom result disclosure, draft restoration, failure recovery, JSON depth safety, and reorder identity/accessibility. All 278 unit tests, 291 screenshot comparisons, lint (0 errors), APK builds, native API 35 progression/lifecycle checks, and whitespace validation passed. Evidence and explicit physical-device limitations are in docs/reviews/DR5-065/README.md. Accumulated work preserved; no commit, push, tag, or release.
   - Push: `NO`
 
-- [ ] **DR5-066 — Release the exercise progression milestone**
+- [x] **DR5-066 — Release the exercise progression milestone**
   - Outcome: the audited exercise-by-exercise progression feature ships as one coherent tagged release with a verified published APK.
   - Scope: Phase 8 findings, final documentation/version defaults, full verification gate, Git commit/push/tag, release workflow, and published APK verification.
   - Model: `gpt-5.6-sol`
   - Model reason: established deterministic release procedure after independent audit.
   - Depends on: DR5-065
-  - Status: `blocked`
+  - Status: `complete`
+  - Executor thread ID: `01a09848-5d39-7670-8013-394782400976`
+  - Started at: `2026-09-18T19:30:55-05:00`
+  - Completed at: `2026-09-18T20:20:12-05:00`
   - Acceptance: DR5-059–065 and audit findings are complete; product and technical documentation match the final behavior; default version name/code advance consistently from the latest released version; `testDebugUnitTest lintDebug assembleDebug`, screenshot tests, focused progression checks, and whitespace checks pass; the coherent Phase 8 work is committed and pushed once; the next increasing version tag is pushed; the release workflow completes; and the signed APK is published and verified.
   - Push: `YES`
+  - Claimed: 2026-09-18T19:30:55-05:00 by gpt-5.6-sol; user explicitly overrode the queue cooldown for immediate release work.
+  - Completed: Phase 8 documentation and defaults identify v0.26.0/26002 consistently. The Java-17-aware Windows Gradle bootstrap prevents the host's older Java from reaching the build and was verified from an intentionally forced Java 8 environment. Focused progression checks passed; the corrected complete gate passed all 278 unit tests, all 291 screenshot comparisons, lint with 0 errors, debug and instrumentation APK builds, and whitespace validation. Native Android API 35 checks passed Continue persistence, timer lifecycle/deduplication, exact-once custom insertion and Undo, and the exact 32.5 lb/25 second heavier-shorter result while preserving the session snapshot. The coherent milestone is delivered by tag `v0.26.0`; the successful tag workflow and signed `DraftingRoom5.apk` are verified at [GitHub Actions](https://github.com/lnjefford/DraftingRoom5/actions/workflows/release.yml) and the [v0.26.0 release](https://github.com/lnjefford/DraftingRoom5/releases/tag/v0.26.0).
   - Notes: never commit credentials, signing material, generated build files, `.gradle-user-home`, or `.tooling`; do not release intermediate Phase 8 tasks separately.

@@ -1,0 +1,8 @@
+API:
+35
+Size:
+Physical size: 1080x2280
+Density:
+Physical density: 440
+Font scale:
+1.0
