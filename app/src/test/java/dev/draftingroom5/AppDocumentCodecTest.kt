@@ -37,6 +37,29 @@ class AppDocumentCodecTest {
         assertEquals(3, restored.plan.routines.single { it.id == "routine-forearm" }.exercises.first().setCount)
     }
 
+    @Test fun releasedV025DocumentUpgradesWithoutLosingWorkoutData() {
+        val current = progressionDocumentFixture()
+        val legacy = JSONObject(encodeAppDocument(current)).asReleasedV025Document()
+
+        val upgraded = decodeAppDocument(legacy.toString())
+        val expected = current.copy(
+            plan = current.plan.copy(routines = current.plan.routines.map(Routine::withoutProgression)),
+            partialSessions = current.partialSessions.map { it.copy(
+                snapshot = it.snapshot.withoutProgression(), handledProgressionExerciseIds = emptySet(),
+            ) },
+            history = current.history.map { it.copy(snapshot = it.snapshot.withoutProgression()) },
+            progressionReceipts = emptyList(),
+        )
+
+        assertEquals(expected, upgraded)
+        assertEquals(upgraded, decodeAppDocument(encodeAppDocument(upgraded)))
+    }
+
+    @Test fun previousSchemaUpgradeDoesNotAcceptHybridDocuments() {
+        val hybrid = JSONObject(encodeAppDocument(defaultAppDocument())).apply { remove("progressionReceipts") }
+        assertThrows(IllegalArgumentException::class.java) { decodeAppDocument(hybrid.toString()) }
+    }
+
     @Test fun stringSetCountIsRejectedRatherThanParsed() {
         val root = JSONObject(encodeAppDocument(defaultAppDocument()))
         root.getJSONObject("plan").getJSONArray("routines").getJSONObject(2)
@@ -71,4 +94,29 @@ class AppDocumentCodecTest {
         cards.put(JSONObject().put("card", "FUTURE_CARD").put("visible", true))
         assertEquals(defaultDashboardCards(), decodeAppDocument(root.toString()).preferences.dashboardLayout.cards)
     }
+}
+
+private fun JSONObject.asReleasedV025Document(): JSONObject = apply {
+    remove("progressionReceipts")
+    getJSONObject("plan").getJSONArray("routines").forEachObject(::stripProgressionFields)
+    getJSONArray("partialSessions").forEachObject { session ->
+        session.remove("handledProgressionExerciseIds")
+        stripProgressionFields(session.getJSONObject("snapshot"))
+    }
+    getJSONArray("history").forEachObject { history -> stripProgressionFields(history.getJSONObject("snapshot")) }
+}
+
+private fun stripProgressionFields(routine: JSONObject) {
+    routine.getJSONArray("exercises").forEachObject { exercise ->
+        exercise.remove("measurements")
+        exercise.remove("progression")
+    }
+}
+
+private fun Routine.withoutProgression() = copy(exercises = exercises.map {
+    it.copy(measurements = ExerciseMeasurements(), progression = null)
+})
+
+private inline fun org.json.JSONArray.forEachObject(block: (JSONObject) -> Unit) {
+    repeat(length()) { block(getJSONObject(it)) }
 }

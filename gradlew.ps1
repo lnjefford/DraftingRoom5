@@ -64,6 +64,10 @@ $env:Path = "$(Join-Path $selectedJavaHome 'bin');$env:Path"
 if (-not $env:GRADLE_USER_HOME) {
     $env:GRADLE_USER_HOME = Join-Path $repositoryRoot '.gradle-user-home'
 }
+if (-not $env:ANDROID_USER_HOME) {
+    $env:ANDROID_USER_HOME = Join-Path $repositoryRoot '.gradle-user-home/android-user-home'
+}
+New-Item -ItemType Directory -Path $env:ANDROID_USER_HOME -Force | Out-Null
 
 $javaMajor = Get-CompatibleJavaMajor $selectedJavaHome
 Write-Host "DraftingRoom5 Gradle: Java $javaMajor from $selectedJavaHome"

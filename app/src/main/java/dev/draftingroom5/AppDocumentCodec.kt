@@ -38,15 +38,20 @@ internal fun encodeAppDocument(document: AppDocument): String {
 internal fun decodeAppDocument(value: String): AppDocument = try {
     require(value.toByteArray(Charsets.UTF_8).size <= MAX_DOCUMENT_BYTES) { "Document exceeds the 16 MiB limit." }
     inspectJsonStructure(value)
-    val root = JSONObject(value).exact("format", "generation", "plan", "preferences", "partialSessions", "history", "occurrenceExceptions", "progressionReceipts")
+    val root = JSONObject(value)
+    val schema = when (root.keys().asSequence().toSet()) {
+        CURRENT_DOCUMENT_FIELDS -> DocumentSchema.CURRENT
+        V025_DOCUMENT_FIELDS -> DocumentSchema.V025
+        else -> throw IllegalArgumentException("Unexpected or missing fields.")
+    }
     val document = AppDocument(
         format = root.strictString("format"),
         generation = root.strictLong("generation"),
-        plan = decodePlan(root.strictObject("plan")),
+        plan = decodePlan(root.strictObject("plan"), schema),
         preferences = decodePreferences(root.strictObject("preferences")),
-        partialSessions = root.strictArray("partialSessions").objects(::decodeSession),
-        history = root.strictArray("history").objects(::decodeHistory),
-        progressionReceipts = root.strictArray("progressionReceipts").objects {
+        partialSessions = root.strictArray("partialSessions").objects { decodeSession(it, schema) },
+        history = root.strictArray("history").objects { decodeHistory(it, schema) },
+        progressionReceipts = if (schema == DocumentSchema.V025) emptyList() else root.strictArray("progressionReceipts").objects {
             it.exact("sessionId", "routineId", "before", "choice", "appliedRevision", "undone")
             ProgressionReceipt(it.strictString("sessionId"), it.strictString("routineId"),
                 decodeExercise(it.strictObject("before")), ProgressionChoice.valueOf(it.strictString("choice")),
@@ -83,10 +88,10 @@ private fun encodePlan(plan: TrainingPlan) = JSONObject().apply {
     } })
 }
 
-private fun decodePlan(value: JSONObject): TrainingPlan {
+private fun decodePlan(value: JSONObject, schema: DocumentSchema): TrainingPlan {
     value.exact("routines", "schedule")
     return TrainingPlan(
-        routines = value.strictArray("routines").objects(::decodeRoutine),
+        routines = value.strictArray("routines").objects { decodeRoutine(it, schema) },
         schedule = value.strictArray("schedule").objects { entry ->
             entry.exact("id", "routineId", "days")
             val days = entry.strictArray("days").strings().map { DayOfWeek.valueOf(it) }
@@ -106,7 +111,9 @@ internal fun encodeRoutine(routine: Routine) = JSONObject().apply {
     put("exercises", JSONArray().apply { routine.exercises.forEach { put(encodeExercise(it)) } })
 }
 
-internal fun decodeRoutine(value: JSONObject): Routine {
+internal fun decodeRoutine(value: JSONObject): Routine = decodeRoutine(value, DocumentSchema.CURRENT)
+
+private fun decodeRoutine(value: JSONObject, schema: DocumentSchema): Routine {
     value.exact("id", "revision", "name", "artworkId", "execution", "appLink", "exercises")
     return Routine(
         id = value.strictString("id"), revision = value.strictLong("revision"), name = value.strictString("name"),
@@ -115,7 +122,24 @@ internal fun decodeRoutine(value: JSONObject): Routine {
             it.exact("packageName", "deepLink")
             AppLink(it.strictString("packageName"), it.nullableString("deepLink"))
         },
-        exercises = value.strictArray("exercises").objects(::decodeExercise),
+        exercises = value.strictArray("exercises").objects { exercise ->
+            if (schema == DocumentSchema.V025) decodeV025Exercise(exercise) else decodeExercise(exercise)
+        },
+    )
+}
+
+private fun decodeV025Exercise(value: JSONObject): Exercise {
+    value.exact("id", "name", "notes", "setCount", "target", "timerSeconds", "artworkId")
+    return Exercise(
+        id = value.strictString("id"),
+        name = value.strictString("name"),
+        notes = value.strictString("notes"),
+        setCount = value.strictInt("setCount"),
+        target = value.strictString("target"),
+        timerSeconds = value.nullableInt("timerSeconds"),
+        artworkId = value.strictString("artworkId"),
+        measurements = ExerciseMeasurements(),
+        progression = null,
     )
 }
 
@@ -276,16 +300,20 @@ private fun encodeSession(value: GuidedSession) = JSONObject().apply {
     put("handledProgressionExerciseIds", JSONArray(value.handledProgressionExerciseIds.sorted()))
 }
 
-private fun decodeSession(value: JSONObject): GuidedSession {
-    value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision", "effectiveDate", "handledProgressionExerciseIds")
+private fun decodeSession(value: JSONObject, schema: DocumentSchema): GuidedSession {
+    if (schema == DocumentSchema.V025) {
+        value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision", "effectiveDate")
+    } else {
+        value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision", "effectiveDate", "handledProgressionExerciseIds")
+    }
     val sets = value.strictObject("completedSets")
     return GuidedSession(
         value.strictString("id"), decodeOccurrence(value.strictObject("occurrence")), value.strictString("routineId"),
-        decodeRoutine(value.strictObject("snapshot")), value.strictString("focusedExerciseId"),
+        decodeRoutine(value.strictObject("snapshot"), schema), value.strictString("focusedExerciseId"),
         sets.keys().asSequence().associateWith { sets.strictInt(it) }, decodeTimer(value.strictObject("timer")),
         value.strictLong("startedAtMillis"), value.strictLong("updatedAtMillis"), value.strictLong("eventRevision"),
         LocalDate.parse(value.strictString("effectiveDate")),
-        value.strictArray("handledProgressionExerciseIds").strings().toSet(),
+        if (schema == DocumentSchema.V025) emptySet() else value.strictArray("handledProgressionExerciseIds").strings().toSet(),
     )
 }
 
@@ -316,12 +344,19 @@ private fun encodeHistory(value: WorkoutHistoryEntry) = JSONObject().apply {
     put("effectiveDate", value.effectiveDate.toString())
 }
 
-private fun decodeHistory(value: JSONObject): WorkoutHistoryEntry {
+private fun decodeHistory(value: JSONObject, schema: DocumentSchema): WorkoutHistoryEntry {
     value.exact("id", "occurrence", "snapshot", "startedAtMillis", "completedAtMillis", "effectiveDate")
     return WorkoutHistoryEntry(value.strictString("id"), decodeOccurrence(value.strictObject("occurrence")),
-        decodeRoutine(value.strictObject("snapshot")), value.strictLong("startedAtMillis"), value.strictLong("completedAtMillis"),
+        decodeRoutine(value.strictObject("snapshot"), schema), value.strictLong("startedAtMillis"), value.strictLong("completedAtMillis"),
         LocalDate.parse(value.strictString("effectiveDate")))
 }
+
+private enum class DocumentSchema { V025, CURRENT }
+
+private val V025_DOCUMENT_FIELDS = setOf(
+    "format", "generation", "plan", "preferences", "partialSessions", "history", "occurrenceExceptions",
+)
+private val CURRENT_DOCUMENT_FIELDS = V025_DOCUMENT_FIELDS + "progressionReceipts"
 
 private fun JSONObject.exact(vararg expected: String): JSONObject {
     require(keys().asSequence().toSet() == expected.toSet()) { "Unexpected or missing fields." }
