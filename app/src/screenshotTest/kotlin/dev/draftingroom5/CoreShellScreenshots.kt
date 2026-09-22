@@ -3,6 +3,7 @@ package dev.draftingroom5
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import java.time.DayOfWeek
 import dev.draftingroom5.retirement.ui.retirementAccountsPreviewState
 import dev.draftingroom5.retirement.ui.retirementIntegratedPreviewState
+import dev.draftingroom5.retirement.domain.ProviderEnvironment
+import dev.draftingroom5.retirement.provider.ConnectionHomeContent
 
 class CoreShellScreens : PreviewParameterProvider<String> {
     override val values = sequenceOf(
@@ -91,6 +94,25 @@ fun RetirementAccountScreenshots(@PreviewParameter(RetirementAccountScreens::cla
         else -> AppRoute.RetirementPropertyEdit("preview-property")
     }
     RetirementWorkspaceScreen(route, {}, {}, {}, {}, {}, {}, retirementAccountsPreviewState())
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun LinkedAccountsHomeScreenshots() {
+    RetirementTheme {
+        androidx.compose.material3.Surface(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Column(
+                Modifier.fillMaxSize().padding(20.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+            ) {
+                ConnectionHomeContent(ProviderEnvironment.SANDBOX, false, false, false, {}, {}, {}, {})
+            }
+        }
+    }
 }
 
 class LinkedCompletionStates : PreviewParameterProvider<String> {

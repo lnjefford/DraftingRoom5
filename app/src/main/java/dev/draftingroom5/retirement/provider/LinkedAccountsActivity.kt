@@ -15,14 +15,25 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
 import com.plaid.link.FastOpenPlaidLink
+import com.plaid.link.OnLoadCallback
 import com.plaid.link.Plaid
+import com.plaid.link.PlaidHandler
 import com.plaid.link.configuration.LinkTokenConfiguration
 import com.plaid.link.configuration.LinkLogLevel
 import com.plaid.link.result.LinkSuccess
@@ -42,6 +53,7 @@ class LinkedAccountsActivity : ComponentActivity() {
     private var setup by mutableStateOf(false)
     private var manual by mutableStateOf(false)
     private var busy by mutableStateOf(false)
+    private var plaidOpening by mutableStateOf(false)
     private var message by mutableStateOf<String?>(null)
     private var review by mutableStateOf<AccountBatch?>(null)
     private var reviewGeneration = 0L
@@ -57,6 +69,7 @@ class LinkedAccountsActivity : ComponentActivity() {
         else message = "Device authentication cancelled. You can still add an account manually."
     }
     private val link = registerForActivityResult(FastOpenPlaidLink()) { result ->
+        Plaid.destroy()
         val active = attempt; attempt = null
         if (active == null) { message = "Link was interrupted. Resume a pending review or start again."; return@registerForActivityResult }
         if (result !is LinkSuccess) {
@@ -118,6 +131,52 @@ class LinkedAccountsActivity : ComponentActivity() {
             finally { busy = false }
         }
     }
+    private fun openPlaid() {
+        val selectedProfile = profile ?: return
+        if (busy || plaidOpening) return
+        plaidOpening = true
+        message = null
+        lifecycleScope.launch {
+            var pending: LinkAttempt? = null
+            try {
+                val active = withContext(Dispatchers.IO) { runtime.plaid.beginLink(selectedProfile.id, reconnectItem) }
+                pending = active
+                attempt = active
+                val configuration = LinkTokenConfiguration.Builder().token(active.takeToken()).logLevel(LinkLogLevel.ASSERT).build()
+                val opened = CompletableDeferred<Boolean>()
+                var handler: PlaidHandler? = null
+                handler = Plaid.create(application, configuration, object : OnLoadCallback {
+                    override fun onLoad() {
+                        window.decorView.post {
+                            val readyHandler = handler
+                            if (attempt?.id != active.id || readyHandler == null || opened.isCompleted) return@post
+                            opened.complete(runCatching { link.launch(readyHandler) }.isSuccess)
+                        }
+                    }
+                })
+                if (!withTimeout(30_000) { opened.await() }) throw ProviderException(ProviderFailure.UNAVAILABLE)
+            } catch (_: TimeoutCancellationException) {
+                Plaid.destroy()
+                message = "Plaid took too long to open. Check your connection and try again."
+                pending?.let { runtime.plaid.cancelLink(it.id) }
+                if (attempt?.id == pending?.id) attempt = null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ProviderException) {
+                Plaid.destroy()
+                message = safeMessage(e.failure)
+                pending?.let { runtime.plaid.cancelLink(it.id) }
+                if (attempt?.id == pending?.id) attempt = null
+            } catch (_: Exception) {
+                Plaid.destroy()
+                message = "Plaid couldn't open. Try again."
+                pending?.let { runtime.plaid.cancelLink(it.id) }
+                if (attempt?.id == pending?.id) attempt = null
+            } finally {
+                plaidOpening = false
+            }
+        }
+    }
     private suspend fun loadReview(itemId: String) {
         val result = withContext(Dispatchers.IO) {
             runtime.repository.load().generation to runtime.plaid.fetchSnapshot(itemId)
@@ -131,49 +190,69 @@ class LinkedAccountsActivity : ComponentActivity() {
             (account.origin == AccountOrigin.PLAID && state.providerItems.any { it.id == account.providerIdentity?.itemId && it.revokedAt != null })) }
     }
 
-    @Composable private fun Content() {
-        BackHandler(enabled = !busy) {
+    @Composable @OptIn(ExperimentalMaterial3Api::class) private fun Content() {
+        BackHandler(enabled = !busy && !plaidOpening) {
             if (setup) { setup = false; clientField?.text?.clear(); secretField?.text?.clear() }
             else finish()
         }
-        Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(if (manual) "Add account manually" else if (reconnectItem != null) "Reconnect account" else "Connect institution", style = MaterialTheme.typography.headlineMedium)
-                message?.let { Text(it) }
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(when {
+                        manual -> "Add account"
+                        setup -> "Plaid credentials"
+                        review != null -> "Review accounts"
+                        reconnectItem != null -> "Reconnect account"
+                        else -> "Connect accounts"
+                    }) },
+                    actions = { IconButton(onClick = { finish() }, enabled = !busy && !plaidOpening) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    } },
+                )
+            },
+        ) { contentPadding ->
+            Column(Modifier.fillMaxSize().padding(contentPadding).imePadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                message?.let { NoticeCard(it) }
                 when {
                     manual -> ManualForm()
                     setup -> CredentialsForm()
                     review != null -> ReviewForm(review!!)
-                    else -> {
-                        Text("Read-only balances and investment holdings through Plaid. You choose which accounts to track and confirm their classification. Some institutions and cash accounts are unsupported.")
-                        Text("Your own Plaid subscription needs Investments access and dev.draftingroom5 registered as an allowed Android package. Credentials stay encrypted on this phone and are sent directly to Plaid. They are not included in backups.")
-                        Text(if (profile == null) "Provider credentials: not configured" else "Provider credentials: configured (${profile!!.environment.name.lowercase()})")
-                        Button(onClick = ::authenticate, enabled = !busy) { Text(if (profile == null) "Set up credentials privately" else "Replace credentials") }
-                        Button(enabled = profile != null && !busy, onClick = {
-                            perform {
-                                val active = withContext(Dispatchers.IO) { runtime.plaid.beginLink(profile!!.id, reconnectItem) }
-                                attempt = active
-                                val configuration = LinkTokenConfiguration.Builder().token(active.takeToken()).logLevel(LinkLogLevel.ASSERT).build()
-                                link.launch(Plaid.create(application, configuration))
-                            }
-                        }) { Text(if (reconnectItem == null) "Continue to Plaid" else "Reconnect with Plaid") }
-                        Button(enabled = !busy, onClick = { perform {
-                            val pending = withContext(Dispatchers.IO) { runtime.plaid.pendingItems() }
-                            if (pending.isEmpty()) message = "No pending review. Start a new connection."
-                            else loadReview(pending.first())
-                        } }) { Text("Resume pending review") }
-                        TextButton(onClick = { manual = true }, enabled = !busy) { Text("Add an account manually") }
-                    }
+                    else -> ConnectionHome()
                 }
-                TextButton(onClick = { finish() }, enabled = !busy) { Text("Close") }
+            }
+        }
+    }
+
+    @Composable private fun ConnectionHome() {
+        ConnectionHomeContent(
+            environment = profile?.environment,
+            reconnecting = reconnectItem != null,
+            busy = busy,
+            plaidOpening = plaidOpening,
+            onAuthenticate = ::authenticate,
+            onOpenPlaid = ::openPlaid,
+            onManual = { manual = true },
+            onResume = { perform {
+                val pending = withContext(Dispatchers.IO) { runtime.plaid.pendingItems() }
+                if (pending.isEmpty()) message = "There isn't an unfinished connection to review."
+                else loadReview(pending.first())
+            } },
+        )
+    }
+
+    @Composable private fun NoticeCard(text: String) {
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text(text, modifier = Modifier.weight(1f))
             }
         }
     }
 
     @Composable private fun CredentialsForm() {
         var environment by remember { mutableStateOf(profile?.environment ?: ProviderEnvironment.SANDBOX) }
-        Text("Enter your credentials here only. They cannot be viewed later. Replacement keeps the existing profile and invalidates in-flight requests. You may need to reconnect after provider-side rotation.")
+        Text("Encrypted on this phone. Your credentials can't be viewed after saving.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (profile == null) Choice("Environment", environment, ProviderEnvironment.entries) { environment = it }
         SecretField("Plaid client ID") { clientField = it }
         SecretField("Plaid secret") { secretField = it }
@@ -192,9 +271,9 @@ class LinkedAccountsActivity : ComponentActivity() {
                 }
                 finally { client.fill('\u0000'); secret.fill('\u0000') }
             }
-        }) { Text("Save encrypted credentials") }
+        }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Save credentials") }
         if (profile != null) {
-            Text("Removing credentials stops this profile's connections on this phone. Accepted account history remains readable. Remote revocation may require your provider dashboard.")
+            Text("Advanced", style = MaterialTheme.typography.titleMedium)
             TextButton(enabled = !busy, onClick = {
                 if (android.os.SystemClock.elapsedRealtime() >= authenticatedUntil) { setup = false; authenticate(); return@TextButton }
                 authenticatedUntil = 0
@@ -211,7 +290,6 @@ class LinkedAccountsActivity : ComponentActivity() {
                 }
             }) { Text("Remove credentials and connections") }
         }
-        Text("If the Keystore key is unavailable, reset all provider credentials on this phone, then enter them again and link again. This also removes any property-provider key. Accepted financial history stays readable. Remote access must be revoked in the provider dashboard.")
         TextButton(enabled = !busy, onClick = {
             if (android.os.SystemClock.elapsedRealtime() >= authenticatedUntil) { setup = false; authenticate(); return@TextButton }
             authenticatedUntil = 0
@@ -331,6 +409,56 @@ class LinkedAccountsActivity : ComponentActivity() {
     }
 }
 
+@Composable
+internal fun ConnectionHomeContent(
+    environment: ProviderEnvironment?,
+    reconnecting: Boolean,
+    busy: Boolean,
+    plaidOpening: Boolean,
+    onAuthenticate: () -> Unit,
+    onOpenPlaid: () -> Unit,
+    onManual: () -> Unit,
+    onResume: () -> Unit,
+) {
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(Icons.Default.AccountBalance, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
+        Text(if (reconnecting) "Reconnect your institution" else "Connect your institution", style = MaterialTheme.typography.headlineMedium)
+        Text("Choose an institution in Plaid, then review the accounts you want to add.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(if (environment == null) Icons.Default.Lock else Icons.Default.CheckCircle, contentDescription = null,
+                tint = if (environment == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f)) {
+                Text(if (environment == null) "Plaid setup needed" else "Plaid is ready", fontWeight = FontWeight.SemiBold)
+                Text(environment?.name?.lowercase()?.replaceFirstChar(Char::uppercase) ?: "Add your private API credentials first.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    if (environment == null) {
+        Button(onClick = onAuthenticate, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Set up Plaid") }
+    } else {
+        Button(onClick = onOpenPlaid, enabled = !busy && !plaidOpening, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+            if (plaidOpening) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(if (plaidOpening) "Opening Plaid…" else if (reconnecting) "Reconnect with Plaid" else "Open Plaid")
+        }
+    }
+    OutlinedButton(onClick = onManual, enabled = !busy && !plaidOpening, modifier = Modifier.fillMaxWidth()) { Text("Add account manually") }
+    TextButton(onClick = { showSettings = !showSettings }, modifier = Modifier.fillMaxWidth()) {
+        Text(if (showSettings) "Hide connection settings" else "Connection settings")
+    }
+    if (showSettings) Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Credentials are encrypted on this phone and excluded from backups.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onAuthenticate, enabled = !busy && !plaidOpening) { Text(if (environment == null) "Set up Plaid credentials" else "Replace Plaid credentials") }
+            TextButton(enabled = !busy && !plaidOpening, onClick = onResume) { Text("Resume unfinished connection") }
+        }
+    }
+}
+
 @Composable private fun <T> Choice(label: String, value: T, values: List<T>, changed: (T) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -343,10 +471,11 @@ class LinkedAccountsActivity : ComponentActivity() {
 internal fun safeMessage(failure: ProviderFailure) = when (failure) {
     ProviderFailure.EXCHANGE_UNCERTAIN -> "Link exchange could not be confirmed or saved. Its one-time token will not be replayed. Review and revoke any unfinished connection in your Plaid dashboard, then start Link again."
     ProviderFailure.NEEDS_CREDENTIALS -> "Credentials need attention. Set up or replace them privately, then reconnect. Accepted values remain available."
+    ProviderFailure.CONFIGURATION -> "Plaid couldn't start. In the Plaid dashboard, enable Investments and allow the Android package dev.draftingroom5."
     ProviderFailure.OFFLINE -> "You're offline. Last accepted values are unchanged. Retry when connected."
     ProviderFailure.CANCELLED -> "Connection interrupted or expired. Start again; the one-time token will not be replayed."
     ProviderFailure.RATE_LIMITED -> "The provider has limited requests. Refresh will wait until its retry window."
-    ProviderFailure.UNSUPPORTED -> "This institution or product is unsupported. Add an account manually."
+    ProviderFailure.UNSUPPORTED -> "Plaid Investments isn't enabled for this connection. Check your Plaid product access, or add the account manually."
     ProviderFailure.CONFLICT -> "Data or credentials changed during this operation. Refresh and review again."
     ProviderFailure.INVALID_RESPONSE -> "Provider data was incomplete or invalid. Last accepted values are unchanged."
     ProviderFailure.UNAVAILABLE -> "The provider is temporarily unavailable. Last accepted values are unchanged."

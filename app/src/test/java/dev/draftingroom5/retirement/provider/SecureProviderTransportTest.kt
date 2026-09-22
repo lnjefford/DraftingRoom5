@@ -38,6 +38,17 @@ class SecureProviderTransportTest {
         assertEquals(ProviderFailure.NEEDS_CREDENTIALS, auth.failure)
         assertFalse(auth.toString().contains("synthetic-secret")); assertNull(auth.cause)
     }
+    @Test fun linkSetupFailuresRemainActionableWithoutExposingUpstreamText() {
+        fun failure(code: String) = assertThrows(ProviderException::class.java) {
+            SecureProviderTransport { FakeConnection(URL("https://sandbox.plaid.com"), 400,
+                """{"error_code":"$code","error_message":"synthetic-sensitive-detail"}""") }
+                .post(ProviderEnvironment.SANDBOX, PlaidEndpoint.LINK, JSONObject())
+        }
+        assertEquals(ProviderFailure.CONFIGURATION, failure("INVALID_CONFIGURATION").failure)
+        assertEquals(ProviderFailure.CONFIGURATION, failure("INVALID_FIELD").failure)
+        assertEquals(ProviderFailure.UNSUPPORTED, failure("PRODUCT_NOT_ENABLED").failure)
+        assertEquals(ProviderFailure.UNSUPPORTED, failure("SANDBOX_PRODUCT_NOT_ENABLED").failure)
+    }
     @Test fun responseSizeAndMalformedJsonFailClosed() {
         assertThrows(ProviderException::class.java) { readBounded(ByteArrayInputStream(ByteArray(101)), 100) }
         assertEquals(100, readBounded(ByteArrayInputStream(ByteArray(100)), 100).size)

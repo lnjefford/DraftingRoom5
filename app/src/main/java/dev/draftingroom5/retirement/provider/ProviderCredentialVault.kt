@@ -8,7 +8,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import java.util.Base64
 
-enum class ProviderFailure { NEEDS_CREDENTIALS, OFFLINE, CANCELLED, RATE_LIMITED, UNSUPPORTED, INVALID_RESPONSE, CONFLICT, UNAVAILABLE, EXCHANGE_UNCERTAIN }
+enum class ProviderFailure { NEEDS_CREDENTIALS, CONFIGURATION, OFFLINE, CANCELLED, RATE_LIMITED, UNSUPPORTED, INVALID_RESPONSE, CONFLICT, UNAVAILABLE, EXCHANGE_UNCERTAIN }
 class ProviderException(val failure: ProviderFailure, val retryAfter: java.time.Instant? = null) : RuntimeException(failure.name) {
     override fun fillInStackTrace(): Throwable = this
 }
