@@ -1,0 +1,12 @@
+{
+  "head": "81bcd5651006de75f3560788534e19c6d32ee706",
+  "unexpected_generated_or_signing_files": [],
+  "new_kotlin_whitespace_issues": [],
+  "default_version_name": "0.26.1",
+  "default_version_code": 26003,
+  "min_sdk": 37,
+  "target_sdk": 37,
+  "compile_sdk": 37,
+  "ignored_synthetic_drafts_preserved": true,
+  "no_commits_pushes_tags_or_release": true
+}

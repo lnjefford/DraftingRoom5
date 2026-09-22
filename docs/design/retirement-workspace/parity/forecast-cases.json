@@ -1,0 +1,1587 @@
+[
+  {
+    "name": "mixed",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "higher_spending",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 9000000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "earlier_retirement",
+    "age": 58,
+    "retire": 59,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "keep_home",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": false,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "extended_aca",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": true,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "mfj",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "mfj",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "mfs",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "mfs",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "hoh_no_state",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "hoh",
+    "state": "TX",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "shared_seeded_distribution",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 64,
+    "seed": 74074
+  },
+  {
+    "name": "shared_seeded_stress",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 14000000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 64,
+    "seed": 74074
+  },
+  {
+    "name": "income_surplus_tax",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 1000000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "locked_assets",
+    "age": 50,
+    "retire": 50,
+    "end": 59,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [],
+    "properties": [],
+    "epic": [],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 0,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "rmd_transfer",
+    "age": 73,
+    "retire": 73,
+    "end": 76,
+    "spending_cents": 0,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [],
+    "properties": [],
+    "epic": [],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 0,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 1,
+    "seed": 74074
+  },
+  {
+    "name": "shared_epic_property_uncertainty",
+    "age": 58,
+    "retire": 60,
+    "end": 76,
+    "spending_cents": 6500000,
+    "contributions": [
+      1200000,
+      500000,
+      200000,
+      400000
+    ],
+    "accounts": [
+      {
+        "bucket": 0,
+        "cents": 65000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 1,
+        "cents": 15000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.6,
+          0.15,
+          0.2,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 2,
+        "cents": 5000000,
+        "basis_cents": 0,
+        "allocation": [
+          0.7,
+          0.15,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      },
+      {
+        "bucket": 3,
+        "cents": 25000000,
+        "basis_cents": 16000000,
+        "allocation": [
+          0.65,
+          0.2,
+          0.1,
+          0.05,
+          0,
+          0
+        ]
+      }
+    ],
+    "incomes": [
+      {
+        "cents": 1800000,
+        "start": 65,
+        "end": 70,
+        "kind": "ordinary"
+      },
+      {
+        "cents": 3000000,
+        "start": 67,
+        "end": 130,
+        "kind": "social_security"
+      },
+      {
+        "cents": 200000,
+        "start": 61,
+        "end": 63,
+        "kind": "tax_free"
+      }
+    ],
+    "properties": [
+      {
+        "value": 30000000,
+        "mortgage": 12000000,
+        "appreciation_bps": 150,
+        "rate_bps": 450,
+        "payment": 120000,
+        "months": 120,
+        "ownership_bps": 5000,
+        "low": 27000000,
+        "high": 33000000
+      }
+    ],
+    "epic": [
+      [
+        2026,
+        3000000,
+        2400000
+      ],
+      [
+        2027,
+        3300000,
+        2640000
+      ],
+      [
+        2028,
+        3600000,
+        2880000
+      ]
+    ],
+    "inflation_bps": 250,
+    "filing": "single",
+    "state": "WI",
+    "household": 1,
+    "premium": 1200000,
+    "extended": false,
+    "sell_home": true,
+    "medical": 300000,
+    "paths": 64,
+    "seed": 74074,
+    "epic_volatility": 0.5
+  }
+]

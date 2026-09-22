@@ -1,0 +1,58 @@
+DraftingRoom5 Gradle: Java 17 from C:\Users\lnjef\.jdks\temurin-17.0.20.1
+
+Welcome to Gradle 8.11.1!
+
+Here are the highlights of this release:
+ - Parallel load and store for Configuration Cache
+ - Java compilation errors at the end of the build output
+ - Consolidated report for warnings and deprecations
+
+For more details see https://docs.gradle.org/8.11.1/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+Unable to initialize metrics, ensure C:\.android is writable, details: C:\.android\analytics.settings (The system cannot find the path specified)
+WARNING: The option setting 'android.experimental.enableScreenshotTest=true' is experimental.
+The current default is 'false'.
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/GuidedSessionScreen.kt:952:53 'fun announceForAccessibility(p0: CharSequence!): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/HapticFeedback.kt:71:25 'static field HAPTIC_FEEDBACK_ENABLED: String' is deprecated. Deprecated in Java.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/retirement/ui/PrivateDraftState.kt:87:67 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'kotlin.Array<(out) (it(kotlin.Enum<*> & T & Any)..it(kotlin.Enum<*>? & T?))>?'.
+
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugJavaWithJavac'.
+> java.nio.file.AccessDeniedException: C:\Users\lnjef\.codex\visualizations\2026\09\21\01a0c4f9-438e-72f3-bf17-e0b9d7e24f84\gradle-cache\caches\8.11.1\transforms\677e6822e6a008f458e1db2ea25d4e8f\transformed\play-services-basement-18.0.2-api.jar
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 5m 29s
+17 actionable tasks: 2 executed, 15 up-to-date

@@ -26,14 +26,29 @@ import java.io.File
 /** Dependency-free native audit runner. See docs/reviews/DR5-056 for emulator setup. */
 class WidgetAuditInstrumentation : Instrumentation() {
     private var progressionAudit = false
+    private var retirementProviderAudit = false
+    private var epicAudit = false
+    private var forecastAudit = false
+    private var retirementHardeningAudit = false
+    private var retirementReviewAudit = false
     private val report = StringBuilder()
     private lateinit var output: File
     override fun onCreate(arguments: Bundle?) {
         progressionAudit = arguments?.getString("audit") == "progression"
+        retirementProviderAudit = arguments?.getString("audit") == "retirement-provider"
+        epicAudit = arguments?.getString("audit") == "epic"
+        forecastAudit = arguments?.getString("audit") == "forecast"
+        retirementHardeningAudit = arguments?.getString("audit") == "retirement-hardening"
+        retirementReviewAudit = arguments?.getString("audit") == "retirement-review"
         super.onCreate(arguments); start()
     }
 
     override fun onStart() {
+        if (retirementReviewAudit) { RetirementReviewNativeAudit(this).run(); return }
+        if (retirementHardeningAudit) { RetirementHardeningNativeAudit(this).run(); return }
+        if (forecastAudit) { ForecastNativeAudit(this).run(); return }
+        if (epicAudit) { EpicNativeAudit(this).run(); return }
+        if (retirementProviderAudit) { RetirementProviderNativeAudit(this).run(); return }
         if (progressionAudit) { ProgressionNativeAudit(this).run(); return }
         output = File(targetContext.filesDir, "widget-audit").apply { mkdirs() }
         try {

@@ -614,6 +614,7 @@ private fun DraftingRoom5App() {
                         requestAutomaticBackup()
                     }
                 },
+                onSwitchWorkspace = navigation::switchWorkspace,
                 onChangeOccurrence = { occurrence, today, disposition ->
                     val result = if (disposition == OccurrenceDisposition.DEFERRED) appRepository.deferOccurrence(occurrence, today)
                         else appRepository.skipOccurrence(occurrence, today)
@@ -995,6 +996,32 @@ private fun DraftingRoom5App() {
                     onReturnToDashboard = navigation::dashboard,
                 )
             }
+            AppRoute.RetirementOverview,
+            AppRoute.RetirementForecast,
+            AppRoute.RetirementAssets,
+            AppRoute.RetirementAccounts,
+            AppRoute.RetirementAddAsset,
+            is AppRoute.RetirementAccountDetail,
+            is AppRoute.RetirementAccountUpdate,
+            is AppRoute.RetirementAccountHistory,
+            is AppRoute.RetirementAccountEdit,
+            is AppRoute.RetirementPropertyDetail,
+            is AppRoute.RetirementPropertyHistory,
+            is AppRoute.RetirementPropertyEdit,
+            AppRoute.RetirementEpicDetail,
+            AppRoute.RetirementEpicUpload,
+            AppRoute.RetirementLibrary,
+            AppRoute.RetirementForecastSettings,
+            is AppRoute.RetirementForecastRisk,
+            is AppRoute.RetirementScenarioDetail -> RetirementWorkspaceScreen(
+                route = screen,
+                onSwitchWorkspace = navigation::switchWorkspace,
+                onSelectTab = navigation::selectRetirementTab,
+                onOpenLibrary = { navigation.navigate(AppRoute.RetirementLibrary) },
+                onOpenForecastSettings = { navigation.navigate(AppRoute.RetirementForecastSettings) },
+                onBack = { navigation.back() },
+                onNavigate = navigation::navigate,
+            )
         }
         }
     }
@@ -1020,6 +1047,7 @@ private fun Dashboard(
     onOpenCustom: (DashboardSession) -> Unit,
     onLaunchExternal: (DashboardSession) -> Unit,
     onUndoLinked: (DashboardSession) -> Unit,
+    onSwitchWorkspace: (AppWorkspace) -> Unit = {},
     onChangeOccurrence: (OccurrenceKey, LocalDate, OccurrenceDisposition) -> RepositoryResult<AppDocument> = { _, _, _ -> RepositoryResult.Invalid(IllegalArgumentException("Unavailable")) },
     onUndoOccurrence: (OccurrenceException) -> RepositoryResult<AppDocument> = { RepositoryResult.Invalid(IllegalArgumentException("Unavailable")) },
 ) {
@@ -1115,6 +1143,7 @@ private fun Dashboard(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
+                    WorkspaceSwitcher(AppWorkspace.FITNESS, onSwitchWorkspace)
                     if (updateAvailableVersion != null || updateBusy) {
                         IconButton(
                             onClick = onInstallUpdate,

@@ -1,0 +1,10 @@
+retirement-provider: INSTRUMENTATION_RESULT: shortMsg=Process crashed.
+
+INSTRUMENTATION_CODE: 0
+Traceback (most recent call last):
+  File "C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\.tooling\dr5-078-native-matrix.py", line 15, in <module>
+    instrument(name,name)
+  File "C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\.tooling\dr5-078-native-matrix.py", line 13, in instrument
+    if result.returncode or 'FAIL:' in data or 'Process crashed' in data or 'PASS:' not in data: raise RuntimeError('Native audit failed: '+suffix)
+                                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Native audit failed: retirement-provider

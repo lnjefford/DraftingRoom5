@@ -1,0 +1,150 @@
+DraftingRoom5 Gradle: Java 17 from C:\Users\lnjef\.jdks\temurin-17.0.20.1
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableScreenshotTest=true' is experimental.
+The current default is 'false'.
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/GuidedSessionScreen.kt:952:53 'fun announceForAccessibility(p0: CharSequence!): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/HapticFeedback.kt:71:25 'static field HAPTIC_FEEDBACK_ENABLED: String' is deprecated. Deprecated in Java.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/retirement/ui/PrivateDraftState.kt:87:67 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'kotlin.Array<(out) (it(kotlin.Enum<*> & T & Any)..it(kotlin.Enum<*>? & T?))>?'.
+
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:generateDebugAndroidTestResValues
+> Task :app:generateDebugAndroidTestLintModel
+> Task :app:extractProguardFiles
+> Task :app:generateDebugLintReportModel
+> Task :app:generateDebugUnitTestLintModel
+> Task :app:lintAnalyzeDebug
+> Task :app:lintAnalyzeDebugAndroidTest
+> Task :app:lintAnalyzeDebugUnitTest
+
+> Task :app:lintReportDebug
+Wrote HTML report to file:///C:/Users/lnjef/.codex/visualizations/2026/09/21/01a0c4f9-438e-72f3-bf17-e0b9d7e24f84/dr5-build/app/reports/lint-results-debug.html
+
+> Task :app:lintDebug
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeDebugJavaResource
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeExtDexDebug
+> Task :app:mergeLibDexDebug
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so.
+
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+> Task :app:processDebugAndroidTestManifest
+> Task :app:generateDebugAndroidTestBuildConfig
+> Task :app:checkDebugAndroidTestAarMetadata
+> Task :app:mapDebugAndroidTestSourceSetPaths
+> Task :app:generateDebugAndroidTestResources
+> Task :app:mergeDebugAndroidTestResources
+> Task :app:processDebugAndroidTestResources
+> Task :app:compileDebugAndroidTestKotlin
+> Task :app:javaPreCompileDebugAndroidTest
+> Task :app:compileDebugAndroidTestJavaWithJavac
+> Task :app:mergeDebugAndroidTestShaders
+> Task :app:compileDebugAndroidTestShaders NO-SOURCE
+> Task :app:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDebugAndroidTestAssets
+> Task :app:compressDebugAndroidTestAssets
+> Task :app:desugarDebugAndroidTestFileDependencies
+> Task :app:dexBuilderDebugAndroidTest
+> Task :app:mergeDebugAndroidTestGlobalSynthetics
+> Task :app:processDebugAndroidTestJavaRes
+> Task :app:mergeDebugAndroidTestJavaResource
+> Task :app:checkDebugAndroidTestDuplicateClasses
+> Task :app:mergeExtDexDebugAndroidTest
+> Task :app:mergeLibDexDebugAndroidTest
+> Task :app:mergeProjectDexDebugAndroidTest
+> Task :app:mergeDebugAndroidTestJniLibFolders
+> Task :app:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebugAndroidTest
+> Task :app:writeDebugAndroidTestSigningConfigVersions
+> Task :app:packageDebugAndroidTest
+> Task :app:createDebugAndroidTestApkListingFileRedirect
+> Task :app:assembleDebugAndroidTest
+> Task :app:preDebugScreenshotTestBuild UP-TO-DATE
+> Task :app:compileDebugScreenshotTestKotlin
+> Task :app:javaPreCompileDebugScreenshotTest
+> Task :app:compileDebugScreenshotTestJavaWithJavac NO-SOURCE
+> Task :app:packageDebugScreenshotTestForScreenshotTest
+> Task :app:validateDebugScreenshotTest
+
+dev.draftingroom5.CoreShellScreenshotsKt > RetirementAccountScreenshots > RetirementAccountScreenshots > RetirementAccountScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.RetirementAccountScreens}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RetirementAccountScreenshots > RetirementAccountScreenshots > RetirementAccountScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.RetirementAccountScreens}]_0 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RetirementAccountScreenshots > RetirementAccountScreenshots > RetirementAccountScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.RetirementAccountScreens}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RetirementAccountScreenshots > RetirementAccountScreenshots > RetirementAccountScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.RetirementAccountScreens}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RetirementAccountScreenshots > RetirementAccountScreenshots > RetirementAccountScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.RetirementAccountScreens}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+443 tests completed, 5 failed
+
+> Task :app:validateDebugScreenshotTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:validateDebugScreenshotTest'.
+> There were failing tests. See the report at: file:///C:/Users/lnjef/.codex/visualizations/2026/09/21/01a0c4f9-438e-72f3-bf17-e0b9d7e24f84/dr5-build/app/reports/screenshotTest/preview/debug/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 32m 38s
+84 actionable tasks: 69 executed, 15 up-to-date

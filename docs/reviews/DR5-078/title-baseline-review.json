@@ -1,0 +1,68 @@
+[
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\CoreShellScreenshots_Compact_1720b49e_17c710c1_15.png",
+    "bounds": [
+      66,
+      23,
+      437,
+      142
+    ],
+    "previous_sha256": "d4be4c7ee53033161902904ff9f449532028628d6f8f601399eab62ebd5e11c7",
+    "accepted_sha256": "e3466295297227aa8a9e73b8510f26f0e72d48af4d0cdb750a2fb0d1aa5c64bf"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\CoreShellScreenshots_Large text_b9dd6a6d_17c710c1_0.png",
+    "bounds": [
+      66,
+      20,
+      679,
+      168
+    ],
+    "previous_sha256": "1e3d1f91158b3326c6b1c2eeb91836d072a1ef25da109fd4565124004e09e3b1",
+    "accepted_sha256": "b3daed34fb7de84473e9fca95f95f99babf2c93f28e2af31ed7821567c70972b"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\CoreShellScreenshots_Large text_b9dd6a6d_17c710c1_15.png",
+    "bounds": [
+      66,
+      20,
+      532,
+      168
+    ],
+    "previous_sha256": "08bb4fa7fd0b04d0ff4e4fea94bb63a50bbcf4f1d948e884a0b8de5ad470bff5",
+    "accepted_sha256": "0f8c20647b96d0cd417944b8c6b85e8e596dc52860cea7d5c0b2ffcc65069a6e"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\ExceptionalStateScreenshots_Large text_b9dd6a6d_5ab32b0c_13.png",
+    "bounds": [
+      66,
+      20,
+      679,
+      168
+    ],
+    "previous_sha256": "52bceda6c978f0e4c70cdf98ecf85248e8dfda79737469a2ae319f6e3ffce2d0",
+    "accepted_sha256": "3fa1fa99bf2941913c98459c0306b502fa4f4f6bea46bd2bd7e6d4d0f15d94b5"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\LinkedCompletionScreenshots_Large text_b9dd6a6d_b87e83e5_0.png",
+    "bounds": [
+      66,
+      20,
+      679,
+      168
+    ],
+    "previous_sha256": "1e3d1f91158b3326c6b1c2eeb91836d072a1ef25da109fd4565124004e09e3b1",
+    "accepted_sha256": "b3daed34fb7de84473e9fca95f95f99babf2c93f28e2af31ed7821567c70972b"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\LinkedCompletionScreenshots_Large text_b9dd6a6d_b87e83e5_1.png",
+    "bounds": [
+      66,
+      20,
+      679,
+      168
+    ],
+    "previous_sha256": "d648543074797edf32e1f959785dd7060f4a2058edffb7595f80b3ad24c290d1",
+    "accepted_sha256": "166511079b439632609bc091c38290271751ce49dc8ed1b291c9ca0dd7acd315"
+  }
+]

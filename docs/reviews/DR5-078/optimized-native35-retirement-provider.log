@@ -1,0 +1,3 @@
+PASS: real Android Keystore AES-GCM, unique IVs, ciphertext exclusion, recreation, authenticated metadata tamper rejection (Software Keystore)
+PASS: real SQLite rollback after first linked snapshot, atomic classification/value/freshness publication, append-only triggers and database recreation
+

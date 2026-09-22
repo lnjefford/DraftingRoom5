@@ -71,7 +71,7 @@ private val DarkColors = darkColorScheme(
     onError = Color(0xFF690005),
 )
 
-private val AppShapes = Shapes(
+internal val AppShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(18.dp),
@@ -81,7 +81,7 @@ private val AppShapes = Shapes(
 
 internal val EditorialSerif = FontFamily(Font(R.font.dm_serif_display_regular, FontWeight.Normal))
 
-private val AppTypography = Typography().run {
+internal val AppTypography = Typography().run {
     copy(
         displayLarge = displayLarge.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-1).sp),
         displayMedium = displayMedium.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-1).sp),
@@ -152,7 +152,8 @@ internal fun BrandTitle(
     ) {
         LauncherFiveMark()
         Spacer(Modifier.width(10.dp))
-        Text(title, style = MaterialTheme.typography.titleLarge)
+        Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
 }
 

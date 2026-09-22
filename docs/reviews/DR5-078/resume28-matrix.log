@@ -1,0 +1,59 @@
+retirement-provider: INSTRUMENTATION_RESULT: stream=PASS: real Android Keystore AES-GCM, unique IVs, ciphertext exclusion, recreation, authenticated metadata tamper rejection (Software Keystore)
+
+PASS: real SQLite rollback after first linked snapshot, atomic classification/value/freshness publication, append-only triggers and database recreation
+
+
+
+INSTRUMENTATION_CODE: -1
+epic: INSTRUMENTATION_RESULT: stream=PASS: Android SAX and ZIP parse both sanitized golden workbooks with exact cached-result parity; malformed data rejected
+
+PASS: real SQLite rollback after import-ledger insertion, atomic pointer/metadata replacement, append-only history, stale review rejection and database recreation
+
+PASS: native Choose/Cancel/Replace accessibility actions; explicit confirmation; no editable Epic controls; Retirement window blocks screenshots and recents
+
+
+
+INSTRUMENTATION_CODE: -1
+retirement-hardening: INSTRUMENTATION_RESULT: stream=PASS: API 28 unique versioned account/property periodic work remains single after repeated scheduling
+
+
+
+INSTRUMENTATION_CODE: -1
+forecast: INSTRUMENTATION_RESULT: stream=PASS: API 28; 10000 paths x 50 years with mixed accounts/taxes: 5518ms; main pulses=209; process heap used=62316608 bytes, maximum=402653184 bytes
+
+PASS: cancellation returns within 2 seconds without a partial result
+
+PASS: seeded Android results repeat at every path/year; no database or UI changes
+
+
+
+INSTRUMENTATION_CODE: -1
+compact: INSTRUMENTATION_RESULT: drafts=PASS: Android saved-state Bundle excludes property address and amounts; opaque draft restores from no-backup storage
+
+INSTRUMENTATION_RESULT: stream=PASS: eight synthetic native Retirement surfaces rendered; secure-window assertion passed before every test-only capture on API 28
+
+
+
+INSTRUMENTATION_CODE: -1
+tall: INSTRUMENTATION_RESULT: drafts=PASS: Android saved-state Bundle excludes property address and amounts; opaque draft restores from no-backup storage
+
+INSTRUMENTATION_RESULT: stream=PASS: eight synthetic native Retirement surfaces rendered; secure-window assertion passed before every test-only capture on API 28
+
+
+
+INSTRUMENTATION_CODE: -1
+landscape: INSTRUMENTATION_RESULT: drafts=PASS: Android saved-state Bundle excludes property address and amounts; opaque draft restores from no-backup storage
+
+INSTRUMENTATION_RESULT: stream=PASS: eight synthetic native Retirement surfaces rendered; secure-window assertion passed before every test-only capture on API 28
+
+
+
+INSTRUMENTATION_CODE: -1
+large-text: INSTRUMENTATION_RESULT: drafts=PASS: Android saved-state Bundle excludes property address and amounts; opaque draft restores from no-backup storage
+
+INSTRUMENTATION_RESULT: stream=PASS: eight synthetic native Retirement surfaces rendered; secure-window assertion passed before every test-only capture on API 28
+
+
+
+INSTRUMENTATION_CODE: -1
+PASS: all requested native audits and synthetic captures

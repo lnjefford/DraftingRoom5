@@ -2,10 +2,11 @@
 
 DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
-The current production release is v0.26.1. It adds audited exercise-by-exercise progression and safely upgrades app data written by v0.25.x, while preserving the matching in-app/launcher brand mark and the one-cell living-icon widget whose 50 distinct still images rotate on Android's battery-conscious, inexact approximately-hourly schedule. Tapping anywhere on the widget opens DraftingRoom5 normally. Phase 8 audit evidence is in `docs/reviews/DR5-065/`; earlier Phase 7 and Phase 6 device-dependent checks remain documented in `docs/reviews/DR5-056/` and `docs/reviews/DR5-038-phase-6-product-audit.md`.
+The current production release is v0.27.0. It adds the audited Retirement workspace beside the unchanged Fitness workspace, including local/manual and read-only linked accounts, property and Epic-stock tracking, integrated asset summaries, a private planning checklist, and a real-dollar retirement forecast. Phase 9 audit and release evidence is in `docs/reviews/DR5-078/` and `docs/reviews/DR5-079/`; earlier Phase 8, Phase 7, and Phase 6 evidence remains in `docs/reviews/DR5-065/`, `docs/reviews/DR5-056/`, and `docs/reviews/DR5-038-phase-6-product-audit.md`.
 
 ## Current scope
 
+- The next release requires Android 17 or newer (API 37); the development build compiles and targets API 37.
 - Native Android app built with Kotlin and Jetpack Compose.
 - Health Connect permission flow for body mass, body-fat percentage, lean body mass, exercise sessions, and distance.
 - Today-focused training cards resolve their name, artwork, type, and launch behavior from one persistent routine model.
@@ -32,9 +33,25 @@ The current production release is v0.26.1. It adds audited exercise-by-exercise 
 - Opens Fitbod (`com.fitbod.fitbod`) and Just Run (`com.jupli.run`) when installed.
 - MIT licensed.
 
+## Retirement workspace
+
+The unreleased Phase 9 work adds an evergreen Retirement workspace beside the unchanged Fitness workspace. It includes manual and read-only linked accounts, automatic or manual property values, a local Shareworks Epic-stock import, an integrated Overview and Assets summary, a curated government-first Library checklist, and a real-dollar retirement forecast with settings, risk evidence, and focused scenarios. Strategy, rental-priority, separate Properties/Data sources, general Retirement settings, and editable Epic assumptions are deliberately absent.
+
+Plaid and RentCast use the user’s own credentials entered privately on the phone. They are encrypted with an Android Keystore key and used by direct HTTPS adapters; no DraftingRoom5 backend or bundled service secret exists. This personal-device topology departs from provider server-side recommendations and does not guarantee account eligibility, products, quotas, institution OAuth behavior, or RentCast coverage. Plaid and RentCast receive the request data necessary for their service. Manual data, Shareworks parsing, aggregation, and forecasting remain local.
+
+Accepted Retirement state is held in app-private, no-backup storage. Provider credentials/tokens, raw workbook bytes, selected file URIs/names, and Retirement financial state are excluded from ordinary cloud backup and device transfer. The app persists only validated workbook-derived values and safe import metadata, clears secret fields rather than restoring them after process death, marks the full Retirement window secure against ordinary screenshots/recents capture, and uses redacted error categories instead of upstream messages. Losing app data, uninstalling, transferring devices, or losing the Keystore key requires credential entry and relinking; provider-dashboard revocation may still be necessary. Existing accepted snapshots stay readable if a provider is offline or credentials become unavailable.
+
+Linked-account and automatic-property refreshes use Android WorkManager with connected-network and battery-not-low constraints, unique work, exponential transient backoff, provider retry windows, and per-source overlap protection. Daily account and weekly property intervals are requests to Android, not deadlines: Doze, battery policy, reboot state, provider limits, first-unlock state, and connectivity can delay or skip execution. The UI therefore displays the last accepted timestamp and scoped stale/error state, keeps last-good values, and offers explicit foreground retry. Provider/import writes and forecast publication use generation checks and atomic transactions so a failed or superseded operation cannot replace accepted data or publish a mixed-generation total.
+
+Forecast output is planning software, not financial, tax, legal, or investment advice and not a promise of future results. It uses the documented reference-policy tax/ACA approximations, real-dollar assumptions, Monte Carlo distributions, user-entered settings, and the latest coherent accepted data generation. Review the displayed assumptions, tax-funding residual, source age, workbook projection date, and risk diagnostics; consult qualified professionals for decisions. Background work and a synthetic emulator performance result are not physical-device timing guarantees.
+
+The independent Phase 9 audit and its release conditions are recorded in [DR5-078](docs/reviews/DR5-078/README.md), with final release evidence in [DR5-079](docs/reviews/DR5-079/README.md). Financial edit drafts restore through opaque saved-state handles backed by bounded, expiring files in no-backup storage; missing drafts require re-entry.
+
+This release supports Android 17+ (API 37). Android 17 runtime behavior is not certified: two official API 37 emulator images and multiple graphics modes crashed SurfaceFlinger before the app could be installed, so API 37 provider/import/forecast/WorkManager/privacy/UI, Fitness, and widget runtime checks did not run. Earlier API 35 emulator checks and host/static checks are narrower evidence. Live Plaid Link/token exchange also remains unperformed; synthetic provider fixtures do not certify institution OAuth, eligible products, quotas, relink behavior, or remote revocation. These are accepted release exceptions, not passing tests.
+
 ## Local build
 
-Open the project in Android Studio with Android SDK 36 and Java 17 or newer installed. On Windows, run `./gradlew.ps1 testDebugUnitTest lintDebug assembleDebug`; the bootstrap validates `JAVA_HOME`, then searches `%USERPROFILE%/.jdks`, a repository-local JDK under `.tooling/jdk17/`, and Android Studio's JBR, and uses the ignored `.gradle-user-home` cache when no cache is configured. It fails early with installation guidance instead of silently using an older system Java. Linux and macOS builds, including CI, continue to use `./gradlew testDebugUnitTest lintDebug assembleDebug`.
+Open the project in Android Studio with Android SDK 37 and Java 17 or newer installed. On Windows, run `./gradlew.ps1 testDebugUnitTest lintDebug assembleDebug`; the bootstrap validates `JAVA_HOME`, then searches `%USERPROFILE%/.jdks`, a repository-local JDK under `.tooling/jdk17/`, and Android Studio's JBR, and uses the ignored `.gradle-user-home` cache when no cache is configured. It fails early with installation guidance instead of silently using an older system Java. Linux and macOS builds, including CI, continue to use `./gradlew testDebugUnitTest lintDebug assembleDebug`.
 
 Add **DraftingRoom5 living icon** from the launcher's widget picker to place the one-cell tile. Android controls the exact delivery time of its approximately-hourly refresh, so the image is not promised to change on the hour; opening the app and system widget lifecycle events can also refresh the current time-selected look. The whole tile opens the normal app route.
 

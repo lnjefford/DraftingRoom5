@@ -1,0 +1,4 @@
+PASS: Android SAX and ZIP parse both sanitized golden workbooks with exact cached-result parity; malformed data rejected
+PASS: real SQLite rollback after import-ledger insertion, atomic pointer/metadata replacement, append-only history, stale review rejection and database recreation
+FAIL: Epic audit at accessible-choose (IllegalStateException, check line 127); private exception details suppressed
+

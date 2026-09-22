@@ -1,0 +1,5 @@
+INSTRUMENTATION_RESULT: stream=PASS: Android SAX and ZIP parse both sanitized golden workbooks with exact cached-result parity; malformed data rejected
+PASS: real SQLite rollback after import-ledger insertion, atomic pointer/metadata replacement, append-only history, stale review rejection and database recreation
+PASS: native Choose/Cancel/Replace accessibility actions; explicit confirmation; no editable Epic controls; Retirement window blocks screenshots and recents
+
+INSTRUMENTATION_CODE: -1

@@ -1,6 +1,6 @@
 # DraftingRoom5 implementation queue
 
-This is the shared queue for the Astra and Sol scheduled tasks. The approved requirements are in `DesignReview.md`, `Dashboard.md`, `MetricDetails.md`, `Settings.md`, `DashboardCustomization.md`, `SchedulesAndRoutines.md`, `RoutineEditor.md`, and `GuidedSession.md`.
+This is the shared queue for the Astra and Sol scheduled tasks. The approved requirements are in `DesignReview.md`, `Dashboard.md`, `MetricDetails.md`, `Settings.md`, `DashboardCustomization.md`, `SchedulesAndRoutines.md`, `RoutineEditor.md`, `GuidedSession.md`, and `docs/design/retirement-workspace/README.md`.
 
 ## Worker protocol
 
@@ -19,8 +19,8 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
 
 - `minimum_completion_interval_minutes`: `60`
 - `max_concurrency`: `1`
-- `last_completion_at`: `2026-09-18T20:20:12-05:00`
-- `next_eligible_dispatch_at`: `2026-09-18T21:20:12-05:00`
+- `last_completion_at`: `2026-09-22T08:18:51.7976983-05:00`
+- `next_eligible_dispatch_at`: `2026-09-22T09:18:51.7976983-05:00`
 - `processor_lease`: empty
 - For active queued work, dispatch only a task whose `Status` is `ready`, and never dispatch while another task is `running` or before `next_eligible_dispatch_at`.
 - When claiming an active task, set its `Status` to `running` and fill `Executor thread ID` and `Started at`; the checkbox claim marker remains `[~]` for compatibility with the worker protocol above.
@@ -343,3 +343,313 @@ Approved direction: progression belongs to each guided exercise rather than to t
   - Claimed: 2026-09-18T19:30:55-05:00 by gpt-5.6-sol; user explicitly overrode the queue cooldown for immediate release work.
   - Completed: Phase 8 documentation and defaults identify v0.26.0/26002 consistently. The Java-17-aware Windows Gradle bootstrap prevents the host's older Java from reaching the build and was verified from an intentionally forced Java 8 environment. Focused progression checks passed; the corrected complete gate passed all 278 unit tests, all 291 screenshot comparisons, lint with 0 errors, debug and instrumentation APK builds, and whitespace validation. Native Android API 35 checks passed Continue persistence, timer lifecycle/deduplication, exact-once custom insertion and Undo, and the exact 32.5 lb/25 second heavier-shorter result while preserving the session snapshot. The coherent milestone is delivered by tag `v0.26.0`; the successful tag workflow and signed `DraftingRoom5.apk` are verified at [GitHub Actions](https://github.com/lnjefford/DraftingRoom5/actions/workflows/release.yml) and the [v0.26.0 release](https://github.com/lnjefford/DraftingRoom5/releases/tag/v0.26.0).
   - Notes: never commit credentials, signing material, generated build files, `.gradle-user-home`, or `.tooling`; do not release intermediate Phase 8 tasks separately.
+
+## Phase 9 — Retirement workspace
+
+Approved direction: incorporate the validated retirement-planning behavior from `../finance` as a first-class green Retirement workspace without changing the Fitness workspace. The durable screen, navigation, data-source, visual, security, and removal decisions are in `docs/design/retirement-workspace/README.md`. Intermediate tasks accumulate locally; only the terminal Phase 9 release task commits, pushes, tags, and publishes.
+
+- [x] **DR5-067 — Lock the Retirement architecture and parity contract**
+  - Outcome: implementation can proceed against one secure Android architecture with explicit parity fixtures from the existing finance site.
+  - Scope: inspect `../finance` models, repositories, integrations, simulation/tax code, schemas, and tests; document native-versus-provider boundaries; define Kotlin domain/persistence contracts, secret handling, backup exclusions, provider interfaces, background-work constraints, navigation route model, and a fixture-based parity plan; no production Retirement UI.
+  - Model: `gpt-6-astra`
+  - Model reason: financial correctness and mobile secret boundaries require difficult cross-system architecture reasoning.
+  - Depends on: DR5-066
+  - Status: `complete`
+  - Acceptance: an architecture record maps every approved data source and screen to a Kotlin owner; money uses integer cents and snapshots are append-only; coherent forecast input generations and atomic provider/import updates are specified; Plaid and RentCast secrets are proven absent from the APK, repository, logs, and backup; Shareworks retention and redaction rules are explicit; representative sanitized fixtures and expected outputs cover money, account classification, workbook parsing, property estimates, amortization, tax/ACA, withdrawal order, and forecast results; the route graph supports restoration and back navigation; any backend or companion requirement that materially changes deployment is raised as `needs_input` with concrete options before implementation.
+  - Executor thread ID: `01a0b767-4a6e-74e3-9018-ed5c787d8ebd`
+  - Started at: `2026-09-18T22:04:50.5144557-05:00`
+  - Completed at: `2026-09-19T12:23:54-05:00`
+  - Push: `NO`
+  - Notes: read `docs/design/retirement-workspace/README.md` first. The existing Python app is reference behavior, not code to ship inside Android. Do not embed provider credentials or real financial data in fixtures.
+
+  - Claimed: 2026-09-18T21:03:53.9263414-05:00 by gpt-6-astra; immediate dispatch explicitly authorized; DR5-066 dependency complete.
+  - Interrupted: production v0.26.0 data-load hotfix took priority before implementation began; return this task to ready after the hotfix release.
+
+  - Resumed: 2026-09-18T22:04:50.5144557-05:00 by gpt-6-astra after verified v0.26.1 hotfix; user requested restart. No other running queue claim; processor lease empty.
+
+  - Input blocked at: `2026-09-18T22:19:35.2915939-05:00`
+  - Prepared: `docs/design/retirement-workspace/ARCHITECTURE.md`, `parity/` and `VALIDATION.md`; 103 offline reference assertions and 14 contract tests pass. No production UI or hotfix files changed; no commit/push/tag/release.
+  - Prior blocker (resolved 2026-09-19): Decision D1 requires user selection of an authenticated user-run companion (A), hosted private backend (B), or explicit local-only scope revision (C); for A/B identify host/machine and operator. The reference requires server-side Plaid/RentCast secrets; deployment was not approved. Independent architecture/fixture work is prepared. DR5-068 and descendants remain blocked; completion/cooldown timestamps unchanged.
+
+  - Resumed: 2026-09-19T12:22:41.732952-05:00 by gpt-6-astra; user explicitly approved phone-only providers with user-entered, Keystore-protected credentials, superseding companion options.
+
+  - Completed: 2026-09-19T12:23:54-05:00 — User approved phone-only native provider calls with personal credentials entered on-device and protected by Android Keystore. Updated architecture, product handoff and validation evidence; 103 reference assertions, 14 contract tests and whitespace checks pass. Provider runtime/Keystore verification remains in DR5-070/072/077/078. No production UI, commit, push, tag or release. DR5-068 promoted ready.
+
+- [x] **DR5-068 — Add the extensible workspace shell and Retirement theme**
+  - Outcome: users can move between the unchanged Fitness workspace and a native green Retirement shell with stable top-level navigation.
+  - Scope: shared workspace switcher, workspace-aware routes/state restoration, Retirement color/typography tokens, Retirement top app bar, Overview/Forecast/Assets tab shell, book and forecast-settings actions, placeholder destinations, and shell screenshot tests only.
+  - Model: `gpt-5.6-sol`
+  - Model reason: bounded Compose navigation and theming work using established app patterns.
+  - Depends on: DR5-067
+  - Status: `complete`
+  - Acceptance: the workspace switcher can grow beyond two workspaces without a top-tab redesign; Fitness UI and behavior remain visually unchanged; Retirement uses the approved evergreen palette and DraftingRoom5 visual language; its book icon routes to Library and gear routes directly to Forecast settings; Overview, Forecast, and Assets restore across rotation/process recreation; no general Retirement settings route exists; compact, tall, landscape, and large-text shell screenshots plus focused navigation tests pass.
+  - Executor thread ID: `01a0bab6-fdff-7940-a69b-2005e0bad7d6`
+  - Started at: `2026-09-19T12:30:03.0654401-05:00`
+  - Completed at: `2026-09-19T13:22:33-05:00`
+  - Push: `NO`
+  - Claimed: 2026-09-19T12:30:03.0654401-05:00 by gpt-5.6-sol; immediate execution explicitly requested, overriding the queue cooldown. No other queue worker was running and the processor lease was empty.
+  - Completed: Extensible icon-menu workspace switcher, independent saved Fitness/Retirement stacks, scoped evergreen theme, native Overview/Forecast/Assets shell, Library and direct Forecast-settings routes, focused route tests, and 20 new compact/tall/landscape/large-text references. Visual inspection caught and corrected compact/large-text app-bar overlap. All 282 unit tests, 311 screenshot comparisons, lint (0 errors), debug assembly, and whitespace checks pass. Fitness retains its prior theme and behavior with only the shared switcher affordance added. No commit, push, tag, or release.
+  - Notes: do not modify the workout workspace theme. Use native Compose, not the exploratory HTML.
+
+- [x] **DR5-069 — Implement Retirement persistence and manual asset foundations**
+  - Outcome: the app can safely persist and aggregate manually managed retirement accounts, snapshots, properties, mortgages, plan settings, checklist state, and provider/import metadata.
+  - Scope: Kotlin domain types, repository/storage wiring, strict codec/schema, integer-cent money helpers, append-only balance/property snapshots, archive/inclusion behavior, manual account/property mutations, validation, backup inclusion/exclusion decisions, fixtures, and focused tests; no live Plaid, RentCast, workbook parsing, forecast engine, or final UI.
+  - Model: `gpt-5.6-sol`
+  - Model reason: deterministic domain and persistence work with clear contracts from DR5-067.
+  - Depends on: DR5-067
+  - Status: `complete`
+  - Acceptance: account types, tax treatments, owner, source, freshness, holdings, property/mortgage/equity, import metadata, plan settings, and checklist state round-trip exactly; money is persisted as integer cents; snapshot histories are append-only and corrections create new records; aggregate totals cannot double-count property or Epic accounts; writes are atomic and survive recreation; secrets/raw Shareworks files are excluded from ordinary document backup; invalid values and duplicate provider identities are rejected; focused repository/codec tests and parity fixtures pass.
+  - Executor thread ID: `01a0bb30-bf44-7a71-afb2-594893a45cf2`
+  - Started at: `2026-09-19T14:42:50.0890221-05:00`
+  - Completed at: `2026-09-19T15:52:17-05:00`
+  - Push: `NO`
+  - Notes: preserve the project's current clean-slate schema conventions. Do not add rental-priority domain or UI concepts.
+  - Completed: Clean-slate no-backup SQLite storage, strict v1 codec, integer-cent money, account/holding/property/mortgage/Epic/plan/checklist/provider domains, atomic manual repositories, append-only correction ledgers/triggers, safe origin-aware aggregation, and sanitized `manual-foundations.json` parity coverage. All 295 unit tests, 14 executable parity contract tests, lint, and whitespace checks pass; focused DR5-069 tests cover exact exhaustive enum/state round trips, invalid/duplicate rejection, atomic failure/recreation, correction history, archive/inclusion, no double counting, and backup exclusions. No live provider, workbook parsing, forecast, rental concept, UI, commit, push, tag, or release was added.
+  - Claimed: 2026-09-19T14:42:50.0890221-05:00 by gpt-5.6-sol; explicitly dispatched in the current saved checkout with preservation of accumulated Phase 9 work.
+
+- [x] **DR5-070 — Integrate linked financial accounts securely**
+  - Outcome: users can connect, review, refresh, reconnect, and safely classify read-only financial accounts without exposing credentials or provider secrets.
+  - Scope: the approved provider topology, Plaid link/relink handoff, token handling, account/holding sync, classification review, duplicate matching, refresh metadata/errors, manual fallback, background refresh, redacted diagnostics, and integration tests; no final account-list/detail polish.
+  - Model: `gpt-6-astra`
+  - Model reason: OAuth-style handoff, token security, reconciliation, idempotency, and provider failures are high-consequence cross-system work.
+  - Depends on: DR5-067, DR5-069
+  - Status: `complete`
+  - Acceptance: the app can request a connection, return safely, show provider accounts for explicit inclusion, and persist user-confirmed account type/tax treatment; credentials and service secrets never enter the APK or logs; access tokens follow the architecture's protected boundary; repeated syncs do not duplicate accounts, holdings, or same-day snapshots; reconnect repairs only the affected item; stale/error state stays attached to affected accounts; background work obeys Android constraints; manual accounts remain usable without Plaid; sanitized provider-contract tests cover success, cancellation, partial data, duplicate masks, stale tokens, reconnect, offline behavior, and atomic failure.
+  - Executor thread ID: `01a0bc7b-6121-73b2-84b9-6a5b5318a5f9`
+  - Started at: 2026-09-19T20:44:51.6124237-05:00
+  - Completed at: 2026-09-19T22:28:31-05:00
+  - Push: `NO`
+  - Notes: implement approved phone-only PlaidNativeProvider plus the shared ProviderCredentialVault/Keystore and secure transport described in ARCHITECTURE.md D1. Credentials are entered privately on-device, never bundled or supplied through chat. Include setup/replacement within Connect/reconnect/attention flows. Preserve read-only semantics; no separate Data sources screen or companion/backend.
+
+  - Claimed: 2026-09-19T20:44:51.6124237-05:00 by gpt-6-astra; immediate execution authorized, overriding cooldown; preserving accumulated DR5-067 through DR5-069 work.
+
+  - Validation: 332 unit tests, 311 screenshot comparisons, zero lint errors, both local APK builds, API 35 Keystore/SQLite synthetic audit, 103 parity assertions and 14 contract tests pass. See docs/design/retirement-workspace/DR5-070.md for boundaries and remaining live/device gates. Preserved accumulated work and v0.26.1; no commit, push, tag or release.
+
+- [x] **DR5-071 — Build Accounts and account-management flows**
+  - Outcome: every financial account is usable through the approved grouped Accounts experience and its supporting detail flows.
+  - Scope: Accounts grouped list, add-asset entry, connected/manual account paths, post-link review UI, account detail, update-balance sheet, balance history, edit/archive behavior, holdings display, needs-attention state, reconnect entry, accessibility, screenshots, and focused UI/state tests; properties and Epic use placeholders until their tasks complete.
+  - Model: `gpt-5.6-sol`
+  - Model reason: substantial but bounded Compose screen family on established repositories and provider state.
+  - Depends on: DR5-068, DR5-069, DR5-070
+  - Status: `complete`
+  - Acceptance: Accounts has no total header and groups employer plans, IRAs, health savings, brokerage, cash, and properties; linked and manual accounts are clearly sourced; account details expose current value, classification, owner, inclusion, freshness, holdings, history, edit, and appropriate update/reconnect actions; manual updates append snapshots; provider values are not overwritten manually; attention appears on the affected account; add/review flows match the approved hierarchy; back/restoration behavior, compact/tall/landscape/large-text screenshots, TalkBack labels/order, and focused tests pass.
+  - Executor thread ID: `01a0bd05-8efc-7682-894d-b0789c05c151`
+  - Started at: `2026-09-19T23:14:42.7371922-05:00`
+  - Completed at: `2026-09-20T00:50:24.8238097-05:00`
+  - Push: `NO`
+  - Claimed: 2026-09-19T23:14:42.7371922-05:00 by gpt-5.6-sol; immediate execution authorized, overriding cooldown; preserving accumulated DR5-067 through DR5-070 work and released v0.26.1 state.
+  - Notes: the Assets tax-treatment table links here. Do not add account-type shortcut buttons or a Data sources destination.
+  - Completed: Native grouped Accounts, add-asset entry, established connect/manual/review paths, full account detail, append-only manual balance updates, history, local edits/archive, holdings, per-item attention/reconnect, Assets link, accessible semantics, typed restoration/back routes, and 28 new four-form-factor screenshots. All 337 unit tests and 339 screenshot comparisons passed; lint has zero errors; debug and instrumentation APKs, 103 finance-reference assertions, 14 contract tests, and whitespace validation passed. Visual inspection covered compact, tall, landscape, and 2× text states. See `docs/design/retirement-workspace/DR5-071.md`. Preserved accumulated Phase 9 work and v0.26.1; no commit, push, tag, or release.
+
+- [x] **DR5-072 — Add automatic property values and property flows**
+  - Outcome: a home can be found, confirmed, tracked, refreshed, edited, and included in retirement calculations without a separate property workspace.
+  - Scope: RentCast provider implementation through the approved secure boundary, address search/manual fallback, property match confirmation, weekly and explicit refresh, estimate range/comparable metadata, mortgage/equity calculations, property detail/edit/history UI, account-list integration, background work, screenshots, and tests.
+  - Model: `gpt-5.6-sol`
+  - Model reason: cohesive provider, domain, and Compose flow with well-defined calculations and states.
+  - Depends on: DR5-068, DR5-069, DR5-070
+  - Status: `complete`
+  - Acceptance: selecting an address shows the matched property and latest estimate/range before creation; mortgage balance yields exact equity without floating-point dollars; automatic estimates refresh approximately weekly and manual refresh is available; every accepted provider or manual valuation appends history; failures preserve the last good value and show its age/error; manual property entry remains available without claiming automatic updates; properties appear as an Accounts section and open directly to detail; no separate Properties overview or rental-priorities screen exists; provider fixtures, background-work tests, UI tests, and compact/tall/landscape/large-text screenshots pass.
+  - Executor thread ID: `01a0c099-ebda-7c43-9387-84907ef5f909`
+  - Started at: `2026-09-20T15:55:31.0082682-05:00`
+  - Completed at: `2026-09-20T17:53:17.1025907-05:00`
+  - Push: `NO`
+  - Claimed: 2026-09-20T15:55:31.0082682-05:00 by gpt-5.6-sol; immediate execution explicitly requested, overriding the queue cooldown. Preserving accumulated DR5-067 through DR5-071 work and released v0.26.1 state.
+  - Notes: use phone-only RentCastNativeProvider with user-entered credentials and the shared vault/transport supplied by DR5-070; this adds the DR5-070 dependency. Credential setup belongs inside Find/Edit property; no companion/backend. Follow ARCHITECTURE.md D1 and retain manual fallback.
+
+  - Completed: Phone-only secure RentCast search/confirmation and credential replacement, manual fallback, exact-cent mortgage/equity, append-only provider/manual history, scoped failure preservation, weekly/explicit refresh, direct Accounts property detail/edit/history flows, accessible semantics, fixtures and 12 new four-form-factor property references. All 342 unit tests and 351 screenshot comparisons passed; lint reported zero issues; debug and instrumentation APKs, 103 finance-reference assertions, 14 contract tests, visual inspection and whitespace checks passed. Live RentCast and emulator callbacks remain DR5-077/078 gates. Preserved accumulated Phase 9 work and v0.26.1; no commit, push, tag or release.
+
+- [x] **DR5-073 — Port the Shareworks Epic stock import**
+  - Outcome: Epic stock is derived exclusively from a validated user-selected Shareworks workbook and remains fully usable without manual Epic fields.
+  - Scope: Android-safe `.xlsm` selection/parsing or approved secure processing boundary, required-sheet/cell validation, derived position/breakdown/projection models, atomic replacement, import metadata, Epic detail/upload UI, redaction, fixtures, screenshots, and tests.
+  - Model: `gpt-6-astra`
+  - Model reason: sensitive workbook parsing, formula-cache semantics, atomic replacement, and parity with a specialized existing parser require careful reasoning.
+  - Depends on: DR5-067, DR5-069, DR5-068
+  - Status: `complete`
+  - Acceptance: the implementation reads the same required Shareworks sheets and cached calculated values as the reference parser; share price, vested/unvested shares, loans, breakdown, projection assumptions, annual projections, tax-at-sale, and after-tax values come only from the latest accepted workbook; invalid, stale-formula, truncated, oversized, or wrong workbook uploads cannot replace good data; the raw workbook is not retained unless the architecture explicitly requires protected storage; logs/screenshots contain no private workbook values; Epic detail offers upload, provenance, and workbook-derived sections but no manual edits; sanitized golden workbook fixtures and parity tests pass.
+  - Executor thread ID: `01a0c142-0b38-7303-b9b3-546439a8aa1a`
+  - Started at: `2026-09-20T18:59:33.9253287-05:00`
+  - Completed at: `2026-09-20T20:42:08.8340267-05:00`
+  - Push: `NO`
+  - Notes: remove any editable Epic growth field from Forecast settings. The workbook is authoritative for all Epic stock information.
+
+  - Claimed: 2026-09-20T18:59:33.9253287-05:00 by gpt-6-astra; immediate execution authorized, overriding cooldown. Preserve accumulated Phase 9 work and v0.26.1; Push: NO.
+  - Completed: Bounded phone-only Shareworks .xlsm import using saved formula results, full typed workbook model, explicit review/atomic replacement, append-only history, last-good preservation, direct read-only Epic detail/upload flows, private error handling and secure Retirement window. Raw workbooks/URIs/filenames are not persisted. All 355 JVM tests, 383 screenshot comparisons, 105 reference assertions and 14 contract tests passed; lint has zero errors and 51 existing warnings; app/test APKs, whitespace and APK fixture-exclusion checks passed. API 35 native audit passed SAX/ZIP parity, SQLite rollback/recreation/history, accessible Choose/Cancel/Replace and FLAG_SECURE. See `docs/design/retirement-workspace/DR5-073.md` for cache-freshness limits and remaining DR5-077/078 device gates. Preserved prior work and version 0.26.1 / 26003; no commit, push, tag or release. DR5-074 promoted ready; cooldown remains in force.
+
+- [x] **DR5-074 — Port and verify the retirement forecast engine**
+  - Outcome: DraftingRoom5 produces deterministic and Monte Carlo retirement results that match the validated finance behavior for equivalent inputs.
+  - Scope: real-dollar forecast core, seeded Monte Carlo paths, correlated returns, contributions, Epic workbook projection input, property/mortgage treatment, withdrawal ordering, federal/Wisconsin tax, LTCG, ACA, Social Security, pension, scenario deltas, risk diagnostics, performance work, and parity tests; no final Forecast UI.
+  - Model: `gpt-6-astra`
+  - Model reason: numerical financial logic, taxes, withdrawal sequencing, and cross-language parity are unusually difficult and consequence-sensitive.
+  - Depends on: DR5-069, DR5-070, DR5-072, DR5-073
+  - Status: `complete`
+  - Acceptance: equivalent sanitized fixtures match the reference implementation within documented cent/percentage tolerances for deterministic results, seeded distributions, taxes, ACA, amortization, Social Security/pension timing, Epic liquidation, withdrawal ordering, depletion timing, and scenario changes; simulations use coherent immutable input snapshots and real dollars; seedable tests are deterministic while production runs use documented randomness; calculations cannot overflow practical ranges or block the UI thread; cancellation/restart never publishes a partial generation; risk diagnostics identify failure timing/causes without inventing qualitative scores; focused parity and performance tests pass.
+  - Executor thread ID: `01a0c1a4-4301-7751-a8e5-937726b12094`
+  - Started at: 2026-09-20T20:47:03.4120180-05:00
+  - Completed at: 2026-09-20T21:57:41.6137306-05:00
+  - Push: `NO`
+  - Notes: internal withdrawal-strategy logic may remain, but there is no Strategy screen. Document assumptions and tolerances clearly; this is planning software, not advice.
+
+  - Claimed: 2026-09-20T20:47:03.4120180-05:00 by gpt-6-astra; immediate execution explicitly authorized, overriding cooldown; preserving accumulated Phase 9 changes and v0.26.1. Push: NO.
+
+  - Completed: Real-dollar deterministic/seeded correlated Monte Carlo core, immutable repository snapshots, workbook-only Epic and property/mortgage projections, contributions, ordered withdrawals, labeled federal/WI/LTCG/ACA policy, SS/pension/RMD timing, typed scenario CAS and observed failure/tax-residual diagnostics. All 379 JVM tests passed; 35,412 full-path comparisons have zero cent difference (1 cent permitted), with exact scalar cents and 1e-12 success-fraction tolerance. Passed 105 reference assertions, 14 expanded full-path replays, 14 contract tests, lint (0 errors; 51 existing warnings), both APK builds, fixture exclusion and whitespace checks. 10,000 paths x 50 years took 1.364s host / 9.706s API 35, with main-thread responsiveness, seeded repeatability and cancellation under 2s verified. See `docs/design/retirement-workspace/DR5-074.md` for the deliberate reference tax/ACA approximation, measured residuals, heap-guard correction and physical-device/multi-API limits. No final Forecast/Strategy UI, version change, commit, push, tag or release. Preserved accumulated Phase 9 work and v0.26.1; only DR5-075 promoted ready.
+
+- [x] **DR5-075 — Build Forecast, settings, risk, and scenario screens**
+  - Outcome: users can understand the current forecast, edit legitimate assumptions inline, inspect risk, and compare or apply focused scenarios.
+  - Scope: Forecast tab, fan/range chart, retirement marker, available-at-retirement breakdown, lifestyle spending, Forecast settings form, forecast risk, scenario detail/apply behavior, loading/error/stale states, accessibility, screenshots, and focused tests.
+  - Model: `gpt-5.6-sol`
+  - Model reason: focused visualization and Compose form work after the engine contract is stable.
+  - Depends on: DR5-068, DR5-074
+  - Status: `complete`
+  - Acceptance: Forecast shows modeled success, range, retirement age, available assets, spending, and a clear risk entry; Forecast settings are editable in place and cover approved local settings without navigation into one-field screens; Epic position/growth/tax/sale fields are absent because the workbook owns them; settings validate and trigger one coherent recomputation; scenario details compare against the base plan and apply only the displayed delta; charts remain legible and described for accessibility; stale/error/calculating states are honest; compact/tall/landscape/large-text screenshots, chart semantics, restoration, and focused tests pass.
+  - Executor thread ID: `01a0c378-4262-7883-bf6d-6464512e9da4`
+  - Started at: 2026-09-21T05:17:33.9316097-05:00
+  - Completed at: 2026-09-21T07:08:11.5788060-05:00
+  - Push: `NO`
+  - Notes: the target card on Overview opens Forecast; do not add a separate financial-runway section. Read DR5-074.md for the engine/coordinator contract, mandatory reference-policy and tax-funding-residual disclosures, device path budgets, and scenario generation checks.
+
+  - Claimed: 2026-09-21T05:17:33.9316097-05:00 by gpt-5.6-sol; immediate execution explicitly requested, overriding the queue cooldown. Preserving accumulated DR5-067 through DR5-074 work and released v0.26.1 state. Push: NO.
+
+  - Completed: Native Forecast with modeled success, accessible percentile fan chart/retirement marker, available-at-retirement buckets, lifestyle spending, disclosed reference-policy/tax-residual limits, honest calculating/stale/empty/error/cancelled states, one restorable whole-plan settings form, factual risk diagnostics, and same-seed single-delta scenario comparison/CAS apply. Overview target opens Forecast; no Strategy/runway or editable Epic assumption was added. All 385 JVM tests, 415 screenshot comparisons, lint (0 errors), both APKs, 105 reference assertions, 14 full-path replays plus 112 tax/SS rows, 14 contract tests, fixture exclusion and whitespace checks passed. Visual inspection corrected compact value wrapping and 2×-text field-label overlap. See `docs/design/retirement-workspace/DR5-075.md`. Preserved accumulated work and v0.26.1 / 26003; no commit, push, tag or release. DR5-076 promoted ready.
+
+- [x] **DR5-076 — Build the integrated Overview, Assets, and Retirement library**
+  - Outcome: the Retirement workspace has its approved daily-use landing experience, complete asset summary, and concise research destination.
+  - Scope: Overview financial map, retirement-target card, data-health row, Assets total and tax-treatment table, links to Accounts/Forecast/affected items, book-icon Library destination, curated source metadata/checklist persistence, empty/loading/stale states, accessibility, screenshots, and focused integration tests.
+  - Model: `gpt-5.6-sol`
+  - Model reason: bounded Compose integration across already implemented repositories and forecast outputs.
+  - Depends on: DR5-071, DR5-072, DR5-073, DR5-075
+  - Status: `complete`
+  - Acceptance: the financial map is first on Overview; the retirement-target card links to Forecast and duplicates no separate runway; data attention routes to the affected account/import/property; Assets shows the total and tax-treatment table with an Accounts link; totals reconcile exactly with included accounts, workbook-derived Epic value, and property equity without double counting; the Library uses government-first bundled links, displays a review date, stores only checklist state, and never stores private documents; removed Strategy, rental, Properties-overview, Data-sources, and general-settings destinations are absent; all states and compact/tall/landscape/large-text screenshots plus focused navigation/aggregation tests pass.
+  - Executor thread ID: `01a09848-5d39-7670-8013-394782400976`
+  - Started at: `2026-09-21T07:53:28.8033809-05:00`
+  - Completed at: `2026-09-21T09:05:08.9727731-05:00`
+  - Push: `NO`
+  - Claimed: 2026-09-21T07:53:28.8033809-05:00 by gpt-5; immediate execution explicitly requested, overriding the queue cooldown. Preserving accumulated DR5-067 through DR5-075 work and released v0.26.1 state.
+  - Completed: Integrated native Overview, Assets, and Library with financial-map-first order, Forecast-linked target, affected-item data health, exact integer-cent tax-treatment reconciliation, official government-first reviewed resources, and checklist-only persistence. Exact fixture totals reconcile to $78,550.00 tracked and $76,550.00 Forecast-eligible without wrapper double counting. All 391 JVM tests, 443 screenshot comparisons, lint (zero errors), both APKs, 105 reference assertions, 14 full-path forecast replays plus 112 tax/SS rows, 14 contract tests, APK privacy checks, visual inspection, and whitespace checks passed. See `docs/design/retirement-workspace/DR5-076.md`. Preserved accumulated Phase 9 work and v0.26.1 / 26003; no commit, push, tag, or release. DR5-077 promoted ready.
+  - Notes: use the approved green theme throughout Retirement and retain the same overall visual feel as Fitness.
+
+- [x] **DR5-077 — Harden Retirement sync, lifecycle, privacy, and recovery**
+  - Outcome: Retirement remains correct and understandable through offline use, provider failures, imports, background work, backup, and Android lifecycle events.
+  - Scope: cross-feature integration, WorkManager scheduling, retry/backoff, atomic generation/version handling, offline and stale-data behavior, process recreation, backup/restore boundaries, sensitive-data logging/screenshot review, performance, accessibility, documentation, and full regression tests.
+  - Model: `gpt-5.6-sol`
+  - Model reason: broad but concrete integration pass after every feature path exists.
+  - Depends on: DR5-076
+  - Status: `complete`
+  - Acceptance: no overlapping worker can double-import, double-sync, or publish mixed-generation totals; last-good data remains readable offline with accurate timestamps; failed workbook/provider writes are atomic and recoverable; provider tokens, service secrets, raw workbook content, and private values are excluded from logs and inappropriate backups; navigation and in-progress forms restore safely; Fitness regressions are absent; all new controls meet touch, TalkBack, keyboard, large-text, compact, tall, and landscape requirements; README and TechnicalDesign document the feature, limits, provider topology, privacy boundary, and forecast disclaimer; focused tests, all unit/screenshot tests, lint, assemble, and `git diff --check` pass.
+  - Executor thread ID: `01a0c459-2371-7410-b640-7e09909ed1ae`
+  - Started at: `2026-09-21T09:23:16.2174441-05:00`
+  - Completed at: `2026-09-21T10:51:30.6300129-05:00`
+  - Push: `NO`
+  - Claimed: 2026-09-21T09:23:16.2174441-05:00 by gpt-5; immediate execution explicitly requested, overriding the queue cooldown. Preserving accumulated DR5-067 through DR5-076 work and released v0.26.1 state.
+  - Completed: Cross-feature per-source overlap gating; versioned unique WorkManager scheduling with Android constraints and bounded transient backoff; generation-safe provider/import/forecast publication; offline last-good recovery; privacy/backup/log/APK hardening; lifecycle/accessibility/performance review; corrected seven malformed Library baselines; and complete product/technical documentation. All 394 JVM tests, 443 screenshot comparisons, lint (zero errors), both APKs, 105 reference assertions, 14 full-path forecast cases plus 112 tax/SS rows, 14 contracts, APK/logcat privacy scans, API 35 Keystore/SQLite/Epic/WorkManager/Forecast native audits and whitespace checks passed. API 35 forecast: 7.048s, 268 main-thread pulses, 71,591,520 bytes used, cancellation under two seconds. See `docs/design/retirement-workspace/DR5-077.md` for honest live-provider, physical-device, multi-API, backup-transport, TalkBack and hardware-keyboard limits. Preserved v0.26.1 / 26003; no commit, push, tag or release.
+  - Notes: do not claim exact refresh timing when Android or providers cannot guarantee it.
+
+- [x] **DR5-078 — Audit the Retirement workspace independently**
+  - Outcome: an independent review verifies financial parity, security, privacy, usability, accessibility, and regression quality before release.
+  - Scope: complete Phase 9 diff, provider/security boundaries, workbook handling, numerical parity, aggregation invariants, lifecycle/background behavior, native UI inspection, full regression gate, and a review artifact under `docs/reviews/`; fixes remain within approved Phase 9 scope.
+  - Model: `gpt-6-astra`
+  - Model reason: independent review of financial calculations and sensitive cross-system integrations benefits from the strongest reasoning model.
+  - Depends on: DR5-077
+  - Status: `complete`
+  - Acceptance: the audit traces each value from Plaid/manual input, Shareworks, RentCast, or settings through persistence, aggregation, forecast, and UI; reproduces representative Python/Kotlin parity fixtures; verifies no secrets/private files leak into APK, repository, logs, backups, screenshots, or test artifacts; exercises reconnect, offline, stale, invalid workbook, failed valuation, duplicate sync, mixed-generation prevention, recreation, and recovery; visually inspects real compact/tall/landscape/large-text screens against the approved handoff; confirms Fitness remains unchanged; all relevant unit, screenshot, integration, lint, build, privacy, and whitespace checks pass; unresolved correctness, security, or usability findings block release.
+  - Executor thread ID: `01a0c4f9-438e-72f3-bf17-e0b9d7e24f84`
+  - Started at: `2026-09-21T12:18:18.9488783-05:00`
+  - Completed at: `2026-09-22T07:13:54.580126-05:00`
+  - Push: `NO`
+  - Notes: record limitations honestly. Do not weaken tests or redact evidence by omitting failures.
+  - Claimed: 2026-09-21T12:18:18.9488783-05:00 by gpt-6-astra; immediate execution authorized, overriding cooldown; independent audit with no commit, push, tag, version bump, or release.
+  - Blocked: 2026-09-21T14:14:35.989258-05:00: Independent audit corrected eleven findings; 406 JVM tests, 443 screenshot comparisons, reference parity/contracts, lint (zero errors), both APKs, whitespace and API 35 synthetic Keystore/SQLite/Shareworks accessibility/WorkManager/Forecast/native display and Bundle checks passed. Full evidence and retained failures: `docs/reviews/DR5-078/README.md`. Architecture D1 still requires eligible-account native Link/exchange evidence; remaining physical-device, lifecycle and accessibility gates are not certified. API 28 could not boot because its userdata image requires more free disk space. DR5-079 remains blocked; no descendant promoted. Preserved accumulated work and v0.26.1 / 26003; no commit, push, tag or release.
+  - Resumed: 2026-09-21T20:51:08.208649-05:00: User reports additional disk space; retry minimum-API native validation. Preserve Push NO and all existing work.
+  - Scope update: 2026-09-21T21:25:11.531604-05:00: User authorizes Android 17+ only and emulator validation. Set minimum/target/compile API 37; older Android compatibility is no longer required. Revalidate full host gates and native API 37 behavior; Push NO remains in force.
+  - Blocked after continuation: 2026-09-21T22:43:22.164057-05:00: User-approved Android 17+ support is implemented (minimum/target/compile API 37), with AGP 9.1.1, Gradle 9.3.1 and Kotlin 2.2.10. Final host gate passes 406 JVM tests, 443 unchanged screenshot comparisons, lint (zero errors), both APKs, privacy and 16 KB alignment checks. API 37 native validation is blocked before app installation by a reproducible SurfaceFlinger/GoldfishMapper emulator assertion across two official Android 17 images and multiple graphics modes; crash evidence is retained in `docs/reviews/DR5-078/`. Earlier API 28 native functional checks passed but older Android support is no longer required. Eligible-account live Link/exchange evidence also remains unavailable. DR5-079 stays blocked. No commit, push, tag, version bump or release.
+  - Completed with accepted exceptions: 2026-09-22T07:13:54.580126-05:00: User explicitly approved an exception for the missing Android 17 runtime coverage and live Plaid connection test ("An exception for those is fine"). Those checks remain unrun/unverified, not passing; retained emulator failures and the scoped acceptance are documented in `docs/reviews/DR5-078/README.md`. All eleven audit findings are corrected; existing final host evidence remains 406 JVM tests, 443 screenshot comparisons, zero lint errors, both APKs, privacy/alignment and reference parity checks passing. DR5-079 promoted to ready with these disclosed exceptions; preserve version 0.26.1 / 26003 and Push NO for this audit.
+
+- [x] **DR5-079 — Release the Retirement workspace milestone**
+  - Outcome: the audited Retirement workspace ships as one coherent tagged release with a verified published APK.
+  - Scope: Phase 9 findings, final documentation/version defaults, complete verification gate, Git commit/push/tag, release workflow, and published APK verification.
+  - Model: `gpt-5.6-sol`
+  - Model reason: established deterministic delivery procedure after independent audit.
+  - Depends on: DR5-078
+  - Status: `complete`
+  - Acceptance: DR5-067–078 are complete and the audit has no unresolved blockers; product and technical documentation match the shipped behavior and privacy/provider boundaries; version name/code advance consistently from the latest released version; full unit, screenshot, integration/provider-fixture, forecast parity/performance, privacy, lint, assemble, and whitespace checks pass; coherent Phase 9 work is committed and pushed once; the next increasing version tag is pushed; the release workflow completes; and the signed APK is published and verified.
+  - Executor thread ID: `01a0c90c-6965-7232-9a55-df49cc438fb7`
+  - Started at: `2026-09-22T07:18:03.8477262-05:00`
+  - Completed at: `2026-09-22T08:18:51.7976983-05:00`
+  - Push: `YES`
+  - Notes: never commit credentials, signing material, generated build files, raw Shareworks workbooks, `.gradle-user-home`, or `.tooling`; do not release intermediate Phase 9 tasks separately.
+  - Audit handoff: DR5-078 completed with user-approved exceptions for unrun Android 17 runtime validation and live Plaid Link/exchange. Carry these limitations into release documentation; neither is a passing test. See the scoped acceptance in `docs/reviews/DR5-078/README.md`. All other release checks and published-APK verification remain required.
+  - Claimed: 2026-09-22T07:18:03.8477262-05:00 by gpt-5.6-sol; user explicitly requested immediate execution, overriding the queue cooldown. Preserving accumulated DR5-067 through DR5-078 work and the accepted Android 17 runtime and live Plaid exceptions.
+  - Completed: Coherent DR5-067–078 work is released as v0.27.0 / 27002. The final gate passed 406 JVM tests, 443 screenshot comparisons, lint with zero errors, debug and instrumentation APK assembly, 105 reference assertions, 14 full-path forecast cases, 112 tax/SS rows, 14 architecture contracts, APK identity/signing/privacy/16 KB zip-alignment checks, candidate secret/generated-file scans, and `git diff --check`. The signed `DraftingRoom5.apk` and tag workflow are verified at [v0.27.0](https://github.com/lnjefford/DraftingRoom5/releases/tag/v0.27.0) and [GitHub Actions](https://github.com/lnjefford/DraftingRoom5/actions/workflows/release.yml). Android 17 runtime and live Plaid Link/token exchange remain accepted unrun exceptions, not passing tests; see `docs/reviews/DR5-078/` and `docs/reviews/DR5-079/`.
+
+## Phase 10 — Structured exercise targets and optional progression
+
+Approved direction: every exercise has first-class structured target fields for weight, duration, sets, and reps without requiring progression. Weight is optional but, when present, is whole pounds in **5 lb increments only**; every weight control in the exercise editor, manual post-exercise adjustment, and custom-progression step editor changes by exactly 5 lb. Immediately after each exercise is completed, the filled primary action is **Next exercise**, which keeps the current targets. The secondary **Adjust exercise** action reveals controls only on request and can change multiple fields together. Custom progression remains an optional ordered queue of full future prescriptions and is offered only inside that adjustment path. Remove automatic progression, the exercise editor's Rest between sets row, and the explanatory After each exercise card. Preserve custom-step ordering and inserted-exercise behavior. The approved visual direction is the dark Material 3 editor and bottom-sheet flow reviewed in the originating task; build native Compose UI rather than shipping mockup images.
+
+- [ ] **DR5-080 — Replace progression storage with structured exercise targets**
+  - Outcome: exercise prescriptions and custom steps represent weight, duration, sets, and reps directly, with no dependency on automatic progression.
+  - Scope: exercise/prescription/progression domain types, validation, document codec/current schema, repository application and undo behavior, fixtures, and focused unit tests only; no final Compose UI.
+  - Model: `gpt-6-astra`
+  - Model reason: the clean-slate persistence rewrite and progression invariants affect stored routines, active-session snapshots, custom-step consumption, and undo atomically.
+  - Depends on: DR5-079
+  - Status: `ready`
+  - Acceptance: every exercise and custom replacement prescription has structured slots for weight, duration, sets, and reps; optional fields remain representable without free-form target parsing; sets are positive and every present target is valid; weight is stored as whole pounds and accepts only positive multiples of 5; the old automatic-progression types, options, codec fields, and tests are deleted rather than retained behind compatibility paths; applying a custom step atomically replaces the complete structured prescription, consumes exactly one ordered step, preserves remaining steps and inserted exercises, and remains undoable; keeping current or applying a manual adjustment does not consume a custom step; current-schema encode/decode, invalid-value rejection, repository concurrency/revision checks, undo, active-session snapshots, and focused tests pass.
+  - Executor thread ID:
+  - Started at:
+  - Completed at:
+  - Push: `NO`
+  - Notes: this repository is clean-slate: do not add migrations, compatibility readers, legacy target parsing, aliases, or version branches. Use an exact integer representation for pounds so the 5 lb invariant is not floating-point-dependent.
+
+- [ ] **DR5-081 — Rebuild the exercise and custom-progression editors**
+  - Outcome: users can edit the four base targets on every exercise and optionally maintain an ordered queue of complete future prescriptions.
+  - Scope: native Compose exercise editor, target controls, timed-exercise linkage, custom-progression summary and editor, step editing/reordering, state restoration, validation, accessibility, previews/screenshots, and focused tests.
+  - Model: `gpt-5.6-sol`
+  - Model reason: bounded Compose form and ordered-list work on the domain contract established by DR5-080.
+  - Depends on: DR5-080
+  - Status: `blocked`
+  - Acceptance: the full editor retains exercise name, artwork, and notes, then presents Weight, Duration, Sets, and Reps as first-class base targets independent of progression; weight minus/plus controls move exactly 5 lb and cannot create a non-multiple-of-5 value; duration, sets, and reps have appropriate independent controls; Timed exercise uses the structured duration; Rest between sets and the After each exercise information card are absent; automatic progression is absent; Planned progression is visually subordinate, can be disabled, summarizes its next full prescription, and opens an ordered future-step editor; every custom step edits complete structured targets, exposes exact before/after changes, supports reorder/edit/add/delete, and retains supported name/notes/artwork and inserted-exercise behavior; unsaved changes, validation, keyboard/TalkBack behavior, state restoration, and compact/tall/landscape/large-text screenshots pass.
+  - Executor thread ID:
+  - Started at:
+  - Completed at:
+  - Push: `NO`
+  - Notes: follow the approved mockups' quiet hierarchy. Weight examples must use 35, 40, 45, and similar 5 lb multiples; do not reproduce the obsolete 37.5 lb examples.
+
+- [ ] **DR5-082 — Add optional multi-target adjustment after each exercise**
+  - Outcome: completing an exercise normally advances immediately, while an explicit secondary path can update several targets or apply one planned custom step for next time.
+  - Scope: guided-session completion state and bottom sheets, manual target adjustment, custom-step preview/application, persistence/undo, race and lifecycle handling, accessibility, screenshots, and focused tests.
+  - Model: `gpt-5.6-sol`
+  - Model reason: cohesive session-state and Compose interaction work after the target/editor contracts are stable.
+  - Depends on: DR5-081
+  - Status: `blocked`
+  - Acceptance: after each exercise reaches all sets complete, the sheet emphasizes a filled Next exercise action that keeps all targets and consumes no custom step; Adjust exercise is secondary and no adjustment controls are initially visible; selecting it shows the current prescription and, when present, the exact next planned step before manual controls; applying a planned step consumes exactly one step and advances; choosing Adjust manually exposes independent weight, duration, sets, and reps controls and can save multiple simultaneous changes; weight changes only in 5 lb increments and never persists an invalid value; manual adjustment leaves queued custom steps intact and previews the exact resulting prescription; back/cancel and process recreation never apply or consume changes; stale routine/session revisions cannot overwrite newer edits; completion feedback, next-exercise focus, undo, compact/tall/landscape/large-text screenshots, TalkBack order/labels, and focused tests pass.
+  - Executor thread ID:
+  - Started at:
+  - Completed at:
+  - Push: `NO`
+  - Notes: this flow is exercise-by-exercise, never deferred until routine completion. The common path must stay faster and visually stronger than either adjustment path.
+
+- [ ] **DR5-083 — Audit structured targets and exercise completion independently**
+  - Outcome: an independent review verifies the replacement model, 5 lb invariant, custom-step semantics, optional adjustment flow, accessibility, and Fitness regressions before release.
+  - Scope: complete Phase 10 diff, domain/codec/repository invariants, editor and guided-session behavior, lifecycle/concurrency/undo checks, native visual inspection, documentation, and full regression gate; fixes remain within approved Phase 10 scope.
+  - Model: `gpt-6-astra`
+  - Model reason: independent review of a storage rewrite plus session-state transitions benefits from the strongest reasoning model.
+  - Depends on: DR5-082
+  - Status: `blocked`
+  - Acceptance: the audit proves no automatic-progression or free-form-target behavior remains; every entry point enforces whole 5 lb weight steps and rejects malformed stored/request values; base targets work without custom progression; keeping current, manual multi-field adjustment, planned-step application, inserted exercises, step exhaustion, undo, stale revisions, session restart, and process recreation behave exactly as specified; editor and completion screens match the approved hierarchy on compact/tall/landscape/large-text layouts with accessible touch targets and TalkBack order; Retirement behavior is unchanged; product and technical documentation are updated; all unit and screenshot tests, lint, assemble, native checks available in the environment, privacy/backup review, and `git diff --check` pass with evidence under `docs/reviews/`.
+  - Executor thread ID:
+  - Started at:
+  - Completed at:
+  - Push: `NO`
+  - Notes: record limitations honestly and do not weaken existing progression or session-resilience coverage to make the new model pass.
+
+- [ ] **DR5-084 — Release the structured exercise-target milestone**
+  - Outcome: the audited structured-target and post-exercise adjustment redesign ships as one coherent tagged release with a verified published APK.
+  - Scope: Phase 10 findings, final documentation/version defaults, complete verification gate, Git commit/push/tag, release workflow, and published APK verification.
+  - Model: `gpt-5.6-sol`
+  - Model reason: established deterministic delivery procedure after independent audit.
+  - Depends on: DR5-083
+  - Status: `blocked`
+  - Acceptance: DR5-080–083 are complete and the audit has no unresolved blockers; documentation matches the shipped structured-target, 5 lb weight-step, custom-progression, and exercise-completion behavior; version name/code advance consistently from the Retirement release; full unit, screenshot, integration, lint, assemble, native checks available in the environment, and whitespace checks pass; the coherent Phase 10 work is committed and pushed once; the next increasing version tag is pushed; the tag-triggered release workflow completes; and the signed APK is published and verified.
+  - Executor thread ID:
+  - Started at:
+  - Completed at:
+  - Push: `YES`
+  - Notes: never commit credentials, signing material, generated build files, `.gradle-user-home`, or `.tooling`; do not release intermediate Phase 10 tasks separately.

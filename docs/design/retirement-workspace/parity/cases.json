@@ -1,0 +1,81 @@
+{
+  "format": "dr5.retirement.parity.v1",
+  "provenance": "Hand-authored fictional values; no personal workbook, database, export, or credentials were read.",
+  "money": [
+    {"input":"$1,234.56","cents":123456},
+    {"input":"(12.345)","cents":-1235},
+    {"input":"0.005","cents":1},
+    {"input":"-0.005","cents":-1},
+    {"input":"0","cents":0},
+    {"input":" 42.1 ","cents":4210}
+  ],
+  "money_native_reject": ["1,2.34","1e3","NaN","Infinity","(-12)","--1","","1000000000000.01"],
+  "classification": [
+    {"subtype":"roth ira","type":"ira_roth","tax":"roth"},
+    {"subtype":"SEP IRA","type":"ira_traditional","tax":"traditional"},
+    {"subtype":"403b","type":"401k_traditional","tax":"traditional"},
+    {"subtype":"457b","type":"401k_traditional","tax":"traditional"},
+    {"subtype":"hsa","type":"hsa","tax":"hsa"},
+    {"subtype":"money market","type":"cash","tax":"taxable"},
+    {"subtype":"unknown","type":"brokerage_taxable","tax":"taxable","native":"review_required"}
+  ],
+  "property": {
+    "payload":{"price":250000,"priceRangeLow":240000,"priceRangeHigh":260000,"subjectProperty":{"formattedAddress":"Synthetic property, no real address"},"comparables":[{},{}]},
+    "expected":{"estimate_cents":25000000,"range_low_cents":24000000,"range_high_cents":26000000,"comparable_count":2},
+    "equity":[
+      {"value_cents":25000000,"mortgage_cents":10000000,"ownership_bps":5000,"expected_cents":7500000},
+      {"value_cents":10000000,"mortgage_cents":12000000,"ownership_bps":5000,"expected_cents":-1000000},
+      {"value_cents":1,"mortgage_cents":0,"ownership_bps":5000,"expected_cents":1,"reference_cents":0}
+    ]
+  },
+  "amortization":[
+    {"principal_cents":12000000,"rate_bps":0,"term_months":60,"months":12,"payment_cents":200000,"balance_cents":9600000},
+    {"principal_cents":12000000,"rate_bps":0,"term_months":60,"months":60,"payment_cents":200000,"balance_cents":0},
+    {"principal_cents":30000000,"rate_bps":650,"term_months":360,"months":1,"payment_cents":189620,"balance_cents":29972880,"interest_cents":162500}
+  ],
+  "federal":[
+    {"filing":"single","ordinary_cents":0,"ltcg_cents":0,"tax_cents":0},
+    {"filing":"single","ordinary_cents":5000000,"ltcg_cents":0,"tax_cents":382000},
+    {"filing":"mfj","ordinary_cents":20000000,"ltcg_cents":0,"tax_cents":2634000},
+    {"filing":"single","ordinary_cents":3000000,"ltcg_cents":4000000,"tax_cents":208750},
+    {"filing":"single","ordinary_cents":0,"ltcg_cents":70000000,"tax_cents":12430750}
+  ],
+  "wisconsin":[
+    {"filing":"single","ordinary_cents":5000000,"ltcg_cents":0,"tax_cents":154998},
+    {"filing":"single","ordinary_cents":10000000,"ltcg_cents":0,"tax_cents":419998},
+    {"filing":"single","ordinary_cents":3000000,"ltcg_cents":10000000,"tax_cents":419998}
+  ],
+  "aca":[
+    {"magi_cents":4000000,"premium_cents":1200000,"household":1,"extended":false,"credit_cents":876000},
+    {"magi_cents":8000000,"premium_cents":1200000,"household":1,"extended":false,"credit_cents":0},
+    {"magi_cents":8000000,"premium_cents":1200000,"household":1,"extended":true,"credit_cents":520000},
+    {"magi_cents":6024000,"premium_cents":1200000,"household":1,"extended":false,"credit_cents":0},
+    {"magi_cents":6023999,"premium_cents":1200000,"household":1,"extended":false,"credit_cents":624106}
+  ],
+  "withdrawal":[
+    {"age":60,"balances_cents":{"taxable":5000000,"traditional":10000000},"need_cents":7000000,"rules":[{"bucket":"taxable"},{"bucket":"traditional"}],"remaining_cents":{"taxable":0,"traditional":8000000},"ordinary_cents":2000000,"ltcg_cents":1500000,"tax_free_cents":0,"unmet_cents":0},
+    {"age":59,"balances_cents":{"traditional":5000000},"need_cents":1000000,"rules":[{"bucket":"traditional","min_age":60}],"remaining_cents":{"traditional":5000000},"ordinary_cents":0,"ltcg_cents":0,"tax_free_cents":0,"unmet_cents":1000000},
+    {"age":60,"balances_cents":{"traditional":5000000},"need_cents":1000000,"rules":[{"bucket":"traditional","min_age":60}],"remaining_cents":{"traditional":4000000},"ordinary_cents":1000000,"ltcg_cents":0,"tax_free_cents":0,"unmet_cents":0},
+    {"age":60,"balances_cents":{"hsa":100000,"roth":200000},"need_cents":100000,"rules":[{"bucket":"hsa","annual_cap_real":250},{"bucket":"roth"}],"remaining_cents":{"hsa":75000,"roth":125000},"ordinary_cents":0,"ltcg_cents":0,"tax_free_cents":100000,"unmet_cents":0}
+  ],
+  "forecast": {
+    "deterministic":{"current_age":30,"retirement_age":100,"end_age":32,"starting_cents":100000,"expected_path_cents":[100000,106500,113423]},
+    "sequence":{"current_age":60,"retirement_age":60,"end_age":62,"starting_cents":100000,"spending_cents":10000,"returns":[[0.1,-0.2],[-0.2,0.1],[-1.0,0.0]],"expected_paths_cents":[[100000,100000,70000],[100000,70000,67000],[100000,0,0]],"terminal_p10_cents":13400,"terminal_p50_cents":67000,"terminal_p90_cents":69400,"success_numerator":2,"path_count":3}
+  },
+  "timing": {
+    "income":{"ages":[64,65,66,67,68],"streams":[{"name":"Synthetic pension","annual_amount":1200,"start_age":65,"end_age":67,"tax_kind":"ordinary"},{"name":"Synthetic SS","annual_amount":2400,"start_age":67,"tax_kind":"social_security"}],"total_cents":[0,120000,120000,360000,240000],"ordinary_cents":[0,120000,120000,120000,0],"ss_cents":[0,0,0,240000,240000]},
+    "epic":{"current_age":44,"retirement_age":45,"end_age":46,"base_year":2026,"annual":[{"year":2026,"net_value_pretax":1000,"after_tax_value":800},{"year":2027,"net_value_pretax":1100,"after_tax_value":880},{"year":2028,"net_value_pretax":1200,"after_tax_value":960}],"pretax_cents":[100000,110000,0],"taxable_cents":[0,0,88000],"inflation_rate":0.1,"real_pretax_cents":[100000,100000,0],"real_taxable_cents":[0,0,80000]},
+    "property":{"current_age":44,"retirement_age":45,"end_age":46,"value_cents":200000,"mortgage_cents":100000,"ownership_pct":50,"equity_cents":[50000,50000,0],"taxable_before_growth_cents":50000,"taxable_after_growth_cents":50250}
+  },
+  "aggregate":{"ordinary_cents":100000,"epic_vested_cents":60000,"epic_loan_cents":5000,"property_equity_cents":7500000,"expected_total_cents":7655000},
+  "workbook": {
+    "sheets":{
+      "2026 Consolidated Statement":{"E6":10,"B12":"Synthetic Class A","C12":100,"E12":60,"F12":600,"G12":40,"H12":400,"I12":50,"J12":550,"L12":600,"M12":1000,"C19":100,"E19":60,"F19":600,"G19":40,"H19":400,"I19":50,"J19":550,"L19":600,"M19":1000},
+      "Inputs and Summary":{"C38":"2030-01-01","C41":0.1,"C44":"Yes","C47":0.2,"C9":1200,"C10":100,"C11":1100,"C12":220,"C13":880},
+      "Detailed Projections":{"C15":2026,"C19":10,"C23":600,"C24":400,"C31":1000,"C36":50,"C37":950,"C46":500,"C47":450,"C48":90,"C49":0,"C51":860},
+      "Class B Share Price History":{"D8":0.1,"D9":0.2}
+    },
+    "expected":{"share_price_cents":1000,"vested_shares":"60","unvested_shares":"40","loans_cents":5000,"net_current_cents":55000,"projected_after_tax_cents":88000,"annual_year":2026,"annual_after_tax_cents":86000,"historical_volatility_pct":7.0710678118654755},
+    "native_reject_mutations":["missing_required_sheet","missing_required_cell","formula_without_cache","nonfinite_required_cell","inconsistent_total","duplicate_year"]
+  }
+}

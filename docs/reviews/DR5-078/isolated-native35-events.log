@@ -1,0 +1,6 @@
+09-21 13:50:05.832   611  2378 I am_anr  : [0,1946,com.google.android.apps.messaging,952876613,Broadcast of Intent { act=android.intent.action.SIM_STATE_CHANGED flg=0x15000010 cmp=com.google.android.apps.messaging/.shared.simstatetracker.AsyncTelephonySimStateReceiver (has extras) }]
+09-21 13:50:09.963   611   654 I am_proc_start: [0,2477,10209,dev.draftingroom5,added application,dev.draftingroom5]
+09-21 13:50:10.607   611   635 I am_proc_bound: [0,2477,dev.draftingroom5]
+09-21 13:50:38.246   611  3062 I am_anr  : [0,2477,dev.draftingroom5,545832518,Process ProcessRecord{5517b7f 2477:dev.draftingroom5/u0a209} failed to complete startup]
+09-21 13:50:40.570   611  3062 I am_kill : [0,2477,dev.draftingroom5,0,bg anr,254692]
+09-21 13:50:41.057   611  1541 I am_proc_died: [0,2477,dev.draftingroom5,0,19]

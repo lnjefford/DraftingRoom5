@@ -1,0 +1,266 @@
+DraftingRoom5 Gradle: Java 17 from C:\Users\lnjef\.jdks\temurin-17.0.20.1
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableScreenshotTest=true' is experimental.
+The current default is 'false'.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:lintAnalyzeDebug
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:generateDebugAndroidTestLintModel UP-TO-DATE
+> Task :app:generateDebugLintReportModel UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:generateDebugUnitTestLintModel UP-TO-DATE
+> Task :app:lintAnalyzeDebugAndroidTest
+> Task :app:lintAnalyzeDebugUnitTest
+
+> Task :app:lintReportDebug
+Wrote HTML report to file:///C:/Users/lnjef/.codex/visualizations/2026/09/21/01a0c4f9-438e-72f3-bf17-e0b9d7e24f84/dr5-build/app/reports/lint-results-debug.html
+
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:testDebugUnitTest UP-TO-DATE
+> Task :app:lintDebug
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+
+> Task :app:dexBuilderDebug
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+
+> Task :app:mergeDebugGlobalSynthetics
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+
+> Task :app:mergeDebugJavaResource
+> Task :app:checkDebugDuplicateClasses
+
+> Task :app:mergeExtDexDebug
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+
+> Task :app:mergeLibDexDebug
+
+> Task :app:mergeProjectDexDebug
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so. Run with --info option to learn more.
+
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+> Task :app:processDebugAndroidTestManifest
+> Task :app:generateDebugAndroidTestBuildConfig
+> Task :app:generateDebugAndroidTestResources
+> Task :app:packageDebugAndroidTestResources
+> Task :app:processDebugAndroidTestNavigationResources
+> Task :app:parseDebugAndroidTestLocalResources
+> Task :app:generateDebugAndroidTestRFile
+> Task :app:compileDebugAndroidTestKotlin
+> Task :app:javaPreCompileDebugAndroidTest
+> Task :app:compileDebugAndroidTestJavaWithJavac
+> Task :app:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDebugAndroidTestAssets
+> Task :app:compressDebugAndroidTestAssets
+> Task :app:desugarDebugAndroidTestFileDependencies
+> Task :app:checkDebugAndroidTestAarMetadata
+> Task :app:mapDebugAndroidTestSourceSetPaths
+> Task :app:compileDebugAndroidTestNavigationResources
+> Task :app:mergeDebugAndroidTestResources
+> Task :app:processDebugAndroidTestResources
+
+> Task :app:dexBuilderDebugAndroidTest
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+
+> Task :app:mergeDebugAndroidTestGlobalSynthetics
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+
+> Task :app:processDebugAndroidTestJavaRes
+> Task :app:mergeDebugAndroidTestJavaResource
+> Task :app:checkDebugAndroidTestDuplicateClasses
+> Task :app:mergeExtDexDebugAndroidTest
+> Task :app:mergeLibDexDebugAndroidTest
+
+> Task :app:mergeProjectDexDebugAndroidTest
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+WARNING: D8: An API level of 37 is not supported by this compiler. Please use an API level of 36 or earlier
+
+> Task :app:mergeDebugAndroidTestJniLibFolders
+> Task :app:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebugAndroidTest
+> Task :app:writeDebugAndroidTestSigningConfigVersions
+> Task :app:packageDebugAndroidTest
+> Task :app:createDebugAndroidTestApkListingFileRedirect
+> Task :app:assembleDebugAndroidTest
+> Task :app:preDebugScreenshotTestBuild UP-TO-DATE
+> Task :app:compileDebugScreenshotTestKotlin
+> Task :app:javaPreCompileDebugScreenshotTest
+> Task :app:compileDebugScreenshotTestJavaWithJavac NO-SOURCE
+> Task :app:packageDebugScreenshotTestForScreenshotTest
+> Task :app:validateDebugScreenshotTest
+
+BUILD SUCCESSFUL in 24m 12s
+88 actionable tasks: 58 executed, 30 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.3.1/userguide/configuration_cache_enabling.html

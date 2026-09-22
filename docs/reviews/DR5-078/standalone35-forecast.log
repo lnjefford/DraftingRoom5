@@ -1,0 +1,4 @@
+PASS: API 35; 10000 paths x 50 years with mixed accounts/taxes: 19653ms; main pulses=747; process heap used=73074144 bytes, maximum=201326592 bytes
+PASS: cancellation returns within 2 seconds without a partial result
+PASS: seeded Android results repeat at every path/year; no database or UI changes
+

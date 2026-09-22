@@ -1,27 +1,21 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.android.compose.screenshot") version "0.0.1-alpha15"
-}
-
-// The host renderer uses Kotlin 2.2 at runtime; source fixtures use the app's 2.0 compiler.
-configurations.matching { it.name.endsWith("ScreenshotTestCompileClasspath") }.configureEach {
-    resolutionStrategy.force("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
 }
 
 android {
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
     namespace = "dev.draftingroom5"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "dev.draftingroom5"
-        minSdk = 28
-        targetSdk = 35
+        minSdk = 37
+        targetSdk = 37
         testInstrumentationRunner = "dev.draftingroom5.WidgetAuditInstrumentation"
-        versionCode = providers.gradleProperty("appVersionCode").orElse("26003").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.26.1").get()
+        versionCode = providers.gradleProperty("appVersionCode").orElse("27002").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.27.0").get()
     }
 
     signingConfigs {
@@ -40,6 +34,7 @@ android {
     }
 
     buildFeatures { compose = true; buildConfig = true }
+    sourceSets.getByName("androidTest").assets.srcDir("../docs/design/retirement-workspace/parity/shareworks")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -48,6 +43,8 @@ android {
 }
 
 dependencies {
+    // Keep the independently audited provider SDK version pinned.
+    implementation("com.plaid.link:sdk-core:5.5.5")
     screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha15") {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }

@@ -1,0 +1,274 @@
+[
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/CoreShellScreenshots_Compact_1720b49e_17c710c1_0.png",
+    "dimensions": [
+      840,
+      2100
+    ],
+    "previous_dimensions": [
+      840,
+      2100
+    ],
+    "changed_bounds": [
+      614,
+      58,
+      667,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/CoreShellScreenshots_Compact_1720b49e_17c710c1_15.png",
+    "dimensions": [
+      840,
+      2100
+    ],
+    "previous_dimensions": [
+      840,
+      2100
+    ],
+    "changed_bounds": [
+      66,
+      23,
+      578,
+      142
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/CoreShellScreenshots_Large text_b9dd6a6d_17c710c1_0.png",
+    "dimensions": [
+      945,
+      2888
+    ],
+    "previous_dimensions": [
+      945,
+      2888
+    ],
+    "changed_bounds": [
+      66,
+      20,
+      809,
+      168
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/CoreShellScreenshots_Large text_b9dd6a6d_17c710c1_15.png",
+    "dimensions": [
+      945,
+      2888
+    ],
+    "previous_dimensions": [
+      945,
+      2888
+    ],
+    "changed_bounds": [
+      194,
+      24,
+      679,
+      168
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/CoreShellScreenshots_Tall_2fd137c0_17c710c1_0.png",
+    "dimensions": [
+      1082,
+      2888
+    ],
+    "previous_dimensions": [
+      1082,
+      2888
+    ],
+    "changed_bounds": [
+      856,
+      58,
+      909,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/CoreShellScreenshots_Tall_2fd137c0_17c710c1_15.png",
+    "dimensions": [
+      1082,
+      2888
+    ],
+    "previous_dimensions": [
+      1082,
+      2888
+    ],
+    "changed_bounds": [
+      730,
+      58,
+      783,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/ExceptionalStateScreenshots_Compact_1720b49e_5ab32b0c_13.png",
+    "dimensions": [
+      840,
+      2100
+    ],
+    "previous_dimensions": [
+      840,
+      2100
+    ],
+    "changed_bounds": [
+      614,
+      58,
+      667,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/ExceptionalStateScreenshots_Landscape_b646f1a9_5ab32b0c_13.png",
+    "dimensions": [
+      2100,
+      945
+    ],
+    "previous_dimensions": [
+      2100,
+      945
+    ],
+    "changed_bounds": [
+      1874,
+      58,
+      1927,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/ExceptionalStateScreenshots_Large text_b9dd6a6d_5ab32b0c_13.png",
+    "dimensions": [
+      945,
+      2888
+    ],
+    "previous_dimensions": [
+      945,
+      2888
+    ],
+    "changed_bounds": [
+      66,
+      20,
+      809,
+      168
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/ExceptionalStateScreenshots_Tall_2fd137c0_5ab32b0c_13.png",
+    "dimensions": [
+      1082,
+      2888
+    ],
+    "previous_dimensions": [
+      1082,
+      2888
+    ],
+    "changed_bounds": [
+      856,
+      58,
+      909,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/LinkedCompletionScreenshots_Compact_1720b49e_b87e83e5_0.png",
+    "dimensions": [
+      840,
+      2100
+    ],
+    "previous_dimensions": [
+      840,
+      2100
+    ],
+    "changed_bounds": [
+      614,
+      58,
+      667,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/LinkedCompletionScreenshots_Compact_1720b49e_b87e83e5_1.png",
+    "dimensions": [
+      840,
+      2100
+    ],
+    "previous_dimensions": [
+      840,
+      2100
+    ],
+    "changed_bounds": [
+      614,
+      58,
+      667,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/LinkedCompletionScreenshots_Large text_b9dd6a6d_b87e83e5_0.png",
+    "dimensions": [
+      945,
+      2888
+    ],
+    "previous_dimensions": [
+      945,
+      2888
+    ],
+    "changed_bounds": [
+      66,
+      20,
+      809,
+      168
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/LinkedCompletionScreenshots_Large text_b9dd6a6d_b87e83e5_1.png",
+    "dimensions": [
+      945,
+      2888
+    ],
+    "previous_dimensions": [
+      945,
+      2888
+    ],
+    "changed_bounds": [
+      66,
+      20,
+      809,
+      168
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/LinkedCompletionScreenshots_Tall_2fd137c0_b87e83e5_0.png",
+    "dimensions": [
+      1082,
+      2888
+    ],
+    "previous_dimensions": [
+      1082,
+      2888
+    ],
+    "changed_bounds": [
+      856,
+      58,
+      909,
+      111
+    ]
+  },
+  {
+    "file": "app/src/screenshotTestDebug/reference/dev/draftingroom5/CoreShellScreenshotsKt/LinkedCompletionScreenshots_Tall_2fd137c0_b87e83e5_1.png",
+    "dimensions": [
+      1082,
+      2888
+    ],
+    "previous_dimensions": [
+      1082,
+      2888
+    ],
+    "changed_bounds": [
+      856,
+      58,
+      909,
+      111
+    ]
+  }
+]

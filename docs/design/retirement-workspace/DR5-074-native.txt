@@ -1,0 +1,8 @@
+Final-source synthetic native audit, API 35, 2026-09-20.
+Command: adb -s emulator-5554 shell am instrument -w -e audit forecast dev.draftingroom5.test/dev.draftingroom5.WidgetAuditInstrumentation
+
+PASS: API 35; 10000 paths x 50 years with mixed accounts/taxes: 9706ms; main pulses=359; process heap used=69826144 bytes, maximum=201326592 bytes
+PASS: cancellation returns within 2 seconds without a partial result
+PASS: seeded Android results repeat at every path/year; no database or UI changes
+
+Heap use is sampled after the run, not a peak-memory measurement. The initial quarter-heap guard rejected this run; the final one-third guard passes on the unchanged 192 MiB heap limit. No largeHeap manifest flag or emulator heap increase was used. Emulator stopped afterward. Physical-device and multi-API performance remain unverified.

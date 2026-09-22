@@ -14,6 +14,8 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.android.tools.screenshot.PreviewTest
 import androidx.compose.ui.unit.dp
 import java.time.DayOfWeek
+import dev.draftingroom5.retirement.ui.retirementAccountsPreviewState
+import dev.draftingroom5.retirement.ui.retirementIntegratedPreviewState
 
 class CoreShellScreens : PreviewParameterProvider<String> {
     override val values = sequenceOf(
@@ -30,6 +32,65 @@ class CoreShellScreens : PreviewParameterProvider<String> {
 @Composable
 fun CoreShellScreenshots(@PreviewParameter(CoreShellScreens::class) screen: String) {
     CoreShellReviewPreview(screen)
+}
+
+class RetirementShellRoutes : PreviewParameterProvider<String> {
+    override val values = sequenceOf(
+        "Overview",
+        "Forecast",
+        "Assets",
+        "Library",
+        "Forecast settings",
+    )
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun RetirementShellScreenshots(@PreviewParameter(RetirementShellRoutes::class) screen: String) {
+    val route = when (screen) {
+        "Overview" -> AppRoute.RetirementOverview
+        "Forecast" -> AppRoute.RetirementForecast
+        "Assets" -> AppRoute.RetirementAssets
+        "Library" -> AppRoute.RetirementLibrary
+        else -> AppRoute.RetirementForecastSettings
+    }
+    RetirementWorkspaceScreen(
+        route, {}, {}, {}, {}, {},
+        accountsPreviewState = if (route in setOf(AppRoute.RetirementOverview, AppRoute.RetirementAssets, AppRoute.RetirementLibrary)) {
+            retirementIntegratedPreviewState()
+        } else null,
+    )
+}
+
+class RetirementAccountScreens : PreviewParameterProvider<String> {
+    override val values = sequenceOf("Accounts", "Add asset", "Manual detail", "Linked attention", "Balance history", "Edit account", "Update balance",
+        "Property detail", "Property history", "Edit property")
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun RetirementAccountScreenshots(@PreviewParameter(RetirementAccountScreens::class) screen: String) {
+    val route = when (screen) {
+        "Accounts" -> AppRoute.RetirementAccounts
+        "Add asset" -> AppRoute.RetirementAddAsset
+        "Manual detail" -> AppRoute.RetirementAccountDetail("preview-manual")
+        "Linked attention" -> AppRoute.RetirementAccountDetail("preview-linked")
+        "Balance history" -> AppRoute.RetirementAccountHistory("preview-manual")
+        "Edit account" -> AppRoute.RetirementAccountEdit("preview-linked")
+        "Update balance" -> AppRoute.RetirementAccountUpdate("preview-manual")
+        "Property detail" -> AppRoute.RetirementPropertyDetail("preview-property")
+        "Property history" -> AppRoute.RetirementPropertyHistory("preview-property")
+        else -> AppRoute.RetirementPropertyEdit("preview-property")
+    }
+    RetirementWorkspaceScreen(route, {}, {}, {}, {}, {}, {}, retirementAccountsPreviewState())
 }
 
 class LinkedCompletionStates : PreviewParameterProvider<String> {

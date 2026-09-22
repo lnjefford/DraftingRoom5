@@ -1,0 +1,56 @@
+{
+  "format": "draftingroom5.retirement.manual-foundations.v1",
+  "money": [
+    { "text": "$1,234.56", "cents": 123456 },
+    { "text": "(12.345)", "cents": -1235 },
+    { "text": "0.005", "cents": 1 },
+    { "text": "-0.005", "cents": -1 }
+  ],
+  "account": {
+    "origin": "MANUAL",
+    "type": "IRA_ROTH",
+    "taxTreatment": "ROTH",
+    "owner": "SELF",
+    "includedInForecast": true,
+    "balanceSource": "MANUAL",
+    "amountCents": 100000,
+    "basisCents": 75000,
+    "holdingAvailability": "COMPLETE",
+    "holdingQuantity": "2.500",
+    "holdingPriceCents": 40000,
+    "holdingBasisCents": 30000,
+    "assetClass": "US_STOCKS"
+  },
+  "property": {
+    "owner": "JOINT",
+    "valueCents": 25000000,
+    "mortgageCents": 10000000,
+    "ownershipBps": 5000,
+    "equityCents": 7500000,
+    "source": "MANUAL",
+    "automaticValueEnabled": true,
+    "includedInForecast": true
+  },
+  "epicImport": {
+    "formatId": "shareworks-2026",
+    "parserVersion": 1,
+    "vestedValueCents": 60000,
+    "unvestedValueCents": 40000,
+    "loansCents": 5000,
+    "rawWorkbookRetained": false,
+    "sourceFilenameRetained": false
+  },
+  "aggregate": {
+    "ordinaryCents": 100000,
+    "epicNetCents": 55000,
+    "propertyEquityCents": 7500000,
+    "expectedCents": 7655000
+  },
+  "backup": {
+    "databaseLocation": "noBackupFilesDir/retirement/retirement.db",
+    "ordinaryDocumentIncludesRetirement": false,
+    "credentialsIncluded": false,
+    "rawShareworksIncluded": false,
+    "manualHistoryRestored": false
+  }
+}

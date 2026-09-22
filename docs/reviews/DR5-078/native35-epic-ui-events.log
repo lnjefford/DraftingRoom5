@@ -1,0 +1,6 @@
+09-21 13:53:16.119   611  1540 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=dev.draftingroom5/.MainActivity} with LAUNCH_MULTIPLE from uid 10209 (BAL_ALLOW_PERMISSION) result code=0
+09-21 13:53:21.648   611   641 I ActivityTaskManager: Displayed dev.draftingroom5/.MainActivity for user 0: +5s590ms
+09-21 13:53:22.570  3819  3819 I Choreographer: Skipped 357 frames!  The application may be doing too much work on its main thread.
+09-21 13:53:23.200  1061  1061 I Choreographer: Skipped 56 frames!  The application may be doing too much work on its main thread.
+09-21 13:53:23.686  3819  3819 I Choreographer: Skipped 65 frames!  The application may be doing too much work on its main thread.
+09-21 13:53:44.041   611  1529 W ActivityTaskManager: Force removing ActivityRecord{ab4675a u0 dev.draftingroom5/.MainActivity t7 f}}: app died, no saved state

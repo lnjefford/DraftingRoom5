@@ -1,0 +1,12 @@
+onError: commandError=true message=INSTRUMENTATION_FAILED: dev.draftingroom5.test/dev.draftingroom5.WidgetAuditInstrumentation
+android.util.AndroidException: INSTRUMENTATION_FAILED: dev.draftingroom5.test/dev.draftingroom5.WidgetAuditInstrumentation
+	at com.android.commands.am.Instrument.run(Instrument.java:486)
+	at com.android.commands.am.Am.runInstrument(Am.java:194)
+	at com.android.commands.am.Am.onRun(Am.java:80)
+	at com.android.internal.os.BaseCommand.run(BaseCommand.java:54)
+	at com.android.commands.am.Am.main(Am.java:50)
+	at com.android.internal.os.RuntimeInit.nativeFinishInit(Native Method)
+	at com.android.internal.os.RuntimeInit.main(RuntimeInit.java:340)
+INSTRUMENTATION_STATUS: Error=Unable to find instrumentation info for: ComponentInfo{dev.draftingroom5.test/dev.draftingroom5.WidgetAuditInstrumentation}
+INSTRUMENTATION_STATUS: id=ActivityManagerService
+INSTRUMENTATION_STATUS_CODE: -1

@@ -1,0 +1,19 @@
+test_aggregate_counts_each_origin_once (__main__.FinancialContract.test_aggregate_counts_each_origin_once) ... ok
+test_money_exact_and_invalid_boundaries (__main__.FinancialContract.test_money_exact_and_invalid_boundaries) ... ok
+test_owned_equity_including_negative_and_half_cent (__main__.FinancialContract.test_owned_equity_including_negative_and_half_cent) ... ok
+test_workbook_accepts_complete_synthetic_cells (__main__.FinancialContract.test_workbook_accepts_complete_synthetic_cells) ... ok
+test_workbook_rejects_each_documented_invalid_mutation (__main__.FinancialContract.test_workbook_rejects_each_documented_invalid_mutation) ... ok
+test_every_route_has_a_finite_restorable_parent_chain (__main__.NavigationAndBackupContract.test_every_route_has_a_finite_restorable_parent_chain) ... ok
+test_existing_backup_allowlist_does_not_include_financial_storage (__main__.NavigationAndBackupContract.test_existing_backup_allowlist_does_not_include_financial_storage) ... ok
+test_backdated_snapshot_preserves_latest_value (__main__.TransactionContract.test_backdated_snapshot_preserves_latest_value) ... ok
+test_failure_rolls_back_balances_holdings_freshness_and_generation (__main__.TransactionContract.test_failure_rolls_back_balances_holdings_freshness_and_generation) ... ok
+test_forecast_publication_must_match_current_generation (__main__.TransactionContract.test_forecast_publication_must_match_current_generation) ... ok
+test_fractional_cent_storage_rejected (__main__.TransactionContract.test_fractional_cent_storage_rejected) ... ok
+test_history_is_append_only (__main__.TransactionContract.test_history_is_append_only) ... ok
+test_late_response_cannot_undo_new_revision (__main__.TransactionContract.test_late_response_cannot_undo_new_revision) ... ok
+test_retry_does_not_duplicate_and_same_day_change_appends (__main__.TransactionContract.test_retry_does_not_duplicate_and_same_day_change_appends) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.052s
+
+OK

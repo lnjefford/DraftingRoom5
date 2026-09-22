@@ -1,0 +1,15 @@
+{
+  "apk_bytes": 82337587,
+  "sha256": "fa553f21660858e6c9fca4b26ef0361e2fc135d8ea03cac1465518ced7dae4b1",
+  "canaries": [
+    "synthetic-native-canary",
+    "synthetic-not-a-credential",
+    "synthetic-secret-value",
+    "synthetic-private-draft",
+    "manual-foundations.json",
+    "forecast-golden.json",
+    "cached.xlsm",
+    "values.xlsm"
+  ],
+  "matches": []
+}

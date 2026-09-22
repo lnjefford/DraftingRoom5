@@ -1,0 +1,4 @@
+INSTRUMENTATION_RESULT: drafts=PASS: Android saved-state Bundle excludes property address and amounts; opaque draft restores from no-backup storage
+INSTRUMENTATION_RESULT: stream=PASS: eight synthetic native Retirement surfaces rendered; secure-window assertion passed before every test-only capture on API 35
+
+INSTRUMENTATION_CODE: -1

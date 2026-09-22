@@ -1,0 +1,43 @@
+DraftingRoom5 Gradle: Java 17 from C:\Users\lnjef\.jdks\temurin-17.0.20.1
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableScreenshotTest=true' is experimental.
+The current default is 'false'.
+WARNING: We recommend using a newer Android Gradle plugin to use compileSdk = 37
+
+This Android Gradle plugin (8.9.2) was tested up to compileSdk = 36.
+
+You are strongly encouraged to update your project to use a newer
+Android Gradle plugin that has been tested with compileSdk = 37.
+
+If you are already using the latest version of the Android Gradle plugin,
+you may need to wait until a newer version with support for compileSdk = 37 is available.
+
+For more information refer to the compatibility table:
+https://d.android.com/r/tools/api-level-support
+
+To suppress this warning, add/update
+    android.suppressUnsupportedCompileSdk=37
+to this project's gradle.properties.
+Observed package id 'build-tools;34.0.0' in inconsistent location 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\build-tools\34.0.0-2' (Expected 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\build-tools\34.0.0')
+Already observed package id 'build-tools;34.0.0' in 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\build-tools\34.0.0'. Skipping duplicate at 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\build-tools\34.0.0-2'
+Observed package id 'build-tools;34.0.0' in inconsistent location 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\build-tools\34.0.0-3' (Expected 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\build-tools\34.0.0')
+Already observed package id 'build-tools;34.0.0' in 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\build-tools\34.0.0'. Skipping duplicate at 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\build-tools\34.0.0-3'
+Observed package id 'platforms;android-36' in inconsistent location 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\platforms\android-36-2' (Expected 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\platforms\android-36')
+Already observed package id 'platforms;android-36' in 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\platforms\android-36'. Skipping duplicate at 'C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk\platforms\android-36-2'
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Could not determine the dependencies of task ':app:testDebugUnitTest'.
+> Failed to find target with hash string 'android-37' in: C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5\tools\android-sdk
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2m 1s

@@ -1,0 +1,57 @@
+[
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\RetirementAccountScreenshots_Compact_1720b49e_59dbcc90_9.png",
+    "bounds": [
+      52,
+      387,
+      787,
+      2100
+    ],
+    "previous_sha256": "8a10a139f4aa465141e35588c6e3cf3a6bd13b6d6d494de8b6dda44ef8180f6a",
+    "accepted_sha256": "c71c53578ba7d0bd34c9d3180ba2b7a12d4eeac56cf3635a2eb1fd5c52b5bee0"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\RetirementAccountScreenshots_Landscape_b646f1a9_59dbcc90_9.png",
+    "bounds": [
+      53,
+      387,
+      2047,
+      945
+    ],
+    "previous_sha256": "45d398616f2760c4fe8341a54289edfdc9db91c263204dc96f7066dafde10cb9",
+    "accepted_sha256": "f672dd68b2a168cdacdc96f8bdf85414034fa667d51c241759f55c724b5cd340"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\RetirementAccountScreenshots_Large text_b9dd6a6d_59dbcc90_9.png",
+    "bounds": [
+      53,
+      426,
+      945,
+      2888
+    ],
+    "previous_sha256": "aec9b83ca0c875e7c5252ed1546597d888cb2497cd939fda0bbfc65c72aeb583",
+    "accepted_sha256": "54d204935dcf91779136b8757c1d33f89e1c563c22ff849ea966693d9d106615"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\RetirementAccountScreenshots_Tall_2fd137c0_59dbcc90_0.png",
+    "bounds": [
+      52,
+      2824,
+      1029,
+      2888
+    ],
+    "previous_sha256": "c41fff384cb4cddea153bf31708adb74fa460d176cfad2e7f30e032af748b95e",
+    "accepted_sha256": "0b525dd83663686efa9c150aa5c4a1a049801171d49083722b233e7537e9603c"
+  },
+  {
+    "file": "dev\\draftingroom5\\CoreShellScreenshotsKt\\RetirementAccountScreenshots_Tall_2fd137c0_59dbcc90_9.png",
+    "bounds": [
+      52,
+      387,
+      1029,
+      2534
+    ],
+    "previous_sha256": "932fe55ab8a966cde403b59bbe72000b5ce8ad82b5ae34a07fc3adf7d0cd9acf",
+    "accepted_sha256": "c9f49eb83e472c2072bb63bd10ca3ede2625ae57b0be2e0b988c1bfbc2afbfc4"
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "api": 28,
+  "buffer_bytes_scanned": 3504347,
+  "canary_match_counts": {
+    "synthetic-native-canary": 0,
+    "synthetic-not-a-credential": 0,
+    "synthetic-secret-value": 0,
+    "synthetic-private-draft": 0,
+    "500 Fixture Way": 0,
+    "198,430.55": 0,
+    "1,745.20": 0
+  }
+}

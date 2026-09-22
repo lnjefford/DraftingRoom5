@@ -13,3 +13,6 @@ tmp/
 .codex-remote-attachments/
 __pycache__/
 *.pyc
+
+# Synthetic draft files emitted by the host Compose screenshot renderer.
+/app/retirement-drafts/

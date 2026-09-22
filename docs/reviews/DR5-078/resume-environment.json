@@ -1,0 +1,12 @@
+{
+  "reason": "User freed disk space and requested continuation",
+  "free_bytes_at_start": 51323015168,
+  "temporary_outputs_from_previous_run": "No longer present; rebuild from preserved sources required",
+  "avd": "DR5078Resume28",
+  "api": 28,
+  "port": 5558,
+  "initial_guest_ram_mb": 3072,
+  "host_memory_kib": 8303628,
+  "initialization": "Lock service unavailable during initial boot under concurrent Gradle memory pressure; stopped isolated emulator to serialize build and native checks",
+  "production_source_changes": false
+}

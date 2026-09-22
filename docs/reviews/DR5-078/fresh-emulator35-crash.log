@@ -1,0 +1,33 @@
+--------- beginning of crash
+09-21 13:00:58.846   624   650 E AndroidRuntime: *** FATAL EXCEPTION IN SYSTEM PROCESS: android.fg
+09-21 13:00:58.846   624   650 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.342  1508  1526 E AndroidRuntime: FATAL EXCEPTION: launcher-loader
+09-21 13:01:00.342  1508  1526 E AndroidRuntime: Process: com.google.android.apps.nexuslauncher, PID: 1508
+09-21 13:01:00.342  1508  1526 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.415  2277  2277 E AndroidRuntime: FATAL EXCEPTION: main
+09-21 13:01:00.415  2277  2277 E AndroidRuntime: PID: 2277
+09-21 13:01:00.415  2277  2277 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.422  2245  2245 E AndroidRuntime: FATAL EXCEPTION: main
+09-21 13:01:00.422  2245  2245 E AndroidRuntime: Process: com.google.android.gms.persistent, PID: 2245
+09-21 13:01:00.422  2245  2245 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.429  2248  2248 E AndroidRuntime: FATAL EXCEPTION: main
+09-21 13:01:00.429  2248  2248 E AndroidRuntime: Process: com.google.android.googlequicksearchbox:interactor, PID: 2248
+09-21 13:01:00.429  2248  2248 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.435  1076  1274 E AndroidRuntime: FATAL EXCEPTION: plugin
+09-21 13:01:00.435  1076  1274 E AndroidRuntime: Process: com.android.systemui, PID: 1076
+09-21 13:01:00.435  1076  1274 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.443  1195  1195 E AndroidRuntime: FATAL EXCEPTION: main
+09-21 13:01:00.443  1195  1195 E AndroidRuntime: Process: com.android.networkstack.process, PID: 1195
+09-21 13:01:00.443  1195  1195 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.446  2210  2210 E AndroidRuntime: FATAL EXCEPTION: main
+09-21 13:01:00.446  2210  2210 E AndroidRuntime: Process: com.google.android.devicelockcontroller, PID: 2210
+09-21 13:01:00.446  2210  2210 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.451  1076  1076 E AndroidRuntime: FATAL EXCEPTION: main
+09-21 13:01:00.451  1076  1076 E AndroidRuntime: Process: com.android.systemui, PID: 1076
+09-21 13:01:00.451  1076  1076 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.458  2248  2275 E AndroidRuntime: FATAL EXCEPTION: SplitCompatBackgroundThread
+09-21 13:01:00.458  2248  2275 E AndroidRuntime: Process: com.google.android.googlequicksearchbox:interactor, PID: 2248
+09-21 13:01:00.458  2248  2275 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-21 13:01:00.488  1633  1633 E AndroidRuntime: FATAL EXCEPTION: main
+09-21 13:01:00.488  1633  1633 E AndroidRuntime: Process: com.google.android.ext.services, PID: 1633
+09-21 13:01:00.488  1633  1633 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause

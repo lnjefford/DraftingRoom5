@@ -1,0 +1,5 @@
+INSTRUMENTATION_RESULT: stream=PASS: API 28; 10000 paths x 50 years with mixed accounts/taxes: 5518ms; main pulses=209; process heap used=62316608 bytes, maximum=402653184 bytes
+PASS: cancellation returns within 2 seconds without a partial result
+PASS: seeded Android results repeat at every path/year; no database or UI changes
+
+INSTRUMENTATION_CODE: -1

@@ -1,0 +1,4 @@
+INFO         | Android emulator version 37.1.11.0 (build_id 15917651) (CL:N/A)
+INFO         | Graphics backend: gfxstream
+INFO         | Found systemPath C:\Users\lnjef\OneDrive\Documents\GitHub\DraftingRoom5/tools/android-sdk\system-images\android-28\google_apis\x86_64\
+ERROR        | partition-size (2048) must be between 10MB and 2047MB

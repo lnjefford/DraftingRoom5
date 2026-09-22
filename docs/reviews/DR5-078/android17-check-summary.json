@@ -1,0 +1,15 @@
+{
+  "unit_suites": 58,
+  "unit_tests": 406,
+  "unit_failures": 0,
+  "unit_errors": 0,
+  "unit_skipped": 0,
+  "screenshot_suites": 1,
+  "screenshot_tests": 443,
+  "screenshot_failures": 0,
+  "screenshot_errors": 0,
+  "screenshot_skipped": 0,
+  "lint": {
+    "Warning": 46
+  }
+}

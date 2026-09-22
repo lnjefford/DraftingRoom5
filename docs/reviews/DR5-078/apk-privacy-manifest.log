@@ -1,0 +1,7 @@
+      A: android:name(0x01010003)="dev.draftingroom5.retirement.provider.ProviderPrivacyApplication" (Raw: "dev.draftingroom5.retirement.provider.ProviderPrivacyApplication")
+      A: android:allowBackup(0x01010280)=(type 0x12)0xffffffff
+      A: android:fullBackupContent(0x010104eb)=@0x7f130000
+      A: android:usesCleartextTraffic(0x010104ec)=(type 0x12)0x0
+      A: android:dataExtractionRules(0x0101063e)=@0x7f130001
+        A: android:name(0x01010003)="dev.draftingroom5.retirement.provider.LinkedAccountsActivity" (Raw: "dev.draftingroom5.retirement.provider.LinkedAccountsActivity")
+        A: android:name(0x01010003)="dev.draftingroom5.retirement.provider.PropertyActivity" (Raw: "dev.draftingroom5.retirement.provider.PropertyActivity")
