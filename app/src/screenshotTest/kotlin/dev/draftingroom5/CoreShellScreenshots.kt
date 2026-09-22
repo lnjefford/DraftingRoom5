@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +20,11 @@ import java.time.DayOfWeek
 import dev.draftingroom5.retirement.ui.retirementAccountsPreviewState
 import dev.draftingroom5.retirement.ui.retirementIntegratedPreviewState
 import dev.draftingroom5.retirement.domain.ProviderEnvironment
+import dev.draftingroom5.retirement.domain.HoldingAvailability
+import dev.draftingroom5.retirement.domain.Money
 import dev.draftingroom5.retirement.provider.ConnectionHomeContent
+import dev.draftingroom5.retirement.provider.LinkedAccountData
+import dev.draftingroom5.retirement.provider.ReviewAccountsContent
 
 class CoreShellScreens : PreviewParameterProvider<String> {
     override val values = sequenceOf(
@@ -110,6 +116,29 @@ fun LinkedAccountsHomeScreenshots() {
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
             ) {
                 ConnectionHomeContent(ProviderEnvironment.SANDBOX, false, false, false, {}, {}, {}, {})
+            }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun LinkedAccountsReviewScreenshots() {
+    val account = LinkedAccountData(
+        "preview-account", "Employer retirement plan", "1234", "401k", Money(125_034_56),
+        java.time.LocalDate.of(2026, 9, 22), emptyList(), HoldingAvailability.COMPLETE,
+    )
+    RetirementTheme {
+        androidx.compose.material3.Surface(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+            ) {
+                ReviewAccountsContent(listOf(account), emptyList(), false, {}, {})
             }
         }
     }

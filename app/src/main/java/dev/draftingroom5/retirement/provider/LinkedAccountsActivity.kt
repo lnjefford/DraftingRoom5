@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
@@ -344,62 +345,19 @@ class LinkedAccountsActivity : ComponentActivity() {
     }
 
     @Composable private fun ReviewForm(batch: AccountBatch) {
-        var selections by remember(batch.operationId) { mutableStateOf<Map<String, AccountSelection>>(emptyMap()) }
-        var confirmedTypes by remember(batch.operationId) { mutableStateOf<Set<String>>(emptySet()) }
-        Text("Select accounts, then confirm type, tax treatment, ownership and forecast inclusion. Similar names or masks do not prove two accounts are the same.")
-        batch.accounts.forEach { account ->
-            val selected = selections[account.providerAccountId]
-            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(account.name + (account.mask?.let { " ••$it" } ?: ""))
-                Text(account.amount?.format() ?: "Balance unavailable")
-                Text("Holdings: ${account.availability.name.lowercase()}")
-                Row {
-                    Checkbox(selected != null, onCheckedChange = { checked ->
-                        confirmedTypes = confirmedTypes - account.providerAccountId
-                        selections = if (!checked) selections - account.providerAccountId else selections + (account.providerAccountId to
-                            AccountSelection(account.providerAccountId, account.name, Owner.SELF, AccountType.BROKERAGE, TaxTreatment.TAXABLE, false))
-                    })
-                    Text("Track this account", Modifier.padding(top = 12.dp))
-                }
-                if (selected != null) {
-                    val suggestion = AccountClassification.suggest(account.subtype)
-                    Text(suggestion?.let { "Suggested: ${it.first.name.lowercase().replace('_', ' ')}. Confirm below." } ?: "Unfamiliar account subtype: choose classification explicitly.")
-                    fun update(next: AccountSelection) { selections = selections + (account.providerAccountId to next) }
-                    if (account.providerAccountId !in confirmedTypes) Text("Choose an account type to confirm it.")
-                    Choice("Type", selected.type, AccountType.entries.filter { it !in setOf(AccountType.PROPERTY, AccountType.EPIC) }) {
-                        update(selected.copy(type = it)); confirmedTypes = confirmedTypes + account.providerAccountId
-                    }
-                    Choice("Tax treatment", selected.tax, TaxTreatment.entries.filter { it !in setOf(TaxTreatment.PROPERTY, TaxTreatment.EPIC) }) { update(selected.copy(tax = it)) }
-                    Choice("Owner", selected.owner, Owner.entries) { update(selected.copy(owner = it)) }
-                    Row { Checkbox(selected.included, { update(selected.copy(included = it)) }); Text("Include in forecast", Modifier.padding(top = 12.dp)) }
-                    if (manualAccounts.isNotEmpty()) {
-                        var mergeMenu by remember { mutableStateOf(false) }
-                        TextButton(onClick = { mergeMenu = true }) { Text(selected.replaceManualId?.let { "Replace existing tracking: ${manualAccounts.first { a -> a.id == it }.currentRevision.displayName}" } ?: "Add as new (or match an existing account)") }
-                        DropdownMenu(mergeMenu, { mergeMenu = false }) {
-                            DropdownMenuItem(text = { Text("Add as new") }, onClick = { update(selected.copy(replaceManualId = null)); mergeMenu = false })
-                            manualAccounts.forEach { manual -> DropdownMenuItem(text = { Text("Replace ${manual.currentRevision.displayName}") }, onClick = { update(selected.copy(replaceManualId = manual.id)); mergeMenu = false }) }
-                        }
-                        Text("Matching converts only the chosen manual or disconnected account to this connection and preserves its history.")
-                    }
-                }
-            } }
-        }
-        var confirmed by remember(batch.operationId, selections) { mutableStateOf(false) }
-        Row { Checkbox(confirmed, { confirmed = it }); Text("I confirm the selected classifications and matches", Modifier.padding(top = 12.dp)) }
-        Button(enabled = !busy && confirmed && selections.isNotEmpty() && confirmedTypes.containsAll(selections.keys) && selections.values.all { AccountClassification.valid(it.type, it.tax) }, onClick = {
+        ReviewAccountsContent(batch.accounts, manualAccounts, busy, onSave = { selections ->
             perform {
                 val result = withContext(Dispatchers.IO) { runtime.plaid.accept(batch, reviewGeneration, selections.values.toList()) }
                 if (result !is RetirementResult.Success) throw ProviderException(ProviderFailure.CONFLICT)
                 RetirementAccountSyncWorker.schedule(this@LinkedAccountsActivity, batch.item.id)
                 review = null; message = "Accounts saved. Scheduled refresh is approximately daily and subject to Android constraints."
             }
-        }) { Text("Save reviewed accounts") }
-        TextButton(enabled = !busy, onClick = { perform {
+        }, onDiscard = { perform {
             val revoked = withContext(Dispatchers.IO) { runtime.plaid.disconnect(batch.item.id) }
             RetirementAccountSyncWorker.cancel(this@LinkedAccountsActivity, batch.item.id)
             review = null
             message = if (revoked) "Connection removed." else "Removed from this phone. Remote revocation could not be confirmed; revoke access in your Plaid or institution dashboard."
-        } }) { Text("Discard pending connection") }
+        } })
     }
 
     @Composable private fun ManualForm() {
@@ -422,6 +380,135 @@ class LinkedAccountsActivity : ComponentActivity() {
             finish()
         } }) { Text("Save manual account") }
     }
+}
+
+@Composable
+internal fun ReviewAccountsContent(
+    accounts: List<LinkedAccountData>,
+    manualAccounts: List<Account>,
+    busy: Boolean,
+    onSave: (Map<String, AccountSelection>) -> Unit,
+    onDiscard: () -> Unit,
+) {
+    var selections by remember(accounts) { mutableStateOf(accounts.associate { it.providerAccountId to defaultSelection(it) }) }
+    var selectionMessage by remember { mutableStateOf<String?>(null) }
+    Text("Choose what to use in your plan. You can change these details later.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text("${selections.size} of ${accounts.size} accounts selected", style = MaterialTheme.typography.titleMedium)
+    accounts.forEach { account ->
+        val selected = selections[account.providerAccountId]
+        ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(account.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    account.mask?.let { Text("Account ending in $it", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+                    Text(account.amount?.format() ?: "Balance unavailable", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                }
+                Text(
+                    when (account.availability) {
+                        HoldingAvailability.COMPLETE -> "Holdings available"
+                        HoldingAvailability.PENDING -> "Holdings pending"
+                        HoldingAvailability.UNSUPPORTED -> "Balance only"
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                HorizontalDivider()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(selected != null, onCheckedChange = { checked ->
+                        selectionMessage = null
+                        selections = if (checked) selections + (account.providerAccountId to defaultSelection(account))
+                            else selections - account.providerAccountId
+                    })
+                    Text("Use account", fontWeight = FontWeight.Medium)
+                }
+                if (selected != null) {
+                    fun update(next: AccountSelection) { selectionMessage = null; selections = selections + (account.providerAccountId to next) }
+                    Choice("Account type", selected.type, reviewAccountTypes(), ::accountTypeLabel) { type ->
+                        update(selected.copy(type = type, tax = defaultTaxTreatment(type, selected.tax)))
+                    }
+                    Choice("Tax treatment", selected.tax, taxTreatmentsFor(selected.type), ::taxTreatmentLabel) { update(selected.copy(tax = it)) }
+                    Choice("Owner", selected.owner, Owner.entries, ::ownerLabel) { update(selected.copy(owner = it)) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(selected.included, { update(selected.copy(included = it)) })
+                        Text("Include in forecast", fontWeight = FontWeight.Medium)
+                    }
+                    if (manualAccounts.isNotEmpty()) {
+                        var mergeMenu by remember { mutableStateOf(false) }
+                        OutlinedButton(onClick = { mergeMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text(selected.replaceManualId?.let { id -> "Replace ${manualAccounts.first { it.id == id }.currentRevision.displayName}" } ?: "Add as a new account")
+                            Spacer(Modifier.weight(1f))
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                        DropdownMenu(mergeMenu, { mergeMenu = false }) {
+                            DropdownMenuItem(text = { Text("Add as a new account") }, onClick = { update(selected.copy(replaceManualId = null)); mergeMenu = false })
+                            manualAccounts.forEach { manual -> DropdownMenuItem(text = { Text("Replace ${manual.currentRevision.displayName}") }, onClick = { update(selected.copy(replaceManualId = manual.id)); mergeMenu = false }) }
+                        }
+                        Text("Matching preserves the existing account's history.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+    }
+    selectionMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    Button(
+        enabled = !busy,
+        onClick = {
+            if (selections.isEmpty()) selectionMessage = "Choose at least one account to save."
+            else onSave(selections)
+        },
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+    ) { Text("Save accounts") }
+    TextButton(enabled = !busy, onClick = onDiscard, modifier = Modifier.fillMaxWidth()) { Text("Discard connection") }
+}
+
+internal fun defaultSelection(account: LinkedAccountData): AccountSelection {
+    val suggestion = AccountClassification.suggest(account.subtype) ?: (AccountType.BROKERAGE to TaxTreatment.TAXABLE)
+    return AccountSelection(account.providerAccountId, account.name, Owner.SELF, suggestion.first, suggestion.second, true)
+}
+
+internal fun reviewAccountTypes() = AccountType.entries.filter { it !in setOf(AccountType.PROPERTY, AccountType.EPIC) }
+
+internal fun taxTreatmentsFor(type: AccountType): List<TaxTreatment> = when (type) {
+    AccountType.EMPLOYER_401K, AccountType.EMPLOYER_403B, AccountType.EMPLOYER_457, AccountType.PROFIT_SHARING -> listOf(TaxTreatment.PRE_TAX, TaxTreatment.ROTH)
+    AccountType.IRA_TRADITIONAL -> listOf(TaxTreatment.PRE_TAX)
+    AccountType.IRA_ROTH -> listOf(TaxTreatment.ROTH)
+    AccountType.HSA -> listOf(TaxTreatment.TAX_FREE)
+    AccountType.BROKERAGE, AccountType.CASH, AccountType.CD, AccountType.CRYPTO -> listOf(TaxTreatment.TAXABLE)
+    AccountType.PROPERTY, AccountType.EPIC -> emptyList()
+}
+
+internal fun defaultTaxTreatment(type: AccountType, current: TaxTreatment): TaxTreatment =
+    current.takeIf { it in taxTreatmentsFor(type) } ?: taxTreatmentsFor(type).first()
+
+internal fun accountTypeLabel(type: AccountType) = when (type) {
+    AccountType.EMPLOYER_401K -> "Employer 401(k)"
+    AccountType.EMPLOYER_403B -> "Employer 403(b)"
+    AccountType.EMPLOYER_457 -> "Employer 457"
+    AccountType.PROFIT_SHARING -> "Profit sharing"
+    AccountType.IRA_TRADITIONAL -> "Traditional IRA"
+    AccountType.IRA_ROTH -> "Roth IRA"
+    AccountType.HSA -> "HSA"
+    AccountType.BROKERAGE -> "Brokerage"
+    AccountType.CASH -> "Cash"
+    AccountType.CD -> "CD"
+    AccountType.CRYPTO -> "Crypto"
+    AccountType.PROPERTY -> "Property"
+    AccountType.EPIC -> "Epic stock"
+}
+
+internal fun taxTreatmentLabel(tax: TaxTreatment) = when (tax) {
+    TaxTreatment.PRE_TAX -> "Pre-tax"
+    TaxTreatment.ROTH -> "Roth"
+    TaxTreatment.TAXABLE -> "Taxable"
+    TaxTreatment.TAX_FREE -> "Tax-free"
+    TaxTreatment.PROPERTY -> "Property"
+    TaxTreatment.EPIC -> "Epic stock"
+}
+
+internal fun ownerLabel(owner: Owner) = when (owner) {
+    Owner.SELF -> "You"
+    Owner.SPOUSE -> "Spouse"
+    Owner.JOINT -> "Joint"
 }
 
 @Composable
@@ -474,12 +561,24 @@ internal fun ConnectionHomeContent(
     }
 }
 
-@Composable private fun <T> Choice(label: String, value: T, values: List<T>, changed: (T) -> Unit) {
+@Composable private fun <T> Choice(
+    label: String,
+    value: T,
+    values: List<T>,
+    display: (T) -> String = { it.toString().lowercase().replace('_', ' ').replaceFirstChar(Char::uppercase) },
+    changed: (T) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { expanded = true }) { Text("$label: ${value.toString().lowercase().replace('_', ' ')}") }
+    Box(Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(display(value))
+            }
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+        }
         DropdownMenu(expanded, { expanded = false }) { values.forEach { option ->
-            DropdownMenuItem(text = { Text(option.toString().lowercase().replace('_', ' ')) }, onClick = { changed(option); expanded = false })
+            DropdownMenuItem(text = { Text(display(option)) }, onClick = { changed(option); expanded = false })
         } }
     }
 }
