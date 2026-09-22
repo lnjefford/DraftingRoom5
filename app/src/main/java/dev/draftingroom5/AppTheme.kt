@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -126,6 +127,8 @@ internal fun BrandTitle(
     title: String,
     animateOnEntry: Boolean = false,
     onAnimationFinished: () -> Unit = {},
+    onLogoClick: (() -> Unit)? = null,
+    activeWorkspace: AppWorkspace? = null,
 ) {
     val motionEnabled = animateOnEntry && ValueAnimator.areAnimatorsEnabled()
     val progress = remember(animateOnEntry) { Animatable(if (motionEnabled) 0f else 1f) }
@@ -150,7 +153,13 @@ internal fun BrandTitle(
         },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LauncherFiveMark()
+        LauncherFiveMark(
+            if (onLogoClick != null && activeWorkspace != null) {
+                Modifier
+                    .workspaceLogoSemantics(activeWorkspace)
+                    .clickable(onClick = onLogoClick)
+            } else Modifier,
+        )
         Spacer(Modifier.width(10.dp))
         Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)

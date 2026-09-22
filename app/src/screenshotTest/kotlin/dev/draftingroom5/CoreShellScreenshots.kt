@@ -38,7 +38,7 @@ class RetirementShellRoutes : PreviewParameterProvider<String> {
     override val values = sequenceOf(
         "Overview",
         "Forecast",
-        "Assets",
+        "Accounts",
         "Library",
         "Forecast settings",
     )
@@ -54,7 +54,7 @@ fun RetirementShellScreenshots(@PreviewParameter(RetirementShellRoutes::class) s
     val route = when (screen) {
         "Overview" -> AppRoute.RetirementOverview
         "Forecast" -> AppRoute.RetirementForecast
-        "Assets" -> AppRoute.RetirementAssets
+        "Accounts" -> AppRoute.RetirementAssets
         "Library" -> AppRoute.RetirementLibrary
         else -> AppRoute.RetirementForecastSettings
     }
@@ -67,7 +67,7 @@ fun RetirementShellScreenshots(@PreviewParameter(RetirementShellRoutes::class) s
 }
 
 class RetirementAccountScreens : PreviewParameterProvider<String> {
-    override val values = sequenceOf("Accounts", "Add asset", "Manual detail", "Linked attention", "Balance history", "Edit account", "Update balance",
+    override val values = sequenceOf("Accounts", "Add account", "Manual detail", "Linked attention", "Balance history", "Edit account", "Update balance",
         "Property detail", "Property history", "Edit property")
 }
 
@@ -80,7 +80,7 @@ class RetirementAccountScreens : PreviewParameterProvider<String> {
 fun RetirementAccountScreenshots(@PreviewParameter(RetirementAccountScreens::class) screen: String) {
     val route = when (screen) {
         "Accounts" -> AppRoute.RetirementAccounts
-        "Add asset" -> AppRoute.RetirementAddAsset
+        "Add account" -> AppRoute.RetirementAddAsset
         "Manual detail" -> AppRoute.RetirementAccountDetail("preview-manual")
         "Linked attention" -> AppRoute.RetirementAccountDetail("preview-linked")
         "Balance history" -> AppRoute.RetirementAccountHistory("preview-manual")

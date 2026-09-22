@@ -244,7 +244,7 @@ internal fun RetirementAccountsHost(
                     }
                 }, "Property details updated.")
             })
-        else -> MessagePage("Accounts", "Open Accounts from the Assets tax-treatment table.", message)
+        else -> MessagePage("Accounts", "Open Accounts from the tax-treatment table.", message)
     }
 }
 
@@ -270,7 +270,7 @@ private fun AccountsList(state: RetirementState, message: String?, onAdd: () -> 
     Page("Accounts", "Linked and manual sources stay distinct. Account values are shown without a combined total.", message) {
         Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Add, contentDescription = null)
-            Text("Add asset", Modifier.padding(start = 8.dp))
+            Text("Add account", Modifier.padding(start = 8.dp))
         }
         AccountGroup.entries.forEach { group ->
             Text(group.label, style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
@@ -289,7 +289,7 @@ private fun AccountsList(state: RetirementState, message: String?, onAdd: () -> 
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Epic stock", fontWeight = FontWeight.SemiBold)
                 val epic = state.epicImports.singleOrNull { it.id == state.activeEpicImportId }
-                Text(if (epic == null) "Upload a Shareworks workbook" else "${(epic.vestedValue - epic.loans).format()} • vested, less loans", color = RetirementTextSecondary)
+                Text(if (epic == null) "Upload a Shareworks workbook" else "${(epic.vestedValue - epic.loans).format()} â€¢ vested, less loans", color = RetirementTextSecondary)
                 if (state.importMetadata.any { it.source == "SHAREWORKS" && it.status == dev.draftingroom5.retirement.domain.ImportStatus.NEEDS_ATTENTION }) Text("Last upload needs attention", color = RetirementHighlight)
             }
         }
@@ -353,7 +353,7 @@ private fun PropertyRow(state: RetirementState, property: Property, onOpen: () -
 
 @Composable
 private fun AddAssetPage(onConnect: () -> Unit, onManual: () -> Unit, onProperty: () -> Unit) = Page(
-    "Add asset", "Choose how the asset is maintained. Connected accounts remain read-only; manual accounts use dated snapshots.", null,
+    "Add account", "Choose how the account is maintained. Connected accounts remain read-only; manual accounts use dated snapshots.", null,
 ) {
     ActionCard("Connect an institution", "Link read-only balances and available holdings, then review every account before saving.", onConnect)
     ActionCard("Add an account manually", "Track an account offline and append balance updates over time.", onManual)

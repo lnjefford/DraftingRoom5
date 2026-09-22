@@ -160,7 +160,7 @@ private fun OverviewPage(
             title = "Financial map",
             subtitle = if (summary.tracked.cents == 0L) "Add accounts, an Epic workbook, or property equity to build your map."
                 else "${summary.tracked.format()} tracked across accounts, Epic stock, and property equity.",
-            actionLabel = "Open assets",
+            actionLabel = "Open accounts",
             icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = RetirementHighlight) },
         ) { onNavigate(AppRoute.RetirementAssets) }
         if (summary.tracked.cents != 0L) {
@@ -255,7 +255,7 @@ private fun AssetsPage(state: RetirementState, onNavigate: (AppRoute) -> Unit) {
                 }
             }
         }
-        if (summary.tracked.cents == 0L) Text("No tracked assets yet. Accounts can be linked or added manually.", color = RetirementTextSecondary)
+        if (summary.tracked.cents == 0L) Text("No tracked accounts yet. Accounts can be linked or added manually.", color = RetirementTextSecondary)
         Button(onClick = { onNavigate(AppRoute.RetirementAccounts) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("View accounts")
         }

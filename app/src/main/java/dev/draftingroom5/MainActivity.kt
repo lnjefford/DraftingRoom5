@@ -1130,6 +1130,7 @@ private fun Dashboard(
         )
     }
     val updateAnnouncement = dashboardUpdateAnnouncement(updateAvailableVersion, updateBusy, updateActionMessage)
+    WorkspaceDrawer(AppWorkspace.FITNESS, onSwitchWorkspace) { openWorkspaceDrawer ->
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
@@ -1139,11 +1140,12 @@ private fun Dashboard(
                         title = "DraftingRoom5",
                         animateOnEntry = animateBrandOnEntry,
                         onAnimationFinished = onBrandAnimationFinished,
+                        onLogoClick = openWorkspaceDrawer,
+                        activeWorkspace = AppWorkspace.FITNESS,
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
-                    WorkspaceSwitcher(AppWorkspace.FITNESS, onSwitchWorkspace)
                     if (updateAvailableVersion != null || updateBusy) {
                         IconButton(
                             onClick = onInstallUpdate,
@@ -1290,6 +1292,7 @@ private fun Dashboard(
             }
             item { Spacer(Modifier.height(18.dp)) }
         }
+    }
     }
 }
 

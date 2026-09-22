@@ -19,7 +19,7 @@ internal fun forecastChartPoints(result: ForecastResult, retirementAge: Int): Li
 }
 
 internal fun forecastChartDescription(points: List<ForecastChartPoint>, retirementAge: Int): String = buildString {
-    append("Modeled asset range chart. ")
+    append("Modeled account range chart. ")
     points.forEach { append("Age ${it.age}: 10th percentile ${it.low.format()}, median ${it.middle.format()}, 90th percentile ${it.high.format()}. ") }
     append("Retirement begins at age $retirementAge.")
 }

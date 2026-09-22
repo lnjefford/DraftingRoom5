@@ -196,7 +196,7 @@ private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, st
     }
     val points = forecastChartPoints(result, plan.retirementAge)
     RetirementCard {
-        Text("Modeled asset range", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Text("Modeled account range", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         Text("10th–90th percentile with the median line", color = RetirementTextSecondary)
         ForecastFanChart(points, plan.retirementAge)
         Text("Retirement marker · age ${plan.retirementAge}", color = RetirementPrimary)
@@ -206,7 +206,7 @@ private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, st
         Text("Median modeled amounts at age ${plan.retirementAge.coerceIn(result.currentAge, result.endAge)}" +
             if (plan.retirementAge < result.currentAge) " (already retired; current modeled boundary)" else "", color = RetirementTextSecondary)
         availableAtRetirement(result, plan.retirementAge).forEach { LabelValue(it.label, it.amount.format()) }
-        if (availableAtRetirement(result, plan.retirementAge).isEmpty()) Text("No modeled assets are available at retirement.", color = RetirementTextSecondary)
+        if (availableAtRetirement(result, plan.retirementAge).isEmpty()) Text("No modeled accounts are available at retirement.", color = RetirementTextSecondary)
     }
     RetirementCard {
         Text("Lifestyle spending", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
@@ -253,7 +253,7 @@ internal fun ForecastRiskPage(result: ForecastResult, plan: PlanSettings?, onSce
     RetirementCard {
         LabelValue("Paths with unmet spending", "${risk.failedPaths} of ${result.paths}")
         LabelValue("First observed failure age", risk.firstFailureAge?.toString() ?: "None")
-        LabelValue("Assets exhausted", risk.exhaustedPaths.toString())
+        LabelValue("Accounts exhausted", risk.exhaustedPaths.toString())
         LabelValue("Access or rule limits", risk.accessLimitedPaths.toString())
         LabelValue("Largest unmet annual amount", risk.largestUnmet.format())
     }

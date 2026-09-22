@@ -18,7 +18,7 @@ class RetirementIntegratedCases : PreviewParameterProvider<String> {
         "Overview ready",
         "Overview attention",
         "Overview empty",
-        "Assets",
+        "Accounts",
         "Library",
         "Loading",
         "Error",
@@ -33,7 +33,7 @@ class RetirementIntegratedCases : PreviewParameterProvider<String> {
 @Composable
 fun RetirementIntegratedScreenshots(@PreviewParameter(RetirementIntegratedCases::class) screen: String) {
     val route = when (screen) {
-        "Assets" -> AppRoute.RetirementAssets
+        "Accounts" -> AppRoute.RetirementAssets
         "Library" -> AppRoute.RetirementLibrary
         else -> AppRoute.RetirementOverview
     }

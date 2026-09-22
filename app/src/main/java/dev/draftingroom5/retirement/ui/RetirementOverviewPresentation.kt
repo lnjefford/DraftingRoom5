@@ -75,7 +75,7 @@ internal fun retirementDataHealth(
         if (account != null) return DataHealth(
             DataHealthKind.ACCOUNT,
             "${account.currentRevision.displayName} needs attention",
-            "Review the affected account; other assets remain available.",
+            "Review the affected account; other accounts remain available.",
             AppRoute.RetirementAccountDetail(account.id),
         )
     }
@@ -121,7 +121,7 @@ internal fun retirementDataHealth(
         null,
     ) else DataHealth(
         DataHealthKind.HEALTHY,
-        "Add your first asset",
+        "Add your first account",
         "Accounts, Epic stock, and property equity will appear here.",
         AppRoute.RetirementAccounts,
     )

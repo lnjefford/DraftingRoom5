@@ -25,8 +25,6 @@ import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,20 +38,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.draftingroom5.retirement.ui.RetirementAccountsHost
@@ -110,44 +99,12 @@ internal val WorkspaceChoices = listOf(
     WorkspaceChoice(AppWorkspace.RETIREMENT, Icons.Default.Savings),
 )
 
-@Composable
-internal fun WorkspaceSwitcher(
-    active: AppWorkspace,
-    onSelect: (AppWorkspace) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val activeChoice = WorkspaceChoices.first { it.workspace == active }
-    Box {
-        IconButton(
-            onClick = { expanded = true },
-            modifier = Modifier.semantics {
-                role = Role.Button
-                contentDescription = "Workspace: ${active.label}. Switch workspace"
-            },
-        ) {
-            Icon(activeChoice.icon, contentDescription = null)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            WorkspaceChoices.forEach { choice ->
-                DropdownMenuItem(
-                    text = { Text(choice.workspace.label) },
-                    leadingIcon = { Icon(choice.icon, contentDescription = null) },
-                    onClick = {
-                        expanded = false
-                        onSelect(choice.workspace)
-                    },
-                )
-            }
-        }
-    }
-}
-
 private data class RetirementTab(val route: AppRoute, val label: String, val icon: ImageVector)
 
 private val RetirementTabs = listOf(
     RetirementTab(AppRoute.RetirementOverview, "Overview", Icons.Default.Home),
     RetirementTab(AppRoute.RetirementForecast, "Forecast", Icons.Default.QueryStats),
-    RetirementTab(AppRoute.RetirementAssets, "Assets", Icons.Default.AccountBalanceWallet),
+    RetirementTab(AppRoute.RetirementAssets, "Accounts", Icons.Default.AccountBalanceWallet),
 )
 
 @Composable
@@ -172,6 +129,7 @@ internal fun RetirementWorkspaceScreen(
     val detail = route !in retirementTopLevelRoutes
     if (detail) BackHandler(onBack = onBack)
     RetirementTheme {
+        WorkspaceDrawer(AppWorkspace.RETIREMENT, onSwitchWorkspace) { openWorkspaceDrawer ->
         Scaffold(
             modifier = Modifier.fillMaxSize().background(RetirementBackground),
             containerColor = RetirementBackground,
@@ -192,7 +150,7 @@ internal fun RetirementWorkspaceScreen(
                                 is AppRoute.RetirementForecastRisk -> "Forecast risk"
                                 is AppRoute.RetirementScenarioDetail -> "Scenario"
                                 AppRoute.RetirementAccounts -> "Accounts"
-                                AppRoute.RetirementAddAsset -> "Add asset"
+                                AppRoute.RetirementAddAsset -> "Add account"
                                 is AppRoute.RetirementAccountDetail -> "Account"
                                 is AppRoute.RetirementAccountUpdate -> "Update balance"
                                 is AppRoute.RetirementAccountHistory -> "Balance history"
@@ -202,18 +160,14 @@ internal fun RetirementWorkspaceScreen(
                                 is AppRoute.RetirementPropertyEdit -> "Edit property"
                                 else -> "Retirement"
                             })
-                        } else {
-                            Text(
-                                "Retirement",
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        } else BrandTitle(
+                            title = "Retirement",
+                            onLogoClick = openWorkspaceDrawer,
+                            activeWorkspace = AppWorkspace.RETIREMENT,
+                        )
                     },
                     actions = {
                         if (!detail) {
-                            WorkspaceSwitcher(AppWorkspace.RETIREMENT, onSwitchWorkspace)
                             IconButton(onClick = onOpenLibrary) {
                                 Icon(Icons.Default.AutoStories, contentDescription = "Retirement library")
                             }
@@ -265,6 +219,7 @@ internal fun RetirementWorkspaceScreen(
                 Box(Modifier.padding(padding)) { RetirementAccountsHost(route, onNavigate, onBack, accountsPreviewState) }
             } else RetirementPlaceholder(route, Modifier.padding(padding))
         }
+        }
     }
 }
 
@@ -273,7 +228,7 @@ private fun RetirementPlaceholder(route: AppRoute, modifier: Modifier = Modifier
     val (eyebrow, title, body) = when (route) {
         AppRoute.RetirementOverview -> Triple("Your plan", "A clear view of retirement", "Your financial map, retirement target, and data health will live here.")
         AppRoute.RetirementForecast -> Triple("Forecast", "Plan with a range, not a promise", "Modeled outcomes, lifestyle spending, and focused risks will appear here.")
-        AppRoute.RetirementAssets -> Triple("Assets", "Everything working toward the plan", "Tracked assets and their tax treatment will be summarized here.")
+        AppRoute.RetirementAssets -> Triple("Accounts", "Everything working toward the plan", "Tracked accounts and their tax treatment will be summarized here.")
         AppRoute.RetirementLibrary -> Triple("Research", "Retirement library", "Curated, government-first resources and your private checklist will live here.")
         AppRoute.RetirementForecastSettings -> Triple("Plan inputs", "Forecast settings", "Retirement age, spending, income, tax, and home assumptions will be edited here.")
         else -> error("Not a Retirement route")

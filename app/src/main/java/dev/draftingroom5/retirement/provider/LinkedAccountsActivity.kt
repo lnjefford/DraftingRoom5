@@ -182,9 +182,14 @@ class LinkedAccountsActivity : ComponentActivity() {
             authenticatedUntil = 0
             val client = clientField?.text?.toString().orEmpty().toCharArray()
             val secret = secretField?.text?.toString().orEmpty().toCharArray()
-            clientField?.text?.clear(); secretField?.text?.clear()
             perform {
-                try { profile = withContext(Dispatchers.IO) { runtime.plaid.saveCredentials(client, secret, environment, profile) }; setup = false }
+                try {
+                    profile = withContext(Dispatchers.IO) { runtime.plaid.saveCredentials(client, secret, environment, profile) }
+                    profiles = withContext(Dispatchers.IO) { runtime.plaid.profiles() }
+                    clientField?.text?.clear(); secretField?.text?.clear()
+                    setup = false
+                    message = "Plaid credentials saved securely on this phone."
+                }
                 finally { client.fill('\u0000'); secret.fill('\u0000') }
             }
         }) { Text("Save encrypted credentials") }

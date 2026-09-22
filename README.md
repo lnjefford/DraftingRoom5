@@ -2,7 +2,7 @@
 
 DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
-The current production release is v0.27.0. It adds the audited Retirement workspace beside the unchanged Fitness workspace, including local/manual and read-only linked accounts, property and Epic-stock tracking, integrated asset summaries, a private planning checklist, and a real-dollar retirement forecast. Phase 9 audit and release evidence is in `docs/reviews/DR5-078/` and `docs/reviews/DR5-079/`; earlier Phase 8, Phase 7, and Phase 6 evidence remains in `docs/reviews/DR5-065/`, `docs/reviews/DR5-056/`, and `docs/reviews/DR5-038-phase-6-product-audit.md`.
+The current production release is v0.27.1. It gives the Fitness and Retirement workspaces one shared left-side workspace drawer, makes Plaid credential saves confirm before clearing the private form, and consistently calls tracked financial items accounts. The underlying v0.27.0 Retirement milestone includes local/manual and read-only linked accounts, property and Epic-stock tracking, integrated account summaries, a private planning checklist, and a real-dollar retirement forecast. Phase 9 audit and release evidence is in `docs/reviews/DR5-078/` and `docs/reviews/DR5-079/`; earlier Phase 8, Phase 7, and Phase 6 evidence remains in `docs/reviews/DR5-065/`, `docs/reviews/DR5-056/`, and `docs/reviews/DR5-038-phase-6-product-audit.md`.
 
 ## Current scope
 
