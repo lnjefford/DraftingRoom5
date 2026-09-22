@@ -9,6 +9,21 @@ import java.time.Instant
 import javax.crypto.KeyGenerator
 
 class PlaidNativeProviderTest {
+    @Test fun unusedProfileCanCorrectEnvironmentButLinkedProfileCannot() {
+        val f = Fixture()
+        val production = f.provider.saveCredentials(
+            "synthetic-client".toCharArray(), "synthetic-production-secret".toCharArray(),
+            ProviderEnvironment.PRODUCTION, f.profile,
+        )
+        assertEquals(ProviderEnvironment.PRODUCTION, production.environment)
+        assertTrue(f.provider.canChangeEnvironment(production))
+        val item = f.provider.completeLink(f.provider.beginLink(production.id).id, "synthetic-public".toCharArray())
+        assertFalse(f.provider.canChangeEnvironment(production))
+        assertEquals(ProviderFailure.CONFIGURATION, assertThrows(ProviderException::class.java) {
+            f.provider.saveCredentials("synthetic-client".toCharArray(), "synthetic-sandbox-secret".toCharArray(), ProviderEnvironment.SANDBOX, production)
+        }.failure)
+        assertNotNull(item)
+    }
     @Test fun liabilitiesCannotBeClassifiedAsPositiveRetirementAssets() {
         val f = Fixture(); val item = f.link()
         f.transport.accountType = "loan"
@@ -93,8 +108,8 @@ class PlaidNativeProviderTest {
         f.transport.failure = ProviderFailure.OFFLINE
         assertEquals(ProviderFailure.OFFLINE, f.provider.refresh(id))
         assertEquals(ProviderStatus.OFFLINE, f.repo.load().providerItems.single().status)
-        f.transport.failure = ProviderFailure.NEEDS_CREDENTIALS
-        assertEquals(ProviderFailure.NEEDS_CREDENTIALS, f.provider.refresh(id))
+        f.transport.failure = ProviderFailure.RECONNECT_REQUIRED
+        assertEquals(ProviderFailure.RECONNECT_REQUIRED, f.provider.refresh(id))
         assertEquals(ProviderStatus.ATTENTION, f.repo.load().providerItems.single().status)
         assertEquals(before.accounts, f.repo.load().accounts)
     }
@@ -170,8 +185,8 @@ class PlaidNativeProviderTest {
         val first = f.repo.load()
         f.transport.remoteId = "synthetic-second-item"
         val secondId = f.link(); f.accept(f.provider.fetchSnapshot(secondId))
-        f.transport.failure = ProviderFailure.NEEDS_CREDENTIALS
-        assertEquals(ProviderFailure.NEEDS_CREDENTIALS, f.provider.refresh(secondId))
+        f.transport.failure = ProviderFailure.RECONNECT_REQUIRED
+        assertEquals(ProviderFailure.RECONNECT_REQUIRED, f.provider.refresh(secondId))
         f.transport.failure = null
         val attempt = f.provider.beginLink(f.profile.id, secondId)
         f.provider.completeLink(attempt.id, null)

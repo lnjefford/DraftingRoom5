@@ -8,7 +8,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import java.util.Base64
 
-enum class ProviderFailure { NEEDS_CREDENTIALS, CONFIGURATION, OFFLINE, CANCELLED, RATE_LIMITED, UNSUPPORTED, INVALID_RESPONSE, CONFLICT, UNAVAILABLE, EXCHANGE_UNCERTAIN }
+enum class ProviderFailure { NEEDS_CREDENTIALS, API_CREDENTIALS, RECONNECT_REQUIRED, CONFIGURATION, OFFLINE, CANCELLED, RATE_LIMITED, UNSUPPORTED, INVALID_RESPONSE, CONFLICT, UNAVAILABLE, EXCHANGE_UNCERTAIN }
 class ProviderException(val failure: ProviderFailure, val retryAfter: java.time.Instant? = null) : RuntimeException(failure.name) {
     override fun fillInStackTrace(): Throwable = this
 }
@@ -39,11 +39,12 @@ class ProviderCredentialVault internal constructor(private val storage: VaultSto
     }
 
     /** Caller must complete device authentication before invoking provisioning/replacement. */
-    internal fun put(kind: CredentialKind, environment: ProviderEnvironment, secret: JSONObject, previous: CredentialHandle? = null): CredentialHandle = safe {
+    internal fun put(kind: CredentialKind, environment: ProviderEnvironment, secret: JSONObject, previous: CredentialHandle? = null,
+        allowEnvironmentChange: Boolean = false): CredentialHandle = safe {
         synchronized(lock) {
             if (!keys.available()) throw ProviderException(ProviderFailure.NEEDS_CREDENTIALS)
             val root = readRoot()
-            previous?.let { requireCurrent(root, it); require(it.kind == kind && it.environment == environment) }
+            previous?.let { requireCurrent(root, it); require(it.kind == kind && (it.environment == environment || allowEnvironmentChange)) }
             val next = CredentialHandle(previous?.id ?: UUID.randomUUID().toString(), kind, environment, Math.addExact(previous?.revision ?: 0, 1))
             val plaintext = secret.toString().toByteArray(Charsets.UTF_8)
             try {

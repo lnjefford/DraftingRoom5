@@ -29,6 +29,9 @@ internal class PlaidNativeProvider(
     private val attemptLock = Any()
     fun profiles() = vault.handles(CredentialKind.PLAID)
     fun items() = vault.handles(CredentialKind.PLAID_ITEM)
+    fun canChangeEnvironment(profile: CredentialHandle): Boolean = items().none { item ->
+        vault.use(item) { it.getString("profile") == profile.id }
+    }
     fun removeCredentials(profile: CredentialHandle): Boolean = vault.guarded(listOf(profile)) {
         val affected = items().filter { vault.use(it) { record -> record.getString("profile") == profile.id } }
         var revoked = true
@@ -39,8 +42,13 @@ internal class PlaidNativeProvider(
     fun saveCredentials(clientId: CharArray, secret: CharArray, environment: ProviderEnvironment, previous: CredentialHandle?): CredentialHandle {
         try {
             require(clientId.size in 1..256 && secret.size in 1..512)
+            val changingEnvironment = previous != null && previous.environment != environment
+            if (changingEnvironment && !canChangeEnvironment(previous)) {
+                throw ProviderException(ProviderFailure.CONFIGURATION)
+            }
             return vault.put(CredentialKind.PLAID, environment,
-                JSONObject().put("client_id", String(clientId)).put("secret", String(secret)), previous)
+                JSONObject().put("client_id", String(clientId)).put("secret", String(secret)), previous,
+                allowEnvironmentChange = changingEnvironment)
         } finally { clientId.fill('\u0000'); secret.fill('\u0000') }
     }
 
@@ -232,7 +240,7 @@ internal class PlaidNativeProvider(
         if (handle != null && old.revision > handle.revision) return
         val status = when (failure) { ProviderFailure.OFFLINE -> ProviderStatus.OFFLINE; ProviderFailure.RATE_LIMITED -> ProviderStatus.RATE_LIMITED
             ProviderFailure.UNSUPPORTED -> ProviderStatus.UNSUPPORTED; else -> ProviderStatus.ATTENTION }
-        val error = when (failure) { ProviderFailure.NEEDS_CREDENTIALS -> ProviderError.AUTHENTICATION_REQUIRED
+        val error = when (failure) { ProviderFailure.NEEDS_CREDENTIALS, ProviderFailure.API_CREDENTIALS, ProviderFailure.RECONNECT_REQUIRED -> ProviderError.AUTHENTICATION_REQUIRED
             ProviderFailure.RATE_LIMITED -> ProviderError.RATE_LIMITED; ProviderFailure.INVALID_RESPONSE -> ProviderError.INVALID_RESPONSE; else -> ProviderError.UNAVAILABLE }
         repository.setProviderItem(state.generation, old.copy(status = status, attemptedAt = now(), error = error,
             retryAfter = if (failure == ProviderFailure.RATE_LIMITED) retryAfter ?: now().plusSeconds(86_400) else null))

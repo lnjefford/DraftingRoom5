@@ -44,7 +44,8 @@ internal class SecureProviderTransport(private val connectionFactory: (URL) -> H
                 val response = parseProviderJson(String(bytes, Charsets.UTF_8))
                 if (status !in 200..299) throw ProviderException(when {
                     status == 429 -> ProviderFailure.RATE_LIMITED
-                    response.optString("error_code") in setOf("ITEM_LOGIN_REQUIRED", "INVALID_ACCESS_TOKEN", "INVALID_API_KEYS", "ITEM_NOT_FOUND") -> ProviderFailure.NEEDS_CREDENTIALS
+                    response.optString("error_code") == "INVALID_API_KEYS" -> ProviderFailure.API_CREDENTIALS
+                    response.optString("error_code") in setOf("ITEM_LOGIN_REQUIRED", "INVALID_ACCESS_TOKEN", "ITEM_NOT_FOUND", "USER_PERMISSION_REVOKED", "PASSWORD_RESET_REQUIRED") -> ProviderFailure.RECONNECT_REQUIRED
                     response.optString("error_code") in setOf("INVALID_CONFIGURATION", "INVALID_FIELD", "MISSING_FIELDS", "UNKNOWN_FIELDS", "UNAUTHORIZED_ENVIRONMENT") -> ProviderFailure.CONFIGURATION
                     response.optString("error_code") in setOf("PRODUCT_NOT_READY") -> ProviderFailure.UNAVAILABLE
                     response.optString("error_code") in setOf("PRODUCT_NOT_ENABLED", "SANDBOX_PRODUCT_NOT_ENABLED", "INVALID_PRODUCT", "PRODUCTS_NOT_SUPPORTED", "NO_INVESTMENT_ACCOUNTS", "ADDITIONAL_CONSENT_REQUIRED") -> ProviderFailure.UNSUPPORTED

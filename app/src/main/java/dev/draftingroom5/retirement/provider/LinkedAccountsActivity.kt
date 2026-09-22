@@ -50,6 +50,7 @@ class LinkedAccountsActivity : ComponentActivity() {
     private val runtime by lazy { RetirementProviders.get(this) }
     private var profiles by mutableStateOf<List<CredentialHandle>>(emptyList())
     private var profile by mutableStateOf<CredentialHandle?>(null)
+    private var environmentChangeAllowed by mutableStateOf(true)
     private var setup by mutableStateOf(false)
     private var manual by mutableStateOf(false)
     private var busy by mutableStateOf(false)
@@ -100,6 +101,7 @@ class LinkedAccountsActivity : ComponentActivity() {
                 val account = runtime.repository.load().accounts.firstOrNull { it.providerIdentity?.itemId == reconnectItem }
                 profiles.firstOrNull { it.id == account?.providerIdentity?.credentialProfileId }
             }
+            environmentChangeAllowed = profile?.let { withContext(Dispatchers.IO) { runtime.plaid.canChangeEnvironment(it) } } ?: true
             manualAccounts = withContext(Dispatchers.IO) { matchableAccounts() }
             if (reconnectItem != null && withContext(Dispatchers.IO) { runtime.repository.load().providerItems.any { it.id == reconnectItem && it.revokedAt != null } }) {
                 reconnectItem = null
@@ -251,9 +253,21 @@ class LinkedAccountsActivity : ComponentActivity() {
     }
 
     @Composable private fun CredentialsForm() {
-        var environment by remember { mutableStateOf(profile?.environment ?: ProviderEnvironment.SANDBOX) }
+        var environment by remember { mutableStateOf(profile?.environment ?: ProviderEnvironment.PRODUCTION) }
         Text("Encrypted on this phone. Your credentials can't be viewed after saving.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (profile == null) Choice("Environment", environment, ProviderEnvironment.entries) { environment = it }
+        if (environmentChangeAllowed) Choice(
+            "Environment",
+            environment,
+            listOf(ProviderEnvironment.PRODUCTION, ProviderEnvironment.SANDBOX),
+        ) { environment = it }
+        Text(
+            when (environment) {
+                ProviderEnvironment.PRODUCTION -> "Production connects real institutions."
+                ProviderEnvironment.SANDBOX -> "Sandbox accepts Plaid test credentials only."
+                ProviderEnvironment.DEVELOPMENT -> "Development uses Plaid's legacy development environment."
+            } + if (!environmentChangeAllowed) " Disconnect linked accounts before changing environments." else "",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         SecretField("Plaid client ID") { clientField = it }
         SecretField("Plaid secret") { secretField = it }
         Button(enabled = !busy, onClick = {
@@ -264,6 +278,7 @@ class LinkedAccountsActivity : ComponentActivity() {
             perform {
                 try {
                     profile = withContext(Dispatchers.IO) { runtime.plaid.saveCredentials(client, secret, environment, profile) }
+                    environmentChangeAllowed = true
                     profiles = withContext(Dispatchers.IO) { runtime.plaid.profiles() }
                     clientField?.text?.clear(); secretField?.text?.clear()
                     setup = false
@@ -285,7 +300,7 @@ class LinkedAccountsActivity : ComponentActivity() {
                             .map { it.itemId }.distinct().forEach { RetirementAccountSyncWorker.cancel(this@LinkedAccountsActivity, it) }
                         runtime.plaid.removeCredentials(previous)
                     }
-                    profile = null; reconnectItem = null; setup = false
+                    profile = null; environmentChangeAllowed = true; reconnectItem = null; setup = false
                     message = if (revoked) "Credentials and remote connections removed. Accepted history remains." else "Credentials removed locally. Revoke remote access from your Plaid or institution dashboard."
                 }
             }) { Text("Remove credentials and connections") }
@@ -470,7 +485,9 @@ internal fun ConnectionHomeContent(
 }
 internal fun safeMessage(failure: ProviderFailure) = when (failure) {
     ProviderFailure.EXCHANGE_UNCERTAIN -> "Link exchange could not be confirmed or saved. Its one-time token will not be replayed. Review and revoke any unfinished connection in your Plaid dashboard, then start Link again."
-    ProviderFailure.NEEDS_CREDENTIALS -> "Credentials need attention. Set up or replace them privately, then reconnect. Accepted values remain available."
+    ProviderFailure.NEEDS_CREDENTIALS -> "Saved credentials couldn't be unlocked on this phone. Replace them privately, then try again."
+    ProviderFailure.API_CREDENTIALS -> "Plaid rejected the API keys for the selected environment. Confirm the secret matches Sandbox or Production, then replace the saved credentials."
+    ProviderFailure.RECONNECT_REQUIRED -> "This institution connection needs to be linked again. Your saved Plaid API credentials are unchanged."
     ProviderFailure.CONFIGURATION -> "Plaid couldn't start. In the Plaid dashboard, enable Investments and allow the Android package dev.draftingroom5."
     ProviderFailure.OFFLINE -> "You're offline. Last accepted values are unchanged. Retry when connected."
     ProviderFailure.CANCELLED -> "Connection interrupted or expired. Start again; the one-time token will not be replayed."

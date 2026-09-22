@@ -14,8 +14,8 @@ android {
         minSdk = 37
         targetSdk = 37
         testInstrumentationRunner = "dev.draftingroom5.WidgetAuditInstrumentation"
-        versionCode = providers.gradleProperty("appVersionCode").orElse("27004").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.27.2").get()
+        versionCode = providers.gradleProperty("appVersionCode").orElse("27005").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.27.3").get()
     }
 
     signingConfigs {

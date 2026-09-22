@@ -51,6 +51,7 @@ class SettingsSupportTest {
             assertEquals(working, dashboardUpdateAnnouncement("2.4.0", true, working))
             val restored = updateMessageAfterRecreation(working)
             assertTrue(restored.contains("interrupted"))
+            assertTrue(restored.contains("app drawer"))
             assertEquals("Install", updateSettingsPresentation(AppUpdateStatus(availableVersion = "2.4.0"), false, restored, "2.3.4").actionLabel)
         }
         assertEquals("Update 2.4.0 available. Tap to install.", dashboardUpdateAnnouncement("2.4.0", false, null))

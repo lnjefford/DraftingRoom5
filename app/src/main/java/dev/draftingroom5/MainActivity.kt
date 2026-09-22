@@ -587,6 +587,7 @@ private fun DraftingRoom5App() {
                 updateBusy = updateBusy,
                 updateActionMessage = updateActionMessage,
                 onInstallUpdate = checkAndInstallUpdate,
+                drawerUpdatePresentation = updateSettingsPresentation(updateStatus, updateBusy, updateActionMessage, BuildConfig.VERSION_NAME),
                 onOpenMetric = { card -> navigation.navigate(AppRoute.MetricDetail(card)) },
                 onOpenCustom = { session -> navigation.navigate(AppRoute.GuidedSession(
                     session.routine.id, session.occurrence.scheduleEntryId, session.occurrence.scheduledDate)) },
@@ -700,10 +701,6 @@ private fun DraftingRoom5App() {
                     runCatching { openAndroidBackupSettings(context) }
                         .onFailure { backupActionMessage = "Could not open Android backup settings: ${it.message ?: "Try again."}" }
                 },
-                updateStatus = updateStatus,
-                updateBusy = updateBusy,
-                updateActionMessage = updateActionMessage,
-                onCheckAndInstallUpdate = checkAndInstallUpdate,
             )
             AppRoute.PlanManagement -> PlanManagementScreen(
                 plan = trainingPlan,
@@ -1021,6 +1018,8 @@ private fun DraftingRoom5App() {
                 onOpenForecastSettings = { navigation.navigate(AppRoute.RetirementForecastSettings) },
                 onBack = { navigation.back() },
                 onNavigate = navigation::navigate,
+                updatePresentation = updateSettingsPresentation(updateStatus, updateBusy, updateActionMessage, BuildConfig.VERSION_NAME),
+                onUpdate = checkAndInstallUpdate,
             )
         }
         }
@@ -1043,6 +1042,7 @@ private fun Dashboard(
     updateBusy: Boolean,
     updateActionMessage: String?,
     onInstallUpdate: () -> Unit,
+    drawerUpdatePresentation: UpdateSettingsPresentation? = null,
     onOpenMetric: (DashboardCard) -> Unit,
     onOpenCustom: (DashboardSession) -> Unit,
     onLaunchExternal: (DashboardSession) -> Unit,
@@ -1130,7 +1130,17 @@ private fun Dashboard(
         )
     }
     val updateAnnouncement = dashboardUpdateAnnouncement(updateAvailableVersion, updateBusy, updateActionMessage)
-    WorkspaceDrawer(AppWorkspace.FITNESS, onSwitchWorkspace) { openWorkspaceDrawer ->
+    WorkspaceDrawer(
+        active = AppWorkspace.FITNESS,
+        onSelect = onSwitchWorkspace,
+        updatePresentation = drawerUpdatePresentation ?: updateSettingsPresentation(
+            AppUpdateStatus(availableVersion = updateAvailableVersion),
+            updateBusy,
+            updateActionMessage,
+            BuildConfig.VERSION_NAME,
+        ),
+        onUpdate = onInstallUpdate,
+    ) { openWorkspaceDrawer ->
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
@@ -1736,10 +1746,6 @@ private fun SettingsScreen(
     onBackUpNow: () -> Unit,
     onRestoreLatest: () -> Unit,
     onOpenBackupSettings: () -> Unit,
-    updateStatus: AppUpdateStatus,
-    updateBusy: Boolean,
-    updateActionMessage: String?,
-    onCheckAndInstallUpdate: () -> Unit,
     reviewSection: String? = null,
     initialVoiceExpanded: Boolean = false,
 ) {
@@ -1763,7 +1769,6 @@ private fun SettingsScreen(
     ).flatMap { it.sources.ifEmpty { listOfNotNull(it.source) } }.distinct()
     val healthPresentation = healthSettingsPresentation(healthUi.connection, healthUi.isLoading, healthSources)
     val backupPresentation = backupSettingsPresentation(backupStatus, (LocalReviewTime.current ?: Instant.now()).toEpochMilli())
-    val updatePresentation = updateSettingsPresentation(updateStatus, updateBusy, updateActionMessage, BuildConfig.VERSION_NAME)
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = { SecondaryTopBar("Settings", onBack) },
@@ -1871,19 +1876,6 @@ private fun SettingsScreen(
                             TextButton(onClick = onOpenBackupSettings, modifier = Modifier.align(Alignment.End).defaultMinSize(minHeight = 48.dp)) { Text("Android backup settings") }
                         }
                     }
-                }
-            }
-            if (reviewSection == null || reviewSection == "APP") item {
-                SettingsSection("APP") {
-                    SettingsActionRow(
-                        icon = Icons.Default.SystemUpdate,
-                        title = "App updates",
-                        detail = updatePresentation.summary,
-                        action = updatePresentation.actionLabel,
-                        enabled = updatePresentation.enabled,
-                        tone = updatePresentation.tone,
-                        onClick = onCheckAndInstallUpdate,
-                    )
                 }
             }
             item { Spacer(Modifier.height(18.dp)) }
@@ -2026,10 +2018,6 @@ private fun SettingsScreenPreview(initialVoiceExpanded: Boolean = false) {
             onBackUpNow = {},
             onRestoreLatest = {},
             onOpenBackupSettings = {},
-            updateStatus = AppUpdateStatus(lastCheckedMillis = System.currentTimeMillis()),
-            updateBusy = false,
-            updateActionMessage = null,
-            onCheckAndInstallUpdate = {},
             initialVoiceExpanded = initialVoiceExpanded,
         )
     }
@@ -2793,8 +2781,22 @@ private fun SettingsHardeningPreview(state: HardeningState) {
     val backupStatus = if (state == HardeningState.BACKUP_FAILURE) {
         AutomaticBackupStatus(lastSuccessfulMillis = now - 86_400_000L, lastFailureMillis = now, lastFailureMessage = "Storage unavailable", hasRecoverySnapshot = true)
     } else AutomaticBackupStatus(lastSuccessfulMillis = now, hasRecoverySnapshot = true)
-    val updateStatus = if (state == HardeningState.UPDATE_FAILURE) AppUpdateStatus(lastError = "Network unavailable. Check your connection and try again.")
-        else AppUpdateStatus(lastCheckedMillis = now)
+    if (state == HardeningState.UPDATE_FAILURE) {
+        DraftingRoom5Theme {
+            WorkspaceDrawerContent(
+                active = AppWorkspace.FITNESS,
+                updatePresentation = updateSettingsPresentation(
+                    AppUpdateStatus(lastError = "Network unavailable. Check your connection and try again."),
+                    false,
+                    null,
+                    BuildConfig.VERSION_NAME,
+                ),
+                onSelect = {},
+                onUpdate = {},
+            )
+        }
+        return
+    }
     DraftingRoom5Theme {
         SettingsScreen(
             healthUi = HealthUiState(connection = HealthConnection.CONNECTED),
@@ -2810,14 +2812,9 @@ private fun SettingsHardeningPreview(state: HardeningState) {
             backupStatus = backupStatus,
             backupActionMessage = if (state == HardeningState.BACKUP_FAILURE) "Backup failed: storage is unavailable. Existing snapshots were kept." else null,
             onAutomaticBackupChange = {}, onBackUpNow = {}, onRestoreLatest = {}, onOpenBackupSettings = {},
-            updateStatus = updateStatus,
-            updateBusy = false,
-            updateActionMessage = null,
-            onCheckAndInstallUpdate = {},
             reviewSection = when (state) {
                 HardeningState.TTS_UNAVAILABLE -> "WORKOUT FEEDBACK"
                 HardeningState.BACKUP_FAILURE -> "CONNECTIONS & DATA"
-                HardeningState.UPDATE_FAILURE -> "APP"
                 else -> null
             },
         )

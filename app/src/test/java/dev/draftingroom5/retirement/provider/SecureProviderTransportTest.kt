@@ -35,8 +35,19 @@ class SecureProviderTransportTest {
         val auth = assertThrows(ProviderException::class.java) {
             SecureProviderTransport { failed }.post(ProviderEnvironment.SANDBOX, PlaidEndpoint.ACCOUNTS, JSONObject())
         }
-        assertEquals(ProviderFailure.NEEDS_CREDENTIALS, auth.failure)
+        assertEquals(ProviderFailure.RECONNECT_REQUIRED, auth.failure)
         assertFalse(auth.toString().contains("synthetic-secret")); assertNull(auth.cause)
+    }
+    @Test fun apiKeysAndInstitutionReconnectionAreNotConflated() {
+        fun failure(code: String) = assertThrows(ProviderException::class.java) {
+            SecureProviderTransport { FakeConnection(URL("https://sandbox.plaid.com"), 400,
+                """{"error_code":"$code","error_message":"synthetic-sensitive-detail"}""") }
+                .post(ProviderEnvironment.SANDBOX, PlaidEndpoint.LINK, JSONObject())
+        }.failure
+        assertEquals(ProviderFailure.API_CREDENTIALS, failure("INVALID_API_KEYS"))
+        assertEquals(ProviderFailure.RECONNECT_REQUIRED, failure("ITEM_LOGIN_REQUIRED"))
+        assertEquals(ProviderFailure.RECONNECT_REQUIRED, failure("ITEM_NOT_FOUND"))
+        assertEquals(ProviderFailure.RECONNECT_REQUIRED, failure("USER_PERMISSION_REVOKED"))
     }
     @Test fun linkSetupFailuresRemainActionableWithoutExposingUpstreamText() {
         fun failure(code: String) = assertThrows(ProviderException::class.java) {
