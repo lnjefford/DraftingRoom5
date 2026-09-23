@@ -1,6 +1,7 @@
 package dev.draftingroom5.retirement.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,8 +49,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -60,9 +64,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.draftingroom5.AppRoute
@@ -167,7 +168,7 @@ private fun OverviewPage(
     FinancePage {
         Spacer(Modifier.width(52.dp).height(3.dp).background(RetirementGold))
         Text(
-            "Your financial outlook",
+            "Financial overview",
             style = if (LocalDensity.current.fontScale >= 1.5f) MaterialTheme.typography.displaySmall else MaterialTheme.typography.displayMedium,
             modifier = Modifier.semantics { heading() },
         )
@@ -177,20 +178,19 @@ private fun OverviewPage(
             style = if (LocalDensity.current.fontScale >= 1.5f) MaterialTheme.typography.displayMedium else MaterialTheme.typography.displayLarge,
             modifier = Modifier.semantics { contentDescription = "Tracked total, ${summary.tracked.format()}" },
         )
-        Text(
-            if (summary.tracked.cents == 0L) "Add assets to build your outlook" else "working toward the plan",
-            color = RetirementTextSecondary,
-            style = MaterialTheme.typography.bodyLarge,
-        )
+        if (summary.tracked.cents == 0L) {
+            Text("Add assets to build your outlook", color = RetirementTextSecondary, style = MaterialTheme.typography.bodyLarge)
+        }
         if (plan != null) {
             OverviewForecastChart(forecastState, plan) { onNavigate(AppRoute.RetirementForecast) }
         } else {
             Text("Set your plan timing to see a modeled forecast range.", color = RetirementTextSecondary)
         }
-        TargetCard(plan, forecastState) { onNavigate(AppRoute.RetirementForecast) }
-        OverviewMapCard(
-            amount = if (summary.tracked.cents == 0L) null else summary.tracked.format(),
-            onOpen = { onNavigate(AppRoute.RetirementAssets) },
+        TargetCard(
+            plan = plan,
+            liveState = forecastState,
+            onOpenForecast = { onNavigate(AppRoute.RetirementForecast) },
+            onOpenSettings = { onNavigate(AppRoute.RetirementForecastSettings) },
         )
         if (health.kind != DataHealthKind.HEALTHY) DataHealthCard(health) { health.route?.let(onNavigate) }
     }
@@ -260,7 +260,6 @@ private fun OverviewForecastChart(state: ForecastState, plan: PlanSettings, onOp
             OverviewForecastGraphic(forecastChartPoints(result, plan.retirementAge), retirementAge)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Today\n${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-                Text("Retire\n$retirementAge", color = RetirementGold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
                 Text("Plan\n${result.endAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
             }
             Text(
@@ -325,7 +324,12 @@ private fun OverviewForecastGraphic(points: List<ForecastChartPoint>, retirement
 }
 
 @Composable
-private fun TargetCard(plan: PlanSettings?, liveState: ForecastState, onOpen: () -> Unit) {
+private fun TargetCard(
+    plan: PlanSettings?,
+    liveState: ForecastState,
+    onOpenForecast: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     val targetAge = plan?.retirementAge?.toString() ?: "Not set"
     val result = liveState.displayedResult()
     val success = result?.let { "${(it.successRate * 100).toInt()}%" } ?: "—"
@@ -337,54 +341,98 @@ private fun TargetCard(plan: PlanSettings?, liveState: ForecastState, onOpen: ()
         liveState is ForecastState.Cancelled -> "Forecast calculation stopped"
         else -> if (plan == null) "Set plan timing in Forecast" else "Open Forecast to calculate"
     }
-    Column(
-        Modifier.fillMaxWidth().clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (LocalDensity.current.fontScale >= 1.5f) {
-            ConfidencePanel(success, status)
-            HorizonPanel(targetAge)
+            ConfidencePanel(success, status, result, onOpenForecast)
+            HorizonPanel(targetAge, onOpenSettings)
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ConfidencePanel(success, status, Modifier.weight(1f))
-                HorizonPanel(targetAge, Modifier.weight(1f))
+                ConfidencePanel(success, status, result, onOpenForecast, Modifier.weight(1f))
+                HorizonPanel(targetAge, onOpenSettings, Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun ConfidencePanel(value: String, status: String, modifier: Modifier = Modifier) {
+private fun ConfidencePanel(
+    value: String,
+    status: String,
+    result: ForecastResult?,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
-        modifier,
+        modifier.clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 214.dp)
+            Modifier.fillMaxWidth().heightIn(min = 238.dp)
                 .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(value, color = RetirementHighlight, style = MaterialTheme.typography.displaySmall)
             Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.height(18.dp))
-            Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(8.dp))
+            if (result != null) FailureRateChart(result) else Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @Composable
-private fun HorizonPanel(targetAge: String, modifier: Modifier = Modifier) {
+private fun FailureRateChart(result: ForecastResult) {
+    val points = forecastFailurePoints(result)
+    val endingRate = points.lastOrNull()?.rate ?: 0.0
+    Text("FAILURE RATE BY AGE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+    Canvas(
+        Modifier.fillMaxWidth().height(68.dp).semantics {
+            contentDescription = "Cumulative modeled failure rate from age ${result.currentAge} to ${result.endAge}, ending at ${String.format(java.util.Locale.US, "%.0f", endingRate * 100)} percent"
+        },
+    ) {
+        if (points.size < 2) return@Canvas
+        val topRate = maxOf(.05, endingRate).toFloat()
+        val baseline = size.height - 4.dp.toPx()
+        fun x(index: Int) = size.width * index / points.lastIndex
+        fun y(rate: Double) = baseline - (rate.toFloat() / topRate * (size.height - 10.dp.toPx()))
+        val line = Path().apply {
+            moveTo(x(0), y(points.first().rate))
+            points.drop(1).forEachIndexed { index, point -> lineTo(x(index + 1), y(point.rate)) }
+        }
+        val area = Path().apply {
+            moveTo(0f, baseline)
+            lineTo(0f, y(points.first().rate))
+            points.drop(1).forEachIndexed { index, point -> lineTo(x(index + 1), y(point.rate)) }
+            lineTo(size.width, baseline)
+            close()
+        }
+        drawLine(RetirementTextSecondary.copy(alpha = .22f), Offset(0f, baseline), Offset(size.width, baseline), 1.dp.toPx())
+        drawPath(area, RetirementGold.copy(alpha = .13f))
+        drawPath(line, RetirementGold, style = Stroke(2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        drawCircle(RetirementGold, 3.dp.toPx(), Offset(size.width, y(endingRate)))
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("Age ${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+        Text(
+            "${String.format(java.util.Locale.US, "%.0f", endingRate * 100)}% by ${result.endAge}",
+            color = RetirementGold,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+@Composable
+private fun HorizonPanel(targetAge: String, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier,
+        modifier.clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 214.dp)
+            Modifier.fillMaxWidth().heightIn(min = 238.dp)
                 .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -399,43 +447,8 @@ private fun HorizonPanel(targetAge: String, modifier: Modifier = Modifier) {
                 ) {
                     Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = RetirementGold)
                 }
-                Text("Plan with a range,\nnot a promise", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("Adjust retirement age", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
             }
-        }
-    }
-}
-
-@Composable
-private fun OverviewMapCard(amount: String?, onOpen: () -> Unit) {
-    val message = buildAnnotatedString {
-        if (amount == null) {
-            append("Add an account, property, or workbook to begin.")
-        } else {
-            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = dev.draftingroom5.RetirementText)) { append(amount) }
-            append(" is mapped across your plan. See the story, then choose where to go deeper.")
-        }
-    }
-    Card(
-        Modifier.fillMaxWidth().clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = BorderStroke(1.dp, RetirementBorder),
-    ) {
-        Row(
-            Modifier.fillMaxWidth()
-                .background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .94f))))
-                .padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                Modifier.size(58.dp).background(RetirementBlue.copy(alpha = .14f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = RetirementBlue, modifier = Modifier.size(30.dp))
-            }
-            Text(message, color = RetirementTextSecondary, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementBlue)
         }
     }
 }

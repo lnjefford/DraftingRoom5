@@ -59,6 +59,15 @@ class ForecastPresentationTest {
         assertEquals(result.failures.size, risk.exhaustedPaths + risk.accessLimitedPaths)
     }
 
+    @Test fun failureChartIsCumulativeByAgeAndEndsAtModeledFailureRate() {
+        val result = result()
+        val points = forecastFailurePoints(result)
+        assertEquals(result.currentAge, points.first().age)
+        assertEquals(result.endAge, points.last().age)
+        assertTrue(points.zipWithNext().all { (left, right) -> left.rate <= right.rate })
+        assertEquals(1.0 - result.successRate, points.last().rate, 1e-12)
+    }
+
     @Test fun settingsDraftValidatesAsOneCompletePlanAndPreservesWorkbookOwnership() {
         val plan = forecastState().planSettings.single()
         val draft = ForecastSettingsDraft.from(plan).copy(
