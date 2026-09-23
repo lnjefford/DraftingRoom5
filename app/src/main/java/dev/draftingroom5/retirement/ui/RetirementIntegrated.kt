@@ -76,10 +76,17 @@ import dev.draftingroom5.RetirementSurfaceRaised
 import dev.draftingroom5.RetirementTextSecondary
 import dev.draftingroom5.retirement.data.RetirementRepository
 import dev.draftingroom5.retirement.domain.RetirementState
+import dev.draftingroom5.retirement.domain.PlanSettings
+import dev.draftingroom5.retirement.forecast.ForecastCapture
+import dev.draftingroom5.retirement.forecast.ForecastChannel
 import dev.draftingroom5.retirement.forecast.ForecastCoordinator
+import dev.draftingroom5.retirement.forecast.ForecastInputs
+import dev.draftingroom5.retirement.forecast.ForecastResult
 import dev.draftingroom5.retirement.forecast.ForecastState
+import dev.draftingroom5.retirement.forecast.RetirementEngine
 import dev.draftingroom5.retirement.provider.RetirementProviders
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
@@ -154,6 +161,7 @@ private fun OverviewPage(
     val summary = integratedAssetSummary(state)
     val health = retirementDataHealth(state, if (preview) Instant.parse("2026-09-21T12:00:00Z") else Instant.now())
     val plan = state.planSettings.maxByOrNull { it.revision }
+    val forecastState = overviewForecastState(state, repository, plan, preview)
     FinancePage {
         Spacer(Modifier.width(52.dp).height(3.dp).background(RetirementGold))
         Text(
@@ -173,12 +181,11 @@ private fun OverviewPage(
             style = MaterialTheme.typography.bodyLarge,
         )
         if (plan != null) {
-            val currentAge = Period.between(plan.birthDate, plan.referenceDate).years
-            PlanHorizon(currentAge, plan.retirementAge, plan.endAge)
+            OverviewForecastChart(forecastState, plan) { onNavigate(AppRoute.RetirementForecast) }
         } else {
-            Text("Set your plan timing to see the retirement horizon.", color = RetirementTextSecondary)
+            Text("Set your plan timing to see a modeled forecast range.", color = RetirementTextSecondary)
         }
-        TargetCard(state, repository, preview) { onNavigate(AppRoute.RetirementForecast) }
+        TargetCard(plan, forecastState) { onNavigate(AppRoute.RetirementForecast) }
         OverviewMapCard(
             amount = if (summary.tracked.cents == 0L) null else summary.tracked.format(),
             onOpen = { onNavigate(AppRoute.RetirementAssets) },
@@ -188,30 +195,98 @@ private fun OverviewPage(
 }
 
 @Composable
-private fun TargetCard(
+private fun overviewForecastState(
     state: RetirementState,
     repository: RetirementRepository?,
+    plan: PlanSettings?,
     preview: Boolean,
-    onOpen: () -> Unit,
-) {
-    val plan = state.planSettings.maxByOrNull { it.revision }
-    val targetAge = plan?.retirementAge?.toString() ?: "Not set"
-    val liveState = if (repository != null && plan != null) {
+): ForecastState {
+    if (plan == null) return ForecastState.Idle
+    if (repository != null) {
         val scope = rememberCoroutineScope()
         val coordinator = remember(repository) { ForecastCoordinator(repository, scope) }
         val observed by coordinator.state.collectAsState()
         DisposableEffect(coordinator) { onDispose { coordinator.close() } }
         LaunchedEffect(state.generation, plan.revision) { coordinator.restart(paths = overviewForecastPathCount(plan)) }
-        observed
-    } else ForecastState.Idle
-    val success = when {
-        preview && plan != null -> "82%"
-        liveState is ForecastState.Ready -> "${((liveState as ForecastState.Ready).result.successRate * 100).toInt()}%"
-        else -> "—"
+        return observed
     }
+    if (preview) {
+        return remember(state.generation, plan.revision) {
+            when (val capture = ForecastInputs.capture(state)) {
+                is ForecastCapture.NeedsData -> ForecastState.NeedsData(capture.reason, null)
+                is ForecastCapture.Ready -> runCatching {
+                    ForecastState.Ready(runBlocking { RetirementEngine().calculate(capture.input, 20, 27L, true) })
+                }.getOrElse { ForecastState.Failed(null) }
+            }
+        }
+    }
+    return ForecastState.Idle
+}
+
+private fun ForecastState.displayedResult(): ForecastResult? = when (this) {
+    is ForecastState.Ready -> result
+    is ForecastState.Calculating -> previous
+    is ForecastState.NeedsData -> previous
+    is ForecastState.Failed -> previous
+    is ForecastState.Cancelled -> previous
+    ForecastState.Idle -> null
+}
+
+@Composable
+private fun OverviewForecastChart(state: ForecastState, plan: PlanSettings, onOpen: () -> Unit) {
+    val result = state.displayedResult()
+    Column(
+        Modifier.fillMaxWidth().clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (result != null) {
+            val retirementAge = plan.retirementAge.coerceIn(result.currentAge, result.endAge)
+            val median = result.percentile(ForecastChannel.TOTAL, retirementAge, 50.0)
+            if (LocalDensity.current.fontScale >= 1.5f) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("10TH–90TH PERCENTILE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(median.editorialFormat(), style = MaterialTheme.typography.titleLarge)
+                }
+            } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                Text("10TH–90TH PERCENTILE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(median.editorialFormat(), style = MaterialTheme.typography.titleLarge)
+                }
+            }
+            ForecastFanChart(forecastChartPoints(result, plan.retirementAge), plan.retirementAge, Modifier.height(290.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Today\n${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+                Text("Retire\n$retirementAge", color = RetirementGold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+                Text("Plan\n${result.endAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
+            }
+            Text(
+                "${String.format(java.util.Locale.US, "%,d", result.paths)} modeled paths · real dollars",
+                color = RetirementTextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        } else {
+            val message = when (state) {
+                is ForecastState.Calculating -> "Calculating the modeled range…"
+                is ForecastState.NeedsData -> "The forecast needs more plan data."
+                is ForecastState.Failed -> "The forecast is temporarily unavailable."
+                is ForecastState.Cancelled -> "Forecast calculation stopped."
+                else -> "Open Forecast to calculate a modeled range."
+            }
+            Text("MODELED FORECAST", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+            Text(message, color = RetirementTextSecondary, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+@Composable
+private fun TargetCard(plan: PlanSettings?, liveState: ForecastState, onOpen: () -> Unit) {
+    val targetAge = plan?.retirementAge?.toString() ?: "Not set"
+    val result = liveState.displayedResult()
+    val success = result?.let { "${(it.successRate * 100).toInt()}%" } ?: "—"
     val status = when {
-        preview && plan != null -> "20 modeled paths · real dollars"
-        liveState is ForecastState.Ready -> "${String.format(java.util.Locale.US, "%,d", (liveState as ForecastState.Ready).result.paths)} modeled paths · real dollars"
+        result != null -> "Probability of funding modeled spending through age ${result.endAge}"
         liveState is ForecastState.Calculating -> "Calculating modeled success"
         liveState is ForecastState.NeedsData -> "Forecast needs data"
         liveState is ForecastState.Failed -> "Forecast unavailable"
@@ -249,8 +324,8 @@ private fun ConfidencePanel(value: String, status: String, modifier: Modifier = 
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(value, color = RetirementHighlight, style = MaterialTheme.typography.displaySmall)
-            Text("MODELED CONFIDENCE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-            ConfidenceSparkline()
+            Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(18.dp))
             Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
