@@ -24,6 +24,7 @@ import dev.draftingroom5.retirement.domain.HoldingAvailability
 import dev.draftingroom5.retirement.domain.Money
 import dev.draftingroom5.retirement.provider.ConnectionHomeContent
 import dev.draftingroom5.retirement.provider.LinkedAccountData
+import dev.draftingroom5.retirement.provider.PropertySearchContent
 import dev.draftingroom5.retirement.provider.ReviewAccountsContent
 
 class CoreShellScreens : PreviewParameterProvider<String> {
@@ -139,6 +140,48 @@ fun LinkedAccountsReviewScreenshots() {
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
             ) {
                 ReviewAccountsContent(listOf(account), emptyList(), false, {}, {})
+            }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "Ready", widthDp = 412, heightDp = 900)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1000, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun PropertySearchScreenshots() {
+    RetirementTheme {
+        androidx.compose.material3.Surface(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+            ) {
+                PropertySearchContent(
+                    credentialReady = true,
+                    address = "500 Fixture Way, Madison, WI 53703",
+                    busy = false,
+                    onAddressChange = {},
+                    onSetup = {},
+                    onFind = {},
+                    onManual = {},
+                )
+            }
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "Setup needed", widthDp = 320, heightDp = 800)
+@Composable
+fun PropertySearchSetupScreenshots() {
+    RetirementTheme {
+        androidx.compose.material3.Surface(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Column(
+                Modifier.fillMaxSize().padding(20.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+            ) {
+                PropertySearchContent(false, "", false, {}, {}, {}, {})
             }
         }
     }

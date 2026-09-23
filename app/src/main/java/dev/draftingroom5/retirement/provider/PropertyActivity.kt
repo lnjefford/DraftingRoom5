@@ -14,9 +14,18 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.HomeWork
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -83,7 +92,7 @@ class PropertyActivity : ComponentActivity() {
         }
     }
 
-    @Composable private fun Content() {
+    @Composable @OptIn(ExperimentalMaterial3Api::class) private fun Content() {
         BackHandler(enabled = !busy) {
             when {
                 setupCredential -> { setupCredential = false; keyField?.text?.clear() }
@@ -92,13 +101,24 @@ class PropertyActivity : ComponentActivity() {
                 else -> finish()
             }
         }
-        Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(if (editing != null) "Edit property" else "Find a property", style = MaterialTheme.typography.headlineMedium)
-                Text("Property values are estimates, not appraisals. Mortgage and equity calculations use exact cents.")
-                message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        Scaffold(topBar = {
+            TopAppBar(
+                title = { Text(when {
+                    editing != null -> "Edit property"
+                    setupCredential -> "RentCast key"
+                    match != null -> "Review property"
+                    manual -> "Add property"
+                    else -> "Find a property"
+                }) },
+                actions = { IconButton(onClick = { finish() }, enabled = !busy) {
+                    Icon(Icons.Default.Close, contentDescription = "Close")
+                } },
+            )
+        }) { contentPadding ->
+            Column(Modifier.fillMaxSize().padding(contentPadding).imePadding().verticalScroll(rememberScrollState()).padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                message?.let { PropertyNoticeCard(it) }
                 when {
                     setupCredential -> CredentialForm()
                     editing != null -> EditForm(editing!!)
@@ -106,26 +126,29 @@ class PropertyActivity : ComponentActivity() {
                     manual -> PropertyForm(null, automatic = false)
                     else -> SearchForm()
                 }
-                TextButton(onClick = { finish() }, enabled = !busy) { Text("Close") }
             }
         }
     }
 
     @Composable private fun SearchForm() {
         var address by remember { mutableStateOf("") }
-        Text("Search your full street address, then confirm RentCast's matched property and current estimate before saving.")
-        Text(if (credential == null) "Automatic values: credentials not configured" else "Automatic values: RentCast key configured")
-        Button(onClick = ::authenticate, enabled = !busy) { Text(if (credential == null) "Set up RentCast key privately" else "Replace RentCast key") }
-        OutlinedTextField(address, { address = it.take(240) }, label = { Text("Street, city, state, ZIP") }, modifier = Modifier.fillMaxWidth())
-        Button(enabled = credential != null && address.trim().length >= 8 && !busy, onClick = {
-            perform { match = withContext(Dispatchers.IO) { runtime.rentCast.find(address) } }
-        }, modifier = Modifier.fillMaxWidth()) { Text("Find address") }
-        TextButton(onClick = { manual = true }, enabled = !busy) { Text("Enter property manually") }
-        Text("Manual properties never claim automatic updates. You can add dated values yourself.")
+        PropertySearchContent(
+            credentialReady = credential != null,
+            address = address,
+            busy = busy,
+            onAddressChange = { address = it.take(240) },
+            onSetup = ::authenticate,
+            onFind = { perform { match = withContext(Dispatchers.IO) { runtime.rentCast.find(address.trim()) } } },
+            onManual = { manual = true },
+        )
     }
 
     @Composable private fun CredentialForm() {
-        Text("Enter your own RentCast API key here only. It is encrypted with Android Keystore, excluded from backup, and sent directly to RentCast.")
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
+            Text("Set up automatic estimates", style = MaterialTheme.typography.headlineMedium)
+            Text("Your RentCast key is encrypted on this phone and can't be viewed after saving.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         AndroidView(modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), factory = { context ->
             EditText(context).apply {
                 contentDescription = "RentCast API key"; hint = "RentCast API key"
@@ -145,7 +168,7 @@ class PropertyActivity : ComponentActivity() {
                 try { credential = withContext(Dispatchers.IO) { runtime.rentCast.provision(key, credential) }; setupCredential = false }
                 finally { key.fill('\u0000') }
             }
-        }, modifier = Modifier.fillMaxWidth()) { Text("Save encrypted key") }
+        }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Save RentCast key") }
     }
 
     @Composable private fun PropertyForm(found: PropertyMatch?, automatic: Boolean) {
@@ -159,22 +182,36 @@ class PropertyActivity : ComponentActivity() {
         var owner by remember { mutableStateOf(Owner.JOINT) }
         var error by remember { mutableStateOf<String?>(null) }
         if (found != null) {
-            Text("Confirm matched property", style = MaterialTheme.typography.titleLarge)
-            Text(found.formattedAddress, style = MaterialTheme.typography.titleMedium)
-            found.facts?.let { Text(it) }
-            Text("Latest estimate ${found.estimate.format()}")
-            if (found.rangeLow != null) Text("Estimated range ${found.rangeLow.format()}–${found.rangeHigh!!.format()}")
-            Text("${found.comparableCount} comparable sales · as of ${found.providerAsOf}")
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text("Property found", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                    Text(found.formattedAddress, style = MaterialTheme.typography.titleMedium)
+                    found.facts?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Text(found.estimate.format(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                    if (found.rangeLow != null) Text("Estimate range ${found.rangeLow.format()}–${found.rangeHigh!!.format()}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${found.comparableCount} comparable sales · ${found.providerAsOf}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+            }
         } else {
-            Text("Manual property", style = MaterialTheme.typography.titleLarge)
-            Text("This value changes only when you add a new manual valuation.")
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.HomeWork, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
+                Text("Add property manually", style = MaterialTheme.typography.headlineMedium)
+                Text("Enter a current value now. You can add updated values later.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
+        Text("Property details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         OutlinedTextField(address, { address = it.take(240) }, label = { Text("Property address") }, modifier = Modifier.fillMaxWidth(), enabled = !automatic)
         OutlinedTextField(value, { value = it.take(40) }, label = { Text("Current value (USD)") }, modifier = Modifier.fillMaxWidth(), enabled = !automatic)
+        Text("Mortgage", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("Optional. Leave these at zero if the property is paid off.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(mortgage, { mortgage = it.take(40) }, label = { Text("Mortgage balance (USD)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(payment, { payment = it.take(40) }, label = { Text("Monthly payment (USD)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(rate, { rate = it.take(8) }, label = { Text("Annual rate (%)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(months, { months = it.filter(Char::isDigit).take(3) }, label = { Text("Months remaining") }, modifier = Modifier.fillMaxWidth())
+        Text("Ownership", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         OutlinedTextField(ownership, { ownership = it.take(8) }, label = { Text("Ownership (%)") }, modifier = Modifier.fillMaxWidth())
         dev.draftingroom5.retirement.ui.PropertyOwnerPicker(owner) { owner = it }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -202,7 +239,7 @@ class PropertyActivity : ComponentActivity() {
                 if (automatic) RetirementPropertySyncWorker.schedule(this@PropertyActivity, records.second.id)
                 finish()
             }
-        }, modifier = Modifier.fillMaxWidth()) { Text(if (automatic) "Confirm and track property" else "Add manual property") }
+        }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (automatic) "Save property" else "Add property") }
     }
 
     @Composable private fun EditForm(property: Property) {
@@ -223,6 +260,85 @@ class PropertyActivity : ComponentActivity() {
     }
 
     companion object { const val PROPERTY_ID = "property" }
+}
+
+@Composable
+internal fun PropertySearchContent(
+    credentialReady: Boolean,
+    address: String,
+    busy: Boolean,
+    onAddressChange: (String) -> Unit,
+    onSetup: () -> Unit,
+    onFind: () -> Unit,
+    onManual: () -> Unit,
+) {
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(Icons.Default.HomeWork, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
+        Text("Track your home's value", style = MaterialTheme.typography.headlineMedium)
+        Text("Search by address, review the estimate, then add mortgage details.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                if (credentialReady) Icons.Default.CheckCircle else Icons.Default.Lock,
+                contentDescription = null,
+                tint = if (credentialReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(Modifier.weight(1f)) {
+                Text(if (credentialReady) "Automatic estimates are ready" else "Automatic estimates need setup", fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (credentialReady) "Powered by your private RentCast connection."
+                    else "Add your RentCast key to search for a property.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+    if (credentialReady) {
+        OutlinedTextField(
+            value = address,
+            onValueChange = onAddressChange,
+            label = { Text("Property address") },
+            placeholder = { Text("123 Main St, City, ST 12345") },
+            singleLine = true,
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Button(
+            enabled = address.trim().length >= 8 && !busy,
+            onClick = onFind,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        ) {
+            if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            if (busy) Spacer(Modifier.width(8.dp))
+            Text(if (busy) "Finding property…" else "Find property")
+        }
+    } else {
+        Button(onClick = onSetup, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+            Text("Set up automatic estimates")
+        }
+    }
+    OutlinedButton(onClick = onManual, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Add property manually") }
+    TextButton(onClick = { showSettings = !showSettings }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+        Text(if (showSettings) "Hide property settings" else "Property settings")
+    }
+    if (showSettings) Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Property estimates are not appraisals. Your key is encrypted on this phone and excluded from backups.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = onSetup, enabled = !busy) { Text(if (credentialReady) "Replace RentCast key" else "Set up RentCast key") }
+        }
+    }
+}
+
+@Composable
+private fun PropertyNoticeCard(text: String) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(text, modifier = Modifier.weight(1f))
+        }
+    }
 }
 
 internal data class PropertyInput(val address: String, val value: Money, val mortgage: Money, val payment: Money, val rateBps: Int,
