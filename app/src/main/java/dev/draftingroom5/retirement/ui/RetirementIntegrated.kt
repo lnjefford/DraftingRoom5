@@ -59,6 +59,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.draftingroom5.AppRoute
 import dev.draftingroom5.RetirementBorder
+import dev.draftingroom5.RetirementBackground
+import dev.draftingroom5.RetirementBackgroundDeep
 import dev.draftingroom5.RetirementBlue
 import dev.draftingroom5.RetirementHighlight
 import dev.draftingroom5.RetirementPrimary
@@ -150,7 +152,7 @@ private fun OverviewPage(
         Text(
             if (summary.tracked.cents == 0L) "$0" else summary.tracked.editorialFormat(),
             color = RetirementHighlight,
-            style = MaterialTheme.typography.displayMedium,
+            style = if (LocalDensity.current.fontScale >= 1.5f) MaterialTheme.typography.displayMedium else MaterialTheme.typography.displayLarge,
             modifier = Modifier.semantics { contentDescription = "Tracked total, ${summary.tracked.format()}" },
         )
         Text(
@@ -165,14 +167,15 @@ private fun OverviewPage(
             Text("Set your plan timing to see the retirement horizon.", color = RetirementTextSecondary)
         }
         TargetCard(state, repository, preview) { onNavigate(AppRoute.RetirementForecast) }
-        ActionCard(
-            title = "Financial map",
-            subtitle = if (summary.tracked.cents == 0L) "Add an account, property, or workbook to begin."
-                else "See how each asset contributes to the total.",
-            actionLabel = "Open assets",
-            icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = RetirementBlue) },
-        ) { onNavigate(AppRoute.RetirementAssets) }
-        DataHealthCard(health) { health.route?.let(onNavigate) }
+        RetirementFlowActionCard(
+            eyebrow = "Financial map",
+            title = "See the whole picture",
+            body = if (summary.tracked.cents == 0L) "Add an account, property, or workbook to begin."
+                else "${summary.tracked.format()} is mapped across the plan.",
+            icon = Icons.Default.AccountBalanceWallet,
+            onClick = { onNavigate(AppRoute.RetirementAssets) },
+        )
+        if (health.kind != DataHealthKind.HEALTHY) DataHealthCard(health) { health.route?.let(onNavigate) }
     }
 }
 
@@ -207,31 +210,40 @@ private fun TargetCard(
         liveState is ForecastState.Cancelled -> "Forecast calculation stopped"
         else -> if (plan == null) "Set plan timing in Forecast" else "Open Forecast to calculate"
     }
-    Card(
+    Column(
         Modifier.fillMaxWidth().clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (LocalDensity.current.fontScale >= 1.5f) {
+            MetricPanel("MODELED CONFIDENCE", success, RetirementHighlight)
+            MetricPanel("RETIREMENT HORIZON", "Age $targetAge", dev.draftingroom5.RetirementText)
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MetricPanel("MODELED CONFIDENCE", success, RetirementHighlight, Modifier.weight(1f))
+                MetricPanel("RETIREMENT HORIZON", "Age $targetAge", dev.draftingroom5.RetirementText, Modifier.weight(1f))
+            }
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            Text("Open forecast  →", color = RetirementBlue, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun MetricPanel(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Card(
+        modifier,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
-        Column(
-            Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(RetirementSurfaceRaised, RetirementSurface))).padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        Box(
+            Modifier.fillMaxWidth().heightIn(min = 132.dp)
+                .background(Brush.verticalGradient(listOf(RetirementSurfaceRaised.copy(alpha = .86f), RetirementSurface)))
+                .padding(18.dp),
         ) {
-            if (LocalDensity.current.fontScale >= 1.5f) {
-                MetricTile("MODELED CONFIDENCE", success, RetirementHighlight)
-                MetricTile("RETIREMENT HORIZON", "Age $targetAge", dev.draftingroom5.RetirementText)
-                Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
-                Text("Open forecast  →", color = RetirementBlue, fontWeight = FontWeight.SemiBold)
-            } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MetricTile("MODELED CONFIDENCE", success, RetirementHighlight, Modifier.weight(1f))
-                    MetricTile("RETIREMENT HORIZON", "Age $targetAge", dev.draftingroom5.RetirementText, Modifier.weight(1f))
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    Text("Open forecast  →", color = RetirementBlue, fontWeight = FontWeight.SemiBold)
-                }
-            }
+            MetricTile(label, value, color)
         }
     }
 }
@@ -276,16 +288,8 @@ private fun AssetsPage(state: RetirementState, onNavigate: (AppRoute) -> Unit) {
     val summary = integratedAssetSummary(state)
     val rows = summary.rows.filter { it.amount.cents != 0L }.map { taxLabel(it.treatment) to it.amount }
     FinancePage {
-        EditorialHeading("Assets", "Built from many streams", "How each asset contributes to the plan.")
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Column(Modifier.weight(1f)) {
-                Text("TRACKED TOTAL", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
-                Text(summary.tracked.editorialFormat(), style = MaterialTheme.typography.displaySmall,
-                    modifier = Modifier.semantics { contentDescription = "Tracked total, ${summary.tracked.format()}" })
-            }
-            Text("${summary.forecastEligible.format()}\nin Forecast", color = RetirementTextSecondary, textAlign = TextAlign.End)
-        }
-        AssetStreams(rows)
+        EditorialHeading("Assets", "Built from many streams", "Different paths. One complete financial picture.")
+        AssetStreams(rows, summary.tracked)
         Text("Asset mix", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         Card(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = RetirementSurface), border = BorderStroke(1.dp, RetirementBorder)) {
@@ -297,8 +301,12 @@ private fun AssetsPage(state: RetirementState, onNavigate: (AppRoute) -> Unit) {
             }
         }
         if (summary.tracked.cents == 0L) Text("No tracked accounts yet. Accounts can be linked or added manually.", color = RetirementTextSecondary)
-        Button(onClick = { onNavigate(AppRoute.RetirementAccounts) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Open accounts")
+        Row(
+            Modifier.fillMaxWidth().clickable { onNavigate(AppRoute.RetirementAccounts) }.padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Open accounts", color = RetirementPrimary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementPrimary)
         }
     }
 }
@@ -319,12 +327,21 @@ private fun AssetValueRow(label: String, value: String, color: Color) {
 
 @Composable
 private fun FinancePage(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    Box(
+        Modifier.fillMaxSize().background(
+            Brush.radialGradient(
+                colors = listOf(RetirementSurfaceRaised.copy(alpha = .48f), RetirementBackground, RetirementBackgroundDeep),
+                radius = 980f,
+            ),
+        ),
     ) {
-        content()
-        Spacer(Modifier.height(16.dp))
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            content()
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }
 

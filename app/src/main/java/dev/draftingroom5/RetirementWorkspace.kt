@@ -2,6 +2,7 @@ package dev.draftingroom5
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -165,11 +168,7 @@ internal fun RetirementWorkspaceScreen(
                                 is AppRoute.RetirementPropertyEdit -> "Edit property"
                                 else -> "Finance"
                             })
-                        } else BrandTitle(
-                            title = "Finance",
-                            onLogoClick = openWorkspaceDrawer,
-                            activeWorkspace = AppWorkspace.RETIREMENT,
-                        )
+                        } else FinanceBrandTitle(openWorkspaceDrawer)
                     },
                     actions = {
                         if (!detail) {
@@ -181,7 +180,7 @@ internal fun RetirementWorkspaceScreen(
                             }
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = RetirementBackgroundDeep),
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = RetirementBackground),
                 )
             },
             bottomBar = {
@@ -191,12 +190,22 @@ internal fun RetirementWorkspaceScreen(
                             NavigationBarItem(
                                 selected = route == tab.route,
                                 onClick = { onSelectTab(tab.route) },
-                                icon = { Icon(tab.icon, contentDescription = null) },
+                                icon = {
+                                    Box(
+                                        Modifier.size(46.dp).background(
+                                            if (route == tab.route) RetirementBlue else Color.Transparent,
+                                            CircleShape,
+                                        ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(tab.icon, contentDescription = null, modifier = Modifier.size(24.dp))
+                                    }
+                                },
                                 label = { Text(tab.label) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = RetirementBackgroundDeep,
                                     selectedTextColor = RetirementBlue,
-                                    indicatorColor = RetirementBlue,
+                                    indicatorColor = Color.Transparent,
                                     unselectedIconColor = RetirementTextSecondary,
                                     unselectedTextColor = RetirementTextSecondary,
                                 ),
@@ -232,6 +241,23 @@ internal fun RetirementWorkspaceScreen(
             } else RetirementPlaceholder(route, Modifier.padding(padding))
         }
         }
+    }
+}
+
+@Composable
+private fun FinanceBrandTitle(onOpenWorkspaceDrawer: () -> Unit) {
+    Row(
+        Modifier.clickable(onClick = onOpenWorkspaceDrawer),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(42.dp).background(RetirementPrimary.copy(alpha = .16f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Switch workspace", tint = RetirementHighlight)
+        }
+        Text("Finance", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
     }
 }
 

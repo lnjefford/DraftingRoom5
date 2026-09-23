@@ -1,14 +1,20 @@
 package dev.draftingroom5.retirement.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -21,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.draftingroom5.RetirementBlue
+import dev.draftingroom5.RetirementBackground
 import dev.draftingroom5.RetirementGold
 import dev.draftingroom5.RetirementHighlight
 import dev.draftingroom5.RetirementPrimary
@@ -48,9 +55,16 @@ internal fun Money.editorialFormat(): String {
 
 @Composable
 internal fun EditorialHeading(eyebrow: String, title: String, body: String? = null) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(eyebrow.uppercase(), color = RetirementPrimary, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-        Text(title, style = MaterialTheme.typography.displaySmall)
+        Text(
+            title,
+            style = if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f) {
+                MaterialTheme.typography.displaySmall
+            } else {
+                MaterialTheme.typography.displayMedium
+            },
+        )
         body?.let { Text(it, color = RetirementTextSecondary, style = MaterialTheme.typography.bodyLarge) }
     }
 }
@@ -67,22 +81,36 @@ internal fun PlanHorizon(
     Column(modifier.semantics {
         contentDescription = "Plan horizon from age $currentAge to $safeEnd. Retirement begins at age $retirementAge."
     }) {
-        Canvas(Modifier.fillMaxWidth().height(150.dp)) {
+        Canvas(Modifier.fillMaxWidth().height(225.dp)) {
             val start = Offset(8.dp.toPx(), size.height * .80f)
-            val end = Offset(size.width - 8.dp.toPx(), size.height * .36f)
-            fun curve(yOffset: Float) = Path().apply {
+            val end = Offset(size.width - 8.dp.toPx(), size.height * .43f)
+            fun curve(spread: Float) = Path().apply {
                 moveTo(start.x, start.y)
-                cubicTo(size.width * .28f, size.height * (.86f + yOffset), size.width * .47f, size.height * (.22f + yOffset), end.x, end.y + size.height * yOffset)
+                cubicTo(
+                    size.width * .25f,
+                    size.height * (.88f + spread * .18f),
+                    size.width * .48f,
+                    size.height * (.18f + spread * .48f),
+                    end.x,
+                    end.y + size.height * spread,
+                )
             }
-            drawPath(curve(.18f), RetirementPrimary.copy(alpha = .08f), style = Stroke(42.dp.toPx(), cap = StrokeCap.Round))
-            drawPath(curve(.10f), RetirementPrimary.copy(alpha = .12f), style = Stroke(31.dp.toPx(), cap = StrokeCap.Round))
-            drawPath(curve(.04f), RetirementBlue.copy(alpha = .16f), style = Stroke(20.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(curve(.20f), RetirementPrimary.copy(alpha = .08f), style = Stroke(72.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(curve(.11f), RetirementPrimary.copy(alpha = .14f), style = Stroke(52.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(curve(.04f), RetirementBlue.copy(alpha = .22f), style = Stroke(30.dp.toPx(), cap = StrokeCap.Round))
             drawPath(curve(0f), RetirementHighlight, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
             val markerX = start.x + (end.x - start.x) * marker
-            drawLine(RetirementGold, Offset(markerX, 12.dp.toPx()), Offset(markerX, size.height - 8.dp.toPx()), 1.5.dp.toPx())
-            drawCircle(RetirementGold.copy(alpha = .24f), 11.dp.toPx(), Offset(markerX, size.height * .48f))
-            drawCircle(RetirementGold, 5.dp.toPx(), Offset(markerX, size.height * .48f))
+            val markerY = size.height * .46f
+            drawLine(RetirementGold, Offset(markerX, 18.dp.toPx()), Offset(markerX, size.height - 4.dp.toPx()), 1.5.dp.toPx())
+            drawCircle(RetirementGold.copy(alpha = .24f), 14.dp.toPx(), Offset(markerX, markerY))
+            drawCircle(RetirementGold, 5.dp.toPx(), Offset(markerX, markerY))
             drawCircle(RetirementHighlight, 5.dp.toPx(), start)
+            drawLine(
+                RetirementTextSecondary.copy(alpha = .24f),
+                Offset(start.x, size.height - 2.dp.toPx()),
+                Offset(end.x, size.height - 2.dp.toPx()),
+                1.dp.toPx(),
+            )
         }
         Row(Modifier.fillMaxWidth()) {
             Text("Today\n$currentAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
@@ -93,27 +121,53 @@ internal fun PlanHorizon(
 }
 
 @Composable
-internal fun AssetStreams(rows: List<Pair<String, Money>>, modifier: Modifier = Modifier) {
+internal fun AssetStreams(rows: List<Pair<String, Money>>, trackedTotal: Money, modifier: Modifier = Modifier) {
     val visible = rows.filter { it.second.cents > 0L }
     val total = visible.sumOf { it.second.cents }.coerceAtLeast(1L)
     val description = visible.joinToString(prefix = "Tracked asset streams. ") { "${it.first}: ${it.second.format()}" }
-    Canvas(modifier.fillMaxWidth().height(190.dp).semantics { contentDescription = description }) {
-        if (visible.isEmpty()) return@Canvas
-        val centerY = size.height * .62f
-        visible.forEachIndexed { index, (_, amount) ->
-            val color = FinanceStreamColors[index % FinanceStreamColors.size]
-            val lane = (index + 1f) / (visible.size + 1f)
-            val startY = size.height * lane
-            val width = (12.dp.toPx() + 38.dp.toPx() * (amount.cents.toFloat() / total)).coerceAtMost(46.dp.toPx())
-            val path = Path().apply {
-                moveTo(-width, startY)
-                cubicTo(size.width * .30f, startY, size.width * .43f, centerY, size.width * .70f, centerY)
-                cubicTo(size.width * .84f, centerY, size.width * .91f, centerY + (index - visible.lastIndex / 2f) * 8.dp.toPx(), size.width + width, centerY + (index - visible.lastIndex / 2f) * 13.dp.toPx())
+    Box(modifier.fillMaxWidth().height(270.dp).semantics { contentDescription = description }) {
+        Canvas(Modifier.matchParentSize()) {
+            if (visible.isEmpty()) return@Canvas
+            val centerY = size.height * .62f
+            visible.forEachIndexed { index, (_, amount) ->
+                val color = FinanceStreamColors[index % FinanceStreamColors.size]
+                val lane = (index + 1f) / (visible.size + 1f)
+                val startY = size.height * (.11f + lane * .60f)
+                val width = (15.dp.toPx() + 46.dp.toPx() * (amount.cents.toFloat() / total)).coerceAtMost(58.dp.toPx())
+                val path = Path().apply {
+                    moveTo(-width, startY)
+                    cubicTo(size.width * .30f, startY, size.width * .45f, centerY, size.width * .73f, centerY)
+                    cubicTo(size.width * .86f, centerY, size.width * .92f, centerY + (index - visible.lastIndex / 2f) * 8.dp.toPx(), size.width + width, centerY + (index - visible.lastIndex / 2f) * 14.dp.toPx())
+                }
+                drawPath(path, color.copy(alpha = .68f), style = Stroke(width, cap = StrokeCap.Round))
+                drawPath(path, color, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
             }
-            drawPath(path, color.copy(alpha = .62f), style = Stroke(width, cap = StrokeCap.Round))
-            drawPath(path, color.copy(alpha = .92f), style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+            drawCircle(RetirementHighlight.copy(alpha = .24f), 13.dp.toPx(), Offset(size.width * .73f, centerY))
+            drawCircle(RetirementHighlight, 4.5.dp.toPx(), Offset(size.width * .73f, centerY))
         }
-        drawCircle(RetirementHighlight.copy(alpha = .22f), 10.dp.toPx(), Offset(size.width * .70f, centerY))
-        drawCircle(RetirementHighlight, 4.dp.toPx(), Offset(size.width * .70f, centerY))
+        Column(
+            Modifier.align(Alignment.TopStart).padding(top = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            visible.forEach { (label, amount) ->
+                Column(
+                    Modifier.widthIn(max = 126.dp)
+                        .background(RetirementBackground.copy(alpha = .78f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                ) {
+                    Text(label, color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(amount.editorialFormat(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        Column(
+            Modifier.align(Alignment.CenterEnd)
+                .background(RetirementBackground.copy(alpha = .82f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 7.dp, vertical = 5.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Text("TRACKED TOTAL", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+            Text(trackedTotal.editorialFormat(), style = MaterialTheme.typography.headlineLarge)
+        }
     }
 }

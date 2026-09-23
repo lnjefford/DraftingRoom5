@@ -216,9 +216,9 @@ private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, st
         }
     }
     val points = forecastChartPoints(result, plan.retirementAge)
-    RetirementCard {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("10TH–90TH PERCENTILE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
-        ForecastFanChart(points, plan.retirementAge, Modifier.height(250.dp))
+        ForecastFanChart(points, plan.retirementAge, Modifier.height(340.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Today\n${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
             Text("Retire\n${plan.retirementAge}", color = RetirementGold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
@@ -260,9 +260,12 @@ internal fun ForecastFanChart(points: List<ForecastChartPoint>, retirementAge: I
     val description = forecastChartDescription(points, retirementAge)
     Canvas(modifier.fillMaxWidth().heightIn(min = 190.dp).semantics { contentDescription = description }) {
         if (points.size < 2) return@Canvas
-        val maxValue = max(1L, points.maxOf { it.high.cents }).toFloat()
+        val minValue = points.minOf { it.low.cents }.coerceAtLeast(0L).toFloat()
+        val maxValue = max(minValue + 1f, points.maxOf { it.high.cents }.toFloat())
+        val range = maxValue - minValue
         fun x(index: Int) = size.width * index / (points.size - 1)
-        fun y(cents: Long) = size.height - 8.dp.toPx() - (cents.coerceAtLeast(0).toFloat() / maxValue * (size.height - 20.dp.toPx()))
+        fun y(cents: Long) = size.height - 14.dp.toPx() -
+            ((cents.coerceAtLeast(0).toFloat() - minValue) / range * (size.height - 34.dp.toPx()))
         fun smooth(path: Path, values: List<Offset>, move: Boolean) {
             if (move) path.moveTo(values.first().x, values.first().y) else path.lineTo(values.first().x, values.first().y)
             for (index in 0 until values.lastIndex) {
@@ -291,10 +294,16 @@ internal fun ForecastFanChart(points: List<ForecastChartPoint>, retirementAge: I
         val middle = values { it.middle.cents }
         val innerHigh = points.mapIndexed { index, point -> Offset(x(index), y((point.middle.cents + point.high.cents) / 2)) }
         val innerLow = points.mapIndexed { index, point -> Offset(x(index), y((point.middle.cents + point.low.cents) / 2)) }
-        drawPath(band(high, low), RetirementPrimary.copy(alpha = .16f))
-        drawPath(band(innerHigh, innerLow), RetirementBlue.copy(alpha = .20f))
+        drawPath(band(high, low), RetirementPrimary.copy(alpha = .25f))
+        drawPath(band(innerHigh, innerLow), RetirementBlue.copy(alpha = .28f))
         val median = Path().also { smooth(it, middle, true) }
         drawPath(median, RetirementHighlight, style = Stroke(3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        drawLine(
+            RetirementTextSecondary.copy(alpha = .22f),
+            Offset(0f, size.height - 2.dp.toPx()),
+            Offset(size.width, size.height - 2.dp.toPx()),
+            1.dp.toPx(),
+        )
         val marker = points.indexOfFirst { it.age == retirementAge }
         if (marker >= 0) {
             drawLine(RetirementGold, Offset(x(marker), 0f), Offset(x(marker), size.height), 1.5.dp.toPx())
@@ -478,7 +487,20 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
 }
 
 @Composable private fun ForecastPage(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp), content = content)
+    Box(
+        Modifier.fillMaxSize().background(
+            Brush.radialGradient(
+                colors = listOf(RetirementSurfaceRaised.copy(alpha = .48f), RetirementBackground, RetirementBackgroundDeep),
+                radius = 980f,
+            ),
+        ),
+    ) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+            content = content,
+        )
+    }
 }
 
 @Composable private fun RetirementCard(content: @Composable ColumnScope.() -> Unit) {
