@@ -8,7 +8,13 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.*
@@ -33,6 +39,7 @@ internal fun RetirementEpicHost(route: AppRoute, onNavigate: (AppRoute) -> Unit,
     var failure by remember { mutableStateOf<WorkbookFailure?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
     var awaitingSelection by remember { mutableStateOf(false) }
+    var openPickerOnEntry by rememberSaveable(route) { mutableStateOf(route == AppRoute.RetirementEpicUpload) }
     var repository by remember { mutableStateOf<dev.draftingroom5.retirement.data.RetirementRepository?>(null) }
     LaunchedEffect(route) {
         review = null; failure = null
@@ -74,9 +81,17 @@ internal fun RetirementEpicHost(route: AppRoute, onNavigate: (AppRoute) -> Unit,
             }
         }
     }
+    LaunchedEffect(route, snapshot, openPickerOnEntry) {
+        if (route == AppRoute.RetirementEpicUpload && snapshot != null && openPickerOnEntry && !awaitingSelection && !busy) {
+            openPickerOnEntry = false
+            awaitingSelection = true
+            try { picker.launch(arrayOf("application/vnd.ms-excel.sheet.macroEnabled.12", "application/octet-stream")) }
+            catch (_: Exception) { awaitingSelection = false; failure = WorkbookFailure.INVALID }
+        }
+    }
     val state = snapshot
     if (state == null) {
-        EpicPage("Epic stock") { Text("Loading saved workbook data. If it remains unavailable, go back and retry after unlocking the phone.") }
+        EpicPage("Epic stock", "Loading your saved Shareworks position.") { LinearProgressIndicator(Modifier.fillMaxWidth()) }
     } else if (route == AppRoute.RetirementEpicUpload) {
         EpicUploadPage(review?.candidate?.workbook, state.activeEpicImportId != null, busy, failure,
             onChoose = {
@@ -109,9 +124,13 @@ internal fun RetirementEpicHost(route: AppRoute, onNavigate: (AppRoute) -> Unit,
 }
 
 @Composable
-internal fun EpicPage(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun EpicPage(
+    title: String,
+    subtitle: String = "Private Shareworks values, processed and stored on this phone.",
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+        RetirementFlowHero("Epic stock", title, subtitle, Icons.Default.Savings)
         content()
         Spacer(Modifier.height(16.dp))
     }
@@ -137,15 +156,38 @@ private fun EpicSection(title: String, content: @Composable ColumnScope.() -> Un
 
 @Composable
 internal fun EpicUploadPage(book: EpicWorkbook?, replacing: Boolean, busy: Boolean, failure: WorkbookFailure?, onChoose: () -> Unit, onConfirm: () -> Unit, onCancel: () -> Unit) {
-    EpicPage(if (book == null) "Upload Shareworks workbook" else "Review workbook") {
-        Text(if (book == null) "Choose the original 2026 Shareworks .xlsm file, recalculated and saved in Excel. All Epic values come from its saved results."
-            else "Review the workbook’s saved values before accepting this import.")
-        Text(if (book == null) "Processed on this phone. Macros never run. Only derived values are kept; the workbook and its filename are not saved."
-            else "Only derived values are stored on this phone. The workbook is not retained.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        failure?.let { Text(workbookMessage(it), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
-        if (busy) Text("Checking or saving workbook…", modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    EpicPage(
+        if (book == null) "Import your workbook" else "Review imported values",
+        if (book == null) "Choose your recalculated Shareworks .xlsm file. We'll extract the saved Epic values."
+        else "Make sure these headline values look right, then save them to your plan.",
+    ) {
+        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Private by design", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    Text("Macros never run. The workbook and filename are not retained.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        failure?.let {
+            Card(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
+                Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Text(workbookMessage(it), modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite })
+                }
+            }
+        }
+        if (busy) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text("Checking workbook…", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        }
         if (book != null) {
-            EpicSection("Import summary") {
+            EpicSection("Ready to save") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text("Workbook passed validation", color = MaterialTheme.colorScheme.primary)
+                }
                 EpicValue("Share price", book.sharePrice.format())
                 EpicValue("Vested value", book.totals.vestedValue.format())
                 EpicValue("Loans", book.totals.loans.format())
@@ -153,12 +195,13 @@ internal fun EpicUploadPage(book: EpicWorkbook?, replacing: Boolean, busy: Boole
                 EpicValue("After tax at workbook date", book.projection.afterTax.format())
                 EpicValue("Annual projections", if (book.years.isEmpty()) "Unavailable in this workbook" else "${book.years.size} saved years • ${book.years.first().year}–${book.years.last().year}")
             }
-            Text(if (replacing) "Confirm to replace the active Epic import. Its accepted history remains stored." else "Confirm to save this workbook’s derived Epic values.")
-            Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text(if (replacing) "Replace Epic data" else "Accept workbook")
+            Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Text(if (replacing) "Update Epic data" else "Save Epic data")
             }
+            OutlinedButton(onClick = onChoose, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Choose a different workbook") }
+        } else {
+            Button(onClick = onChoose, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose Epic workbook") }
         }
-        OutlinedButton(onClick = onChoose, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (book == null) "Choose .xlsm workbook" else "Choose another workbook") }
         TextButton(onClick = onCancel, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Cancel") }
     }
 }
@@ -166,9 +209,8 @@ internal fun EpicUploadPage(book: EpicWorkbook?, replacing: Boolean, busy: Boole
 @Composable
 internal fun EpicDetailPage(state: RetirementState, onUpload: () -> Unit) {
     val accepted = state.epicImports.singleOrNull { it.id == state.activeEpicImportId }
-    EpicPage("Epic stock") {
-        Text("Shareworks workbook", color = MaterialTheme.colorScheme.primary)
-        Button(onClick = onUpload, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Upload workbook") }
+    EpicPage("Your Epic position", "Saved Shareworks values, vesting, loans, and projections in one place.") {
+        Button(onClick = onUpload, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (accepted == null) "Import Epic workbook" else "Update from workbook") }
         if (state.importMetadata.any { it.source == "SHAREWORKS" && it.status == ImportStatus.NEEDS_ATTENTION }) {
             Text("The last upload failed validation. Saved Epic data is unchanged. Choose an updated workbook.", modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }

@@ -18,8 +18,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.HomeWork
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -160,11 +164,12 @@ internal fun RetirementAccountsHost(
     }
     when (route) {
         AppRoute.RetirementAccounts -> AccountsList(state, message, { onNavigate(AppRoute.RetirementAddAsset) },
-            { onNavigate(AppRoute.RetirementAccountDetail(it)) }, { onNavigate(AppRoute.RetirementPropertyDetail(it)) }, { onNavigate(AppRoute.RetirementEpicDetail) })
+            { onNavigate(AppRoute.RetirementAccountDetail(it)) }, { onNavigate(AppRoute.RetirementPropertyDetail(it)) })
         AppRoute.RetirementAddAsset -> AddAssetPage(
             onConnect = { context.startActivity(Intent(context, LinkedAccountsActivity::class.java)) },
             onManual = { context.startActivity(Intent(context, LinkedAccountsActivity::class.java).putExtra("manual", true)) },
             onProperty = { context.startActivity(Intent(context, PropertyActivity::class.java)) },
+            onEpic = { onNavigate(AppRoute.RetirementEpicUpload) },
         )
         is AppRoute.RetirementAccountDetail -> AccountDetailPage(
             state, account!!, message,
@@ -265,14 +270,14 @@ private fun Page(title: String, subtitle: String? = null, message: String? = nul
 @Composable private fun MessagePage(title: String, body: String, message: String?) = Page(title, body, message) {}
 
 @Composable
-private fun AccountsList(state: RetirementState, message: String?, onAdd: () -> Unit, onOpen: (String) -> Unit, onOpenProperty: (String) -> Unit, onEpic: () -> Unit) {
+private fun AccountsList(state: RetirementState, message: String?, onAdd: () -> Unit, onOpen: (String) -> Unit, onOpenProperty: (String) -> Unit) {
     val grouped = state.activeAccountsByGroup()
     Page("Accounts", "Linked and manual sources stay distinct. Account values are shown without a combined total.", message) {
         Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Add, contentDescription = null)
-            Text("Add account", Modifier.padding(start = 8.dp))
+            Text("Add to plan", Modifier.padding(start = 8.dp))
         }
-        AccountGroup.entries.forEach { group ->
+        AccountGroup.entries.filter { it != AccountGroup.HEALTH || grouped[it].orEmpty().isNotEmpty() }.forEach { group ->
             Text(group.label, style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(top = 8.dp).semantics { heading() })
             val accounts = grouped[group].orEmpty()
@@ -283,14 +288,6 @@ private fun AccountsList(state: RetirementState, message: String?, onAdd: () -> 
                 val property = state.properties.singleOrNull { it.accountId == account.id && it.archivedAt == null }
                 if (property != null) PropertyRow(state, property) { onOpenProperty(property.id) }
                 else AccountRow(state, account) { onOpen(account.id) }
-            }
-        }
-        Card(colors = CardDefaults.cardColors(containerColor = RetirementSurfaceRaised), modifier = Modifier.fillMaxWidth().clickable(onClick = onEpic).semantics(mergeDescendants = true) { role = Role.Button }) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Epic stock", fontWeight = FontWeight.SemiBold)
-                val epic = state.epicImports.singleOrNull { it.id == state.activeEpicImportId }
-                Text(if (epic == null) "Upload a Shareworks workbook" else "${(epic.vestedValue - epic.loans).format()} • vested, less loans", color = RetirementTextSecondary)
-                if (state.importMetadata.any { it.source == "SHAREWORKS" && it.status == dev.draftingroom5.retirement.domain.ImportStatus.NEEDS_ATTENTION }) Text("Last upload needs attention", color = RetirementHighlight)
             }
         }
     }
@@ -352,28 +349,22 @@ private fun PropertyRow(state: RetirementState, property: Property, onOpen: () -
 }
 
 @Composable
-private fun AddAssetPage(onConnect: () -> Unit, onManual: () -> Unit, onProperty: () -> Unit) = Page(
-    "Add account", "Choose how the account is maintained. Connected accounts remain read-only; manual accounts use dated snapshots.", null,
-) {
-    ActionCard("Connect an institution", "Link read-only balances and available holdings, then review every account before saving.", onConnect)
-    ActionCard("Add an account manually", "Track an account offline and append balance updates over time.", onManual)
-    ActionCard("Find or enter a property", "Confirm a RentCast match and estimate, or keep a property fully manual.", onProperty)
-    PlaceholderCard("Epic stock", "Shareworks workbook upload arrives with Epic flows.")
-}
-
-@Composable private fun ActionCard(title: String, body: String, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick).semantics { role = Role.Button },
-        colors = CardDefaults.cardColors(containerColor = RetirementSurface), border = BorderStroke(1.dp, RetirementBorder)) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(title, fontWeight = FontWeight.SemiBold); Text(body, color = RetirementTextSecondary) }
-            Icon(Icons.Default.ChevronRight, contentDescription = null)
-        }
-    }
-}
-
-@Composable private fun PlaceholderCard(title: String, body: String) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RetirementSurfaceRaised)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(title, fontWeight = FontWeight.SemiBold); Text(body, color = RetirementTextSecondary) }
+private fun AddAssetPage(onConnect: () -> Unit, onManual: () -> Unit, onProperty: () -> Unit, onEpic: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        RetirementFlowHero(
+            "Build your plan",
+            "Add what you own",
+            "Connect an institution, import Epic stock, track property, or add an account yourself.",
+            Icons.Default.Savings,
+        )
+        RetirementFlowActionCard("Fastest", "Connect an institution", "Bring in balances and holdings securely through Plaid.", Icons.Default.AccountBalance, featured = true, onClick = onConnect)
+        RetirementFlowActionCard("Shareworks", "Import Epic workbook", "Choose your .xlsm file and review its saved values.", Icons.Default.Savings, onClick = onEpic)
+        RetirementFlowActionCard("Home", "Find or enter a property", "Use a RentCast estimate or keep the value fully manual.", Icons.Default.HomeWork, onClick = onProperty)
+        RetirementFlowActionCard("Offline", "Add an account manually", "Enter a balance now and add dated updates later.", Icons.Default.Edit, onClick = onManual)
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -576,8 +567,8 @@ private fun EditAccountPage(
     val valid = name.isNotBlank() && AccountClassification.valid(type, tax)
     Page("Edit account", if (account.origin == AccountOrigin.PLAID) "Provider identity and values remain read-only." else "Manual balances are edited by adding snapshots.", message) {
         OutlinedTextField(name, { name = it.take(120) }, label = { Text("Display name") }, modifier = Modifier.fillMaxWidth())
-        MenuChoice("Account type", type, AccountType.entries.filter { it !in setOf(AccountType.PROPERTY, AccountType.EPIC) }) { type = it }
-        MenuChoice("Tax treatment", tax, TaxTreatment.entries.filter { it !in setOf(TaxTreatment.PROPERTY, TaxTreatment.EPIC) }) { tax = it }
+        MenuChoice("Account type", type, AccountType.entries.filter { it !in setOf(AccountType.PROPERTY, AccountType.EPIC, AccountType.HSA) }) { type = it }
+        MenuChoice("Tax treatment", tax, TaxTreatment.entries.filter { it !in setOf(TaxTreatment.PROPERTY, TaxTreatment.EPIC, TaxTreatment.TAX_FREE) }) { tax = it }
         MenuChoice("Owner", owner, Owner.entries.toList()) { owner = it }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Include in forecast")

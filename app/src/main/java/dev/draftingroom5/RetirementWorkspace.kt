@@ -152,7 +152,7 @@ internal fun RetirementWorkspaceScreen(
                                 is AppRoute.RetirementForecastRisk -> "Forecast risk"
                                 is AppRoute.RetirementScenarioDetail -> "Scenario"
                                 AppRoute.RetirementAccounts -> "Accounts"
-                                AppRoute.RetirementAddAsset -> "Add account"
+                                AppRoute.RetirementAddAsset -> "Add to plan"
                                 is AppRoute.RetirementAccountDetail -> "Account"
                                 is AppRoute.RetirementAccountUpdate -> "Update balance"
                                 is AppRoute.RetirementAccountHistory -> "Balance history"

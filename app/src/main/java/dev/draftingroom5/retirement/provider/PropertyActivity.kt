@@ -34,6 +34,7 @@ import androidx.lifecycle.lifecycleScope
 import dev.draftingroom5.RetirementTheme
 import dev.draftingroom5.retirement.data.RetirementResult
 import dev.draftingroom5.retirement.domain.*
+import dev.draftingroom5.retirement.ui.RetirementFlowHero
 import kotlinx.coroutines.*
 import java.time.Instant
 import java.time.LocalDate
@@ -144,11 +145,12 @@ class PropertyActivity : ComponentActivity() {
     }
 
     @Composable private fun CredentialForm() {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
-            Text("Set up automatic estimates", style = MaterialTheme.typography.headlineMedium)
-            Text("Your RentCast key is encrypted on this phone and can't be viewed after saving.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        RetirementFlowHero(
+            "Secure setup",
+            "Automatic home values",
+            "Add your RentCast key once. It is encrypted on this phone and can't be viewed after saving.",
+            Icons.Default.Lock,
+        )
         AndroidView(modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), factory = { context ->
             EditText(context).apply {
                 contentDescription = "RentCast API key"; hint = "RentCast API key"
@@ -196,11 +198,7 @@ class PropertyActivity : ComponentActivity() {
                 }
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Default.HomeWork, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
-                Text("Add property manually", style = MaterialTheme.typography.headlineMedium)
-                Text("Enter a current value now. You can add updated values later.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            RetirementFlowHero("Property", "Add it your way", "Enter a current value now. You can add updated values later.", Icons.Default.HomeWork)
         }
         Text("Property details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         OutlinedTextField(address, { address = it.take(240) }, label = { Text("Property address") }, modifier = Modifier.fillMaxWidth(), enabled = !automatic)
@@ -273,11 +271,12 @@ internal fun PropertySearchContent(
     onManual: () -> Unit,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Icon(Icons.Default.HomeWork, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
-        Text("Track your home's value", style = MaterialTheme.typography.headlineMedium)
-        Text("Search by address, review the estimate, then add mortgage details.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    RetirementFlowHero(
+        "Property",
+        "Track your home's value",
+        "Search by address, review the estimate, then add mortgage details.",
+        Icons.Default.HomeWork,
+    )
     Card(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(

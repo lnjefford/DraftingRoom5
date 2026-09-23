@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
@@ -41,6 +42,7 @@ import com.plaid.link.result.LinkSuccess
 import dev.draftingroom5.RetirementTheme
 import dev.draftingroom5.retirement.data.RetirementResult
 import dev.draftingroom5.retirement.domain.*
+import dev.draftingroom5.retirement.ui.RetirementFlowHero
 import kotlinx.coroutines.*
 import java.time.Instant
 import java.time.LocalDate
@@ -255,7 +257,12 @@ class LinkedAccountsActivity : ComponentActivity() {
 
     @Composable private fun CredentialsForm() {
         var environment by remember { mutableStateOf(profile?.environment ?: ProviderEnvironment.PRODUCTION) }
-        Text("Encrypted on this phone. Your credentials can't be viewed after saving.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        RetirementFlowHero(
+            "Secure setup",
+            "Connect Plaid",
+            "Your credentials are encrypted on this phone and can't be viewed after saving.",
+            Icons.Default.Lock,
+        )
         if (environmentChangeAllowed) Choice(
             "Environment",
             environment,
@@ -364,10 +371,11 @@ class LinkedAccountsActivity : ComponentActivity() {
         var name by remember { mutableStateOf("") }; var amount by remember { mutableStateOf("") }
         var type by remember { mutableStateOf(AccountType.BROKERAGE) }; var tax by remember { mutableStateOf(TaxTreatment.TAXABLE) }
         var owner by remember { mutableStateOf(Owner.SELF) }; var included by remember { mutableStateOf(false) }
-        OutlinedTextField(name, { name = it.take(120) }, label = { Text("Account name") })
-        OutlinedTextField(amount, { amount = it.take(40) }, label = { Text("Current balance (USD)") })
-        Choice("Type", type, AccountType.entries.filter { it !in setOf(AccountType.PROPERTY, AccountType.EPIC) }) { type = it }
-        Choice("Tax treatment", tax, TaxTreatment.entries.filter { it !in setOf(TaxTreatment.PROPERTY, TaxTreatment.EPIC) }) { tax = it }
+        RetirementFlowHero("Manual account", "Add an account yourself", "Enter its current balance now and add dated updates whenever it changes.", Icons.Default.Edit)
+        OutlinedTextField(name, { name = it.take(120) }, label = { Text("Account name") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(amount, { amount = it.take(40) }, label = { Text("Current balance (USD)") }, modifier = Modifier.fillMaxWidth())
+        Choice("Type", type, reviewAccountTypes()) { type = it }
+        Choice("Tax treatment", tax, TaxTreatment.entries.filter { it !in setOf(TaxTreatment.PROPERTY, TaxTreatment.EPIC, TaxTreatment.TAX_FREE) }) { tax = it }
         Choice("Owner", owner, Owner.entries) { owner = it }
         Row { Checkbox(included, { included = it }); Text("Include in forecast", Modifier.padding(top = 12.dp)) }
         Button(enabled = !busy && name.isNotBlank() && AccountClassification.valid(type, tax), onClick = { perform {
@@ -378,7 +386,7 @@ class LinkedAccountsActivity : ComponentActivity() {
             val result = withContext(Dispatchers.IO) { runtime.repository.addManualAccount(runtime.repository.load().generation, account) }
             if (result !is RetirementResult.Success) throw ProviderException(ProviderFailure.CONFLICT)
             finish()
-        } }) { Text("Save manual account") }
+        } }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Save account") }
     }
 }
 
@@ -392,7 +400,7 @@ internal fun ReviewAccountsContent(
 ) {
     var selections by remember(accounts) { mutableStateOf(accounts.associate { it.providerAccountId to defaultSelection(it) }) }
     var selectionMessage by remember { mutableStateOf<String?>(null) }
-    Text("Choose what to use in your plan. You can change these details later.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    RetirementFlowHero("Plaid", "Choose your accounts", "Review what was found and decide what belongs in your plan.", Icons.Default.AccountBalance)
     Text("${selections.size} of ${accounts.size} accounts selected", style = MaterialTheme.typography.titleMedium)
     accounts.forEach { account ->
         val selected = selections[account.providerAccountId]
@@ -462,11 +470,13 @@ internal fun ReviewAccountsContent(
 }
 
 internal fun defaultSelection(account: LinkedAccountData): AccountSelection {
-    val suggestion = AccountClassification.suggest(account.subtype) ?: (AccountType.BROKERAGE to TaxTreatment.TAXABLE)
+    val suggestion = AccountClassification.suggest(account.subtype)
+        ?.takeUnless { it.first == AccountType.HSA }
+        ?: (AccountType.BROKERAGE to TaxTreatment.TAXABLE)
     return AccountSelection(account.providerAccountId, account.name, Owner.SELF, suggestion.first, suggestion.second, true)
 }
 
-internal fun reviewAccountTypes() = AccountType.entries.filter { it !in setOf(AccountType.PROPERTY, AccountType.EPIC) }
+internal fun reviewAccountTypes() = AccountType.entries.filter { it !in setOf(AccountType.PROPERTY, AccountType.EPIC, AccountType.HSA) }
 
 internal fun taxTreatmentsFor(type: AccountType): List<TaxTreatment> = when (type) {
     AccountType.EMPLOYER_401K, AccountType.EMPLOYER_403B, AccountType.EMPLOYER_457, AccountType.PROFIT_SHARING -> listOf(TaxTreatment.PRE_TAX, TaxTreatment.ROTH)
@@ -523,11 +533,12 @@ internal fun ConnectionHomeContent(
     onResume: () -> Unit,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Icon(Icons.Default.AccountBalance, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(44.dp))
-        Text(if (reconnecting) "Reconnect your institution" else "Connect your institution", style = MaterialTheme.typography.headlineMedium)
-        Text("Choose an institution in Plaid, then review the accounts you want to add.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    RetirementFlowHero(
+        "Linked accounts",
+        if (reconnecting) "Reconnect your institution" else "Connect your institution",
+        "Choose an institution in Plaid, then review the accounts you want to add.",
+        Icons.Default.AccountBalance,
+    )
     Card(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(if (environment == null) Icons.Default.Lock else Icons.Default.CheckCircle, contentDescription = null,

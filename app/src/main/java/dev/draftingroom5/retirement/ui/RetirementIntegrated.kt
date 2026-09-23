@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -259,6 +260,14 @@ private fun AssetsPage(state: RetirementState, onNavigate: (AppRoute) -> Unit) {
         Button(onClick = { onNavigate(AppRoute.RetirementAccounts) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("View accounts")
         }
+        val epic = state.epicImports.singleOrNull { it.id == state.activeEpicImportId }
+        ActionCard(
+            title = "Epic stock",
+            subtitle = if (epic == null) "Import your Shareworks workbook directly."
+                else "${(epic.vestedValue - epic.loans).format()} vested value, less loans.",
+            actionLabel = if (epic == null) "Import workbook" else "Open Epic stock",
+            icon = { Icon(Icons.Default.Savings, contentDescription = null, tint = RetirementHighlight) },
+        ) { onNavigate(if (epic == null) AppRoute.RetirementEpicUpload else AppRoute.RetirementEpicDetail) }
     }
 }
 

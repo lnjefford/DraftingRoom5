@@ -371,8 +371,6 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
             DraftField("Pre-tax", draft.preTaxContribution) { draft = draft.copy(preTaxContribution = it) }
             DraftField("Roth", draft.rothContribution) { draft = draft.copy(rothContribution = it) }
             DraftField("Taxable", draft.taxableContribution) { draft = draft.copy(taxableContribution = it) }
-            DraftField("HSA", draft.hsaContribution) { draft = draft.copy(hsaContribution = it) }
-            DraftField("Qualified medical spending", draft.medicalSpending) { draft = draft.copy(medicalSpending = it) }
         }
         SettingsSection("Social Security and pension income") {
             incomePlan.incomeStreams.forEach { stream ->
