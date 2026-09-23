@@ -3,10 +3,19 @@ package dev.draftingroom5.retirement
 import dev.draftingroom5.retirement.data.*
 import dev.draftingroom5.retirement.domain.*
 import dev.draftingroom5.retirement.importer.*
+import dev.draftingroom5.retirement.ui.epicWorkbookPickerMimeTypes
 import org.junit.Assert.*
 import org.junit.Test
 
 class EpicImportSessionTest {
+    @Test fun pickerAllowsProviderSpecificWorkbookMimeTypes() {
+        val types = epicWorkbookPickerMimeTypes().toSet()
+        assertTrue("application/vnd.ms-excel.sheet.macroenabled.12" in types)
+        assertTrue("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in types)
+        assertTrue("application/octet-stream" in types)
+        assertTrue("*/*" in types)
+    }
+
     @Test fun reviewIsTransientAndConfirmedImportIsAtomicDurableAndIdempotent() {
         val dao = FakeRetirementDao(); val repo = RetirementRepository(dao); val session = EpicImportSession(repo)
         val initial = repo.load()

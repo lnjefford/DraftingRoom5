@@ -29,6 +29,16 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/** Document providers report .xlsm files inconsistently; content validation remains strict after selection. */
+internal fun epicWorkbookPickerMimeTypes() = arrayOf(
+    "application/vnd.ms-excel.sheet.macroenabled.12",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/zip",
+    "application/octet-stream",
+    "*/*",
+)
+
 @Composable
 internal fun RetirementEpicHost(route: AppRoute, onNavigate: (AppRoute) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -85,7 +95,7 @@ internal fun RetirementEpicHost(route: AppRoute, onNavigate: (AppRoute) -> Unit,
         if (route == AppRoute.RetirementEpicUpload && snapshot != null && openPickerOnEntry && !awaitingSelection && !busy) {
             openPickerOnEntry = false
             awaitingSelection = true
-            try { picker.launch(arrayOf("application/vnd.ms-excel.sheet.macroEnabled.12", "application/octet-stream")) }
+            try { picker.launch(epicWorkbookPickerMimeTypes()) }
             catch (_: Exception) { awaitingSelection = false; failure = WorkbookFailure.INVALID }
         }
     }
@@ -96,7 +106,7 @@ internal fun RetirementEpicHost(route: AppRoute, onNavigate: (AppRoute) -> Unit,
         EpicUploadPage(review?.candidate?.workbook, state.activeEpicImportId != null, busy, failure,
             onChoose = {
                 awaitingSelection = true
-                try { picker.launch(arrayOf("application/vnd.ms-excel.sheet.macroEnabled.12", "application/octet-stream")) }
+                try { picker.launch(epicWorkbookPickerMimeTypes()) }
                 catch (_: Exception) { awaitingSelection = false; failure = WorkbookFailure.INVALID }
             },
             onConfirm = {
