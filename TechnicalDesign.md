@@ -2,7 +2,7 @@
 
 The next release supports Android 17+ only (`minSdk`, `targetSdk`, and `compileSdk` 37), as requested on 2026-09-21. Earlier API 28/35 audit records below remain historical evidence, not the current support contract.
 
-Status: implemented and audited through the DR5-079 Phase 9 release, with direct Epic import, removed HSA inputs, and shared editorial setup-flow chrome in v0.27.6, focused RentCast property search in v0.27.5, and streamlined default-selected Plaid account review in v0.27.4. The current-schema app ships with the Retirement workspace, the Fitness workspace, a shared app-logo workspace drawer, the matching in-app/launcher brand mark, and the one-cell tap-to-open living-icon widget. Retirement's Android 17 runtime and live Plaid Link/token-exchange coverage are accepted release exceptions rather than passed checks; exact evidence and remaining device/provider limits are recorded in `docs/reviews/DR5-078/` and `docs/reviews/DR5-079/`.
+Status: implemented and audited through the DR5-079 Phase 9 release, with editorial hierarchy across the Retirement workspace's primary pages and a reference-only resource library in v0.27.7, direct Epic import and removed HSA inputs in v0.27.6, and focused RentCast property search in v0.27.5. The current-schema app ships with the Retirement workspace, the Fitness workspace, a shared app-logo workspace drawer, the matching in-app/launcher brand mark, and the one-cell tap-to-open living-icon widget. Retirement's Android 17 runtime and live Plaid Link/token-exchange coverage are accepted release exceptions rather than passed checks; exact evidence and remaining device/provider limits are recorded in `docs/reviews/DR5-078/` and `docs/reviews/DR5-079/`.
 
 ## Authority and implementation boundaries
 

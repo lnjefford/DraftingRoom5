@@ -132,7 +132,7 @@ internal data class LibraryResource(
     val title: String,
     val organization: String,
     val url: String,
-    val checklistPrompt: String,
+    val description: String,
 )
 
 internal const val RETIREMENT_LIBRARY_REVIEW_DATE = "September 21, 2026"
@@ -143,27 +143,27 @@ internal val RetirementLibraryResources = listOf(
         "Plan for retirement",
         "Social Security Administration",
         "https://www.ssa.gov/retirement/plan-for-retirement",
-        "Review my Social Security estimate",
+        "Estimate benefits, compare claiming ages, and understand the milestones ahead.",
     ),
     LibraryResource(
         "medicare-start",
         "Get started with Medicare",
         "Medicare.gov",
         "https://www.medicare.gov/basics/get-started-with-medicare",
-        "Review my Medicare timing",
+        "Understand enrollment timing, coverage choices, and the basics before age 65.",
     ),
     LibraryResource(
         "irs-retirement",
         "Retirement plans",
         "Internal Revenue Service",
         "https://www.irs.gov/retirement-plans",
-        "Review retirement tax guidance",
+        "Explore official guidance for retirement plans, contributions, and distributions.",
     ),
     LibraryResource(
         "investor-retirement",
         "Saving for retirement",
         "Investor.gov — U.S. SEC",
         "https://www.investor.gov/introduction-investing/investing-basics/investment-accounts/tax-advantaged-accounts/retirement-savings",
-        "Review fees and investment basics",
+        "Refresh the fundamentals of long-term saving, fees, and investment accounts.",
     ),
 )

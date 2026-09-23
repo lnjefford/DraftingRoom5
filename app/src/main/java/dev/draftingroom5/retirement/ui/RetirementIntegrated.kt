@@ -1,9 +1,11 @@
 package dev.draftingroom5.retirement.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,11 +23,9 @@ import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.QueryStats
-import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +42,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -59,14 +63,11 @@ import dev.draftingroom5.RetirementSurface
 import dev.draftingroom5.RetirementSurfaceRaised
 import dev.draftingroom5.RetirementTextSecondary
 import dev.draftingroom5.retirement.data.RetirementRepository
-import dev.draftingroom5.retirement.data.RetirementResult
-import dev.draftingroom5.retirement.domain.ChecklistState
 import dev.draftingroom5.retirement.domain.RetirementState
 import dev.draftingroom5.retirement.forecast.ForecastCoordinator
 import dev.draftingroom5.retirement.forecast.ForecastState
 import dev.draftingroom5.retirement.provider.RetirementProviders
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
@@ -81,7 +82,6 @@ internal fun RetirementIntegratedHost(
     previewState: RetirementState? = null,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var repository by remember { mutableStateOf<RetirementRepository?>(null) }
     var state by remember { mutableStateOf(previewState ?: RetirementState()) }
     var loadState by remember { mutableStateOf(if (previewState == null) IntegratedLoadState.LOADING else IntegratedLoadState.READY) }
@@ -107,21 +107,7 @@ internal fun RetirementIntegratedHost(
                 .onFailure { loadState = IntegratedLoadState.ERROR }
         }
     }
-    val onChecklist: (String, Boolean) -> Unit = { id, checked ->
-        if (previewState != null) {
-            state = state.copy(checklist = state.checklist.filterNot { it.catalogId == id } + ChecklistState(id, checked, Instant.parse("2026-09-21T12:00:00Z")))
-        } else scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                val current = repository?.load() ?: return@withContext null
-                repository?.setChecklist(current.generation, ChecklistState(id, checked, Instant.now()))
-            }
-            if (result is RetirementResult.Success) {
-                state = result.value
-                message = "Checklist updated on this device."
-            } else message = "The checklist changed before it could be saved. Try again."
-        }
-    }
-    RetirementIntegratedPage(route, state, loadState, message, onNavigate, onChecklist, repository, previewState != null)
+    RetirementIntegratedPage(route, state, loadState, message, onNavigate, repository, previewState != null)
 }
 
 @Composable
@@ -131,7 +117,6 @@ internal fun RetirementIntegratedPage(
     loadState: IntegratedLoadState,
     message: String? = null,
     onNavigate: (AppRoute) -> Unit = {},
-    onChecklist: (String, Boolean) -> Unit = { _, _ -> },
     repository: RetirementRepository? = null,
     preview: Boolean = true,
 ) {
@@ -141,7 +126,7 @@ internal fun RetirementIntegratedPage(
         IntegratedLoadState.READY -> when (route) {
             AppRoute.RetirementOverview -> OverviewPage(state, repository, preview, onNavigate)
             AppRoute.RetirementAssets -> AssetsPage(state, onNavigate)
-            AppRoute.RetirementLibrary -> LibraryPage(state, message, onChecklist)
+            AppRoute.RetirementLibrary -> LibraryPage(message)
             else -> error("Not an integrated Retirement route")
         }
     }
@@ -156,7 +141,13 @@ private fun OverviewPage(
 ) {
     val summary = integratedAssetSummary(state)
     val health = retirementDataHealth(state, if (preview) Instant.parse("2026-09-21T12:00:00Z") else Instant.now())
-    IntegratedPage("YOUR PLAN", "Retirement overview") {
+    IntegratedPage(
+        "Your plan",
+        "Retirement, in focus",
+        if (summary.tracked.cents == 0L) "Build a clear picture of what you own, where you are headed, and what deserves attention."
+        else "${summary.tracked.format()} is mapped across your plan. See the story, then choose where to go deeper.",
+        Icons.Default.QueryStats,
+    ) {
         ActionCard(
             title = "Financial map",
             subtitle = if (summary.tracked.cents == 0L) "Add accounts, an Epic workbook, or property equity to build your map."
@@ -217,6 +208,7 @@ private fun DataHealthCard(health: DataHealth, onOpen: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().then(if (health.route != null) Modifier.clickable(onClick = onOpen) else Modifier)
             .semantics(mergeDescendants = true) { if (health.route != null) role = Role.Button },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = if (health.kind == DataHealthKind.HEALTHY) RetirementSurface else RetirementSurfaceRaised),
         border = BorderStroke(1.dp, if (health.kind == DataHealthKind.HEALTHY) RetirementBorder else RetirementHighlight),
     ) {
@@ -236,10 +228,16 @@ private fun DataHealthCard(health: DataHealth, onOpen: () -> Unit) {
 @Composable
 private fun AssetsPage(state: RetirementState, onNavigate: (AppRoute) -> Unit) {
     val summary = integratedAssetSummary(state)
-    IntegratedPage("ASSETS", "What is working toward the plan") {
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RetirementSurfaceRaised),
-            border = BorderStroke(1.dp, RetirementBorder)) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    IntegratedPage(
+        "Accounts",
+        "What is working toward the plan",
+        "A concise view of your retirement accounts, property equity, and the money currently included in Forecast.",
+        Icons.Default.AccountBalanceWallet,
+    ) {
+        Card(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent), border = BorderStroke(1.dp, RetirementBorder)) {
+            Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(RetirementSurfaceRaised, RetirementPrimary.copy(alpha = .16f))))
+                .padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Tracked total", color = RetirementTextSecondary)
                 Text(summary.tracked.format(), style = MaterialTheme.typography.headlineLarge,
                     modifier = Modifier.semantics { contentDescription = "Tracked total, ${summary.tracked.format()}" })
@@ -247,8 +245,8 @@ private fun AssetsPage(state: RetirementState, onNavigate: (AppRoute) -> Unit) {
             }
         }
         Text("Tax treatment", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RetirementSurface),
-            border = BorderStroke(1.dp, RetirementBorder)) {
+        Card(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = RetirementSurface), border = BorderStroke(1.dp, RetirementBorder)) {
             Column {
                 summary.rows.forEachIndexed { index, row ->
                     AdaptiveValueRow(taxLabel(row.treatment), row.amount.format())
@@ -260,62 +258,51 @@ private fun AssetsPage(state: RetirementState, onNavigate: (AppRoute) -> Unit) {
         Button(onClick = { onNavigate(AppRoute.RetirementAccounts) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("View accounts")
         }
-        val epic = state.epicImports.singleOrNull { it.id == state.activeEpicImportId }
-        ActionCard(
-            title = "Epic stock",
-            subtitle = if (epic == null) "Import your Shareworks workbook directly."
-                else "${(epic.vestedValue - epic.loans).format()} vested value, less loans.",
-            actionLabel = if (epic == null) "Import workbook" else "Open Epic stock",
-            icon = { Icon(Icons.Default.Savings, contentDescription = null, tint = RetirementHighlight) },
-        ) { onNavigate(if (epic == null) AppRoute.RetirementEpicUpload else AppRoute.RetirementEpicDetail) }
     }
 }
 
 @Composable
-private fun LibraryPage(
-    state: RetirementState,
-    message: String?,
-    onChecklist: (String, Boolean) -> Unit,
-) {
+private fun LibraryPage(message: String?) {
     val uriHandler = LocalUriHandler.current
-    IntegratedPage("RESEARCH", "Retirement library") {
-        Text("Government-first resources for planning decisions. Links open in your browser.", color = RetirementTextSecondary)
+    IntegratedPage(
+        "Reference library",
+        "Good sources, ready when you are",
+        "A small, government-first reading shelf for the decisions that come with retirement.",
+        Icons.Default.AutoStories,
+    ) {
         Text("Reviewed $RETIREMENT_LIBRARY_REVIEW_DATE", color = RetirementPrimary, fontWeight = FontWeight.SemiBold)
         message?.let { Text(it, color = RetirementHighlight) }
         RetirementLibraryResources.forEach { resource ->
-            val checked = state.checklist.singleOrNull { it.catalogId == resource.id }?.checked == true
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RetirementSurface),
-                border = BorderStroke(1.dp, RetirementBorder)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent), border = BorderStroke(1.dp, RetirementBorder)) {
+                Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementSurfaceRaised.copy(alpha = .78f))))
+                    .padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(Icons.Default.AutoStories, contentDescription = null, tint = RetirementHighlight)
+                        Box(Modifier.size(44.dp).background(RetirementHighlight.copy(alpha = .12f), androidx.compose.foundation.shape.RoundedCornerShape(15.dp)),
+                            contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.AutoStories, contentDescription = null, tint = RetirementHighlight)
+                        }
                         Column(Modifier.weight(1f)) {
-                            Text(resource.title, fontWeight = FontWeight.SemiBold)
-                            Text(resource.organization, color = RetirementTextSecondary)
+                            Text(resource.organization.uppercase(), color = RetirementPrimary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Text(resource.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                         }
                     }
+                    Text(resource.description, color = RetirementTextSecondary)
                     OutlinedButton(onClick = { uriHandler.openUri(resource.url) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text("Open official resource")
-                    }
-                    Row(Modifier.fillMaxWidth().clickable { onChecklist(resource.id, !checked) }.heightIn(min = 48.dp)
-                        .semantics(mergeDescendants = true) { role = Role.Checkbox; contentDescription = "${resource.checklistPrompt}, ${if (checked) "checked" else "not checked"}" },
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked, onCheckedChange = null)
-                        Text(resource.checklistPrompt, modifier = Modifier.weight(1f))
                     }
                 }
             }
         }
-        Text("This library stores checklist state only. It never stores private documents.", color = RetirementTextSecondary)
+        Text("Reference links only. Nothing here is a task or completion list.", color = RetirementTextSecondary)
     }
 }
 
 @Composable
-private fun IntegratedPage(eyebrow: String, title: String, content: @Composable () -> Unit) {
+private fun IntegratedPage(eyebrow: String, title: String, body: String, icon: ImageVector, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(eyebrow, color = RetirementPrimary, style = MaterialTheme.typography.labelMedium)
-        Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+        RetirementFlowHero(eyebrow, title, body, icon)
         content()
         Spacer(Modifier.height(16.dp))
     }
@@ -330,8 +317,10 @@ private fun ActionCard(
     onClick: () -> Unit,
 ) {
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick).semantics(mergeDescendants = true) { role = Role.Button },
-        colors = CardDefaults.cardColors(containerColor = RetirementSurfaceRaised), border = BorderStroke(1.dp, RetirementBorder)) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, RetirementBorder)) {
+        Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementSurfaceRaised.copy(alpha = .82f))))
+            .padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 icon()
                 Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
@@ -344,7 +333,7 @@ private fun ActionCard(
 
 @Composable
 private fun SummaryRows(rows: List<Pair<String, String>>) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RetirementSurface),
+    Card(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = RetirementSurface),
         border = BorderStroke(1.dp, RetirementBorder)) {
         Column {
             rows.forEachIndexed { index, (label, value) ->
@@ -375,10 +364,10 @@ private fun AdaptiveValueRow(label: String, value: String) {
 
 @Composable
 private fun IntegratedMessage(title: String, body: String, error: Boolean = false) {
-    IntegratedPage(if (error) "ATTENTION" else "RETIREMENT", title) {
+    IntegratedPage(if (error) "Attention" else "Retirement", title, body,
+        if (error) Icons.Default.ErrorOutline else Icons.Default.AccountBalanceWallet) {
         Icon(if (error) Icons.Default.ErrorOutline else Icons.Default.AccountBalanceWallet, contentDescription = null,
             tint = if (error) RetirementHighlight else RetirementPrimary)
-        Text(body, color = RetirementTextSecondary)
     }
 }
 

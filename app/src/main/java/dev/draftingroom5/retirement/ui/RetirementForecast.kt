@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
@@ -14,6 +16,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -186,8 +190,12 @@ private fun missingDataMessage(reason: MissingForecastData) = when (reason) {
 
 @Composable
 private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, stale: Boolean, onRisk: () -> Unit) {
-    Text("FORECAST", color = RetirementPrimary, style = MaterialTheme.typography.labelMedium)
-    Text("Plan with a range, not a promise", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+    RetirementFlowHero(
+        "Forecast",
+        "Plan with a range, not a promise",
+        "Explore the shape of your future in real dollars, with uncertainty visible instead of hidden.",
+        Icons.Default.QueryStats,
+    )
     if (stale) Text("STALE RESULT", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
     RetirementCard {
         Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
@@ -424,8 +432,12 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
 }
 
 @Composable private fun RetirementCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RetirementSurface), border = BorderStroke(1.dp, RetirementBorder), shape = RoundedCornerShape(20.dp)) {
-        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.Transparent), border = BorderStroke(1.dp, RetirementBorder), shape = RoundedCornerShape(22.dp)) {
+        Column(
+            Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(RetirementSurfaceRaised.copy(alpha = .82f), RetirementSurface))).padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = content,
+        )
     }
 }
 

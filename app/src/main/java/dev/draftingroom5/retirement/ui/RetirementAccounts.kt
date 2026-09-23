@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -272,24 +274,45 @@ private fun Page(title: String, subtitle: String? = null, message: String? = nul
 @Composable
 private fun AccountsList(state: RetirementState, message: String?, onAdd: () -> Unit, onOpen: (String) -> Unit, onOpenProperty: (String) -> Unit) {
     val grouped = state.activeAccountsByGroup()
-    Page("Accounts", "Linked and manual sources stay distinct. Account values are shown without a combined total.", message) {
+    val visibleGroups = AccountGroup.entries.filter { it != AccountGroup.HEALTH && grouped[it].orEmpty().isNotEmpty() }
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        RetirementFlowHero(
+            "Accounts",
+            "The building blocks of your plan",
+            "Linked and manual sources stay distinct, with every balance easy to scan and update.",
+            Icons.Default.AccountBalance,
+        )
+        message?.let { Text(it, color = RetirementHighlight) }
         Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Add, contentDescription = null)
             Text("Add to plan", Modifier.padding(start = 8.dp))
         }
-        AccountGroup.entries.filter { it != AccountGroup.HEALTH || grouped[it].orEmpty().isNotEmpty() }.forEach { group ->
-            Text(group.label, style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+        Text("YOUR PORTFOLIO", color = RetirementPrimary, style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+        if (visibleGroups.isEmpty()) {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, RetirementBorder)) {
+                Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementSurfaceRaised)))
+                    .padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("A clean slate", style = androidx.compose.material3.MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text("Add your first account or property to start shaping the plan.", color = RetirementTextSecondary)
+                }
+            }
+        }
+        visibleGroups.forEach { group ->
+            Text(group.label, style = androidx.compose.material3.MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 8.dp).semantics { heading() })
             val accounts = grouped[group].orEmpty()
-            if (accounts.isEmpty()) {
-                val placeholder = if (group == AccountGroup.PROPERTY) "No properties yet" else "No accounts yet"
-                Text(placeholder, color = RetirementTextSecondary)
-            } else accounts.forEach { account ->
+            accounts.forEach { account ->
                 val property = state.properties.singleOrNull { it.accountId == account.id && it.archivedAt == null }
                 if (property != null) PropertyRow(state, property) { onOpenProperty(property.id) }
                 else AccountRow(state, account) { onOpen(account.id) }
             }
         }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -304,14 +327,19 @@ private fun AccountRow(state: RetirementState, account: Account, onOpen: () -> U
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).semantics(mergeDescendants = true) {
             role = Role.Button; contentDescription = description
         },
-        colors = CardDefaults.cardColors(containerColor = RetirementSurface),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, if (attention) RetirementHighlight else RetirementBorder),
     ) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+        Row(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementSurfaceRaised.copy(alpha = .78f))))
+            .padding(16.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(46.dp).background(RetirementPrimary.copy(alpha = .12f), RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.AccountBalance, contentDescription = null, tint = RetirementPrimary)
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(account.currentRevision.displayName, fontWeight = FontWeight.SemiBold)
-                Text(account.currentBalance?.amount?.format() ?: "Balance unavailable")
+                Text(account.currentBalance?.amount?.format() ?: "Balance unavailable", style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
                 Text(sourceLabel(account), color = RetirementPrimary)
                 if (attention) Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = RetirementHighlight)
@@ -332,13 +360,18 @@ private fun PropertyRow(state: RetirementState, property: Property, onOpen: () -
     val description = "${revision.address}, ${value?.estimate?.format() ?: "value unavailable"}, equity ${property.equity()?.format() ?: "unavailable"}, ${if (revision.automaticValueEnabled) "automatic estimate" else "manual value"}${if (attention) ", refresh needs attention" else ""}"
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button; contentDescription = description },
-        colors = CardDefaults.cardColors(containerColor = RetirementSurface),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, if (attention) RetirementHighlight else RetirementBorder),
     ) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementSurfaceRaised.copy(alpha = .78f))))
+            .padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(46.dp).background(RetirementHighlight.copy(alpha = .12f), RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.HomeWork, contentDescription = null, tint = RetirementHighlight)
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(revision.address, fontWeight = FontWeight.SemiBold)
-                Text(value?.estimate?.format() ?: "Value unavailable")
+                Text(value?.estimate?.format() ?: "Value unavailable", style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
                 Text(if (revision.automaticValueEnabled) "Automatic estimate" else "Manual value", color = RetirementPrimary)
                 Text("Equity ${property.equity()?.format() ?: "unavailable"}", color = RetirementTextSecondary)
                 if (attention) Text("Last value kept · refresh needs attention", color = RetirementHighlight)
