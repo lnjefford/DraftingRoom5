@@ -15,12 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.QueryStats
@@ -55,6 +58,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.draftingroom5.AppRoute
@@ -63,6 +69,7 @@ import dev.draftingroom5.RetirementBackground
 import dev.draftingroom5.RetirementBackgroundDeep
 import dev.draftingroom5.RetirementBlue
 import dev.draftingroom5.RetirementHighlight
+import dev.draftingroom5.RetirementGold
 import dev.draftingroom5.RetirementPrimary
 import dev.draftingroom5.RetirementSurface
 import dev.draftingroom5.RetirementSurfaceRaised
@@ -148,9 +155,14 @@ private fun OverviewPage(
     val health = retirementDataHealth(state, if (preview) Instant.parse("2026-09-21T12:00:00Z") else Instant.now())
     val plan = state.planSettings.maxByOrNull { it.revision }
     FinancePage {
-        EditorialHeading("Finance", "Your financial outlook")
+        Spacer(Modifier.width(52.dp).height(3.dp).background(RetirementGold))
         Text(
-            if (summary.tracked.cents == 0L) "$0" else summary.tracked.editorialFormat(),
+            "Your financial outlook",
+            style = if (LocalDensity.current.fontScale >= 1.5f) MaterialTheme.typography.displaySmall else MaterialTheme.typography.displayMedium,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(
+            if (summary.tracked.cents == 0L) "$0" else summary.tracked.wholeDollarEditorialFormat(),
             color = RetirementHighlight,
             style = if (LocalDensity.current.fontScale >= 1.5f) MaterialTheme.typography.displayMedium else MaterialTheme.typography.displayLarge,
             modifier = Modifier.semantics { contentDescription = "Tracked total, ${summary.tracked.format()}" },
@@ -167,13 +179,9 @@ private fun OverviewPage(
             Text("Set your plan timing to see the retirement horizon.", color = RetirementTextSecondary)
         }
         TargetCard(state, repository, preview) { onNavigate(AppRoute.RetirementForecast) }
-        RetirementFlowActionCard(
-            eyebrow = "Financial map",
-            title = "See the whole picture",
-            body = if (summary.tracked.cents == 0L) "Add an account, property, or workbook to begin."
-                else "${summary.tracked.format()} is mapped across the plan.",
-            icon = Icons.Default.AccountBalanceWallet,
-            onClick = { onNavigate(AppRoute.RetirementAssets) },
+        OverviewMapCard(
+            amount = if (summary.tracked.cents == 0L) null else summary.tracked.format(),
+            onOpen = { onNavigate(AppRoute.RetirementAssets) },
         )
         if (health.kind != DataHealthKind.HEALTHY) DataHealthCard(health) { health.route?.let(onNavigate) }
     }
@@ -215,44 +223,101 @@ private fun TargetCard(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (LocalDensity.current.fontScale >= 1.5f) {
-            MetricPanel("MODELED CONFIDENCE", success, RetirementHighlight)
-            MetricPanel("RETIREMENT HORIZON", "Age $targetAge", dev.draftingroom5.RetirementText)
+            ConfidencePanel(success, status)
+            HorizonPanel(targetAge)
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricPanel("MODELED CONFIDENCE", success, RetirementHighlight, Modifier.weight(1f))
-                MetricPanel("RETIREMENT HORIZON", "Age $targetAge", dev.draftingroom5.RetirementText, Modifier.weight(1f))
+                ConfidencePanel(success, status, Modifier.weight(1f))
+                HorizonPanel(targetAge, Modifier.weight(1f))
             }
-        }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-            Text("Open forecast  →", color = RetirementBlue, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
-private fun MetricPanel(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+private fun ConfidencePanel(value: String, status: String, modifier: Modifier = Modifier) {
     Card(
         modifier,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
-        Box(
-            Modifier.fillMaxWidth().heightIn(min = 132.dp)
-                .background(Brush.verticalGradient(listOf(RetirementSurfaceRaised.copy(alpha = .86f), RetirementSurface)))
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = 214.dp)
+                .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            MetricTile(label, value, color)
+            Text(value, color = RetirementHighlight, style = MaterialTheme.typography.displaySmall)
+            Text("MODELED CONFIDENCE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+            ConfidenceSparkline()
+            Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @Composable
-private fun MetricTile(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-        Text(value, color = color, style = MaterialTheme.typography.headlineLarge)
+private fun HorizonPanel(targetAge: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, RetirementBorder),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = 214.dp)
+                .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text("Age $targetAge", style = MaterialTheme.typography.displaySmall)
+            Text("RETIREMENT HORIZON", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    Modifier.size(46.dp).background(RetirementGold.copy(alpha = .14f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = RetirementGold)
+                }
+                Text("Plan with a range,\nnot a promise", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverviewMapCard(amount: String?, onOpen: () -> Unit) {
+    val message = buildAnnotatedString {
+        if (amount == null) {
+            append("Add an account, property, or workbook to begin.")
+        } else {
+            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = dev.draftingroom5.RetirementText)) { append(amount) }
+            append(" is mapped across your plan. See the story, then choose where to go deeper.")
+        }
+    }
+    Card(
+        Modifier.fillMaxWidth().clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, RetirementBorder),
+    ) {
+        Row(
+            Modifier.fillMaxWidth()
+                .background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .94f))))
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(
+                Modifier.size(58.dp).background(RetirementBlue.copy(alpha = .14f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = RetirementBlue, modifier = Modifier.size(30.dp))
+            }
+            Text(message, color = RetirementTextSecondary, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementBlue)
+        }
     }
 }
 
