@@ -369,7 +369,7 @@ private fun ConfidencePanel(
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 238.dp)
+            Modifier.fillMaxWidth().heightIn(min = 214.dp)
                 .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -377,26 +377,25 @@ private fun ConfidencePanel(
             Text(value, color = RetirementHighlight, style = MaterialTheme.typography.displaySmall)
             Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(8.dp))
-            if (result != null) FailureRateChart(result) else Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (result != null) SuccessRateChart(result) else Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @Composable
-private fun FailureRateChart(result: ForecastResult) {
-    val points = forecastFailurePoints(result)
+private fun SuccessRateChart(result: ForecastResult) {
+    val points = forecastSuccessPoints(result)
     val endingRate = points.lastOrNull()?.rate ?: 0.0
-    Text("FAILURE RATE BY AGE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
     Canvas(
-        Modifier.fillMaxWidth().height(68.dp).semantics {
-            contentDescription = "Cumulative modeled failure rate from age ${result.currentAge} to ${result.endAge}, ending at ${String.format(java.util.Locale.US, "%.0f", endingRate * 100)} percent"
+        Modifier.fillMaxWidth().height(62.dp).semantics {
+            contentDescription = "Modeled success rate by age from ${result.currentAge} to ${result.endAge}, ending at ${String.format(java.util.Locale.US, "%.0f", endingRate * 100)} percent"
         },
     ) {
         if (points.size < 2) return@Canvas
-        val topRate = maxOf(.05, endingRate).toFloat()
+        val displayedDrop = maxOf(.05, 1.0 - endingRate).toFloat()
         val baseline = size.height - 4.dp.toPx()
         fun x(index: Int) = size.width * index / points.lastIndex
-        fun y(rate: Double) = baseline - (rate.toFloat() / topRate * (size.height - 10.dp.toPx()))
+        fun y(rate: Double) = 4.dp.toPx() + ((1f - rate.toFloat()) / displayedDrop * (size.height - 10.dp.toPx()))
         val line = Path().apply {
             moveTo(x(0), y(points.first().rate))
             points.drop(1).forEachIndexed { index, point -> lineTo(x(index + 1), y(point.rate)) }
@@ -414,7 +413,7 @@ private fun FailureRateChart(result: ForecastResult) {
         drawCircle(RetirementGold, 3.dp.toPx(), Offset(size.width, y(endingRate)))
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Age ${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+        Text("100% at ${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
         Text(
             "${String.format(java.util.Locale.US, "%.0f", endingRate * 100)}% by ${result.endAge}",
             color = RetirementGold,
@@ -432,7 +431,7 @@ private fun HorizonPanel(targetAge: String, onOpen: () -> Unit, modifier: Modifi
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 238.dp)
+            Modifier.fillMaxWidth().heightIn(min = 214.dp)
                 .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),

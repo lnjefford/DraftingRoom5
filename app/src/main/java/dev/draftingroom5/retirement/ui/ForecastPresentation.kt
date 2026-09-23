@@ -8,14 +8,14 @@ import java.time.LocalDate
 
 internal data class ForecastChartPoint(val age: Int, val low: Money, val middle: Money, val high: Money)
 
-internal data class ForecastFailurePoint(val age: Int, val rate: Double)
+internal data class ForecastSuccessPoint(val age: Int, val rate: Double)
 
-internal fun forecastFailurePoints(result: ForecastResult): List<ForecastFailurePoint> {
+internal fun forecastSuccessPoints(result: ForecastResult): List<ForecastSuccessPoint> {
     val failuresByAge = result.failures.groupingBy { it.age }.eachCount()
     var cumulativeFailures = 0
     return (result.currentAge..result.endAge).map { age ->
         cumulativeFailures += failuresByAge[age] ?: 0
-        ForecastFailurePoint(age, cumulativeFailures.toDouble() / result.paths)
+        ForecastSuccessPoint(age, (result.paths - cumulativeFailures).toDouble() / result.paths)
     }
 }
 
