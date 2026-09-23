@@ -86,6 +86,7 @@ internal val AppTypography = Typography().run {
     copy(
         displayLarge = displayLarge.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-1).sp),
         displayMedium = displayMedium.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-1).sp),
+        displaySmall = displaySmall.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-0.5).sp),
         headlineLarge = headlineLarge.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-0.5).sp),
         headlineMedium = headlineMedium.copy(fontFamily = EditorialSerif, fontWeight = FontWeight.Normal, letterSpacing = (-0.5).sp),
         headlineSmall = headlineSmall.copy(fontWeight = FontWeight.Bold),

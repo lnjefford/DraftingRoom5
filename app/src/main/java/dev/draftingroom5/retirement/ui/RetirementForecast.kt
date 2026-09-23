@@ -190,25 +190,50 @@ private fun missingDataMessage(reason: MissingForecastData) = when (reason) {
 
 @Composable
 private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, stale: Boolean, onRisk: () -> Unit) {
-    RetirementFlowHero(
-        "Forecast",
-        "Plan with a range, not a promise",
-        "Explore the shape of your future in real dollars, with uncertainty visible instead of hidden.",
-        Icons.Default.QueryStats,
-    )
+    EditorialHeading("Forecast", "The future has a shape")
     if (stale) Text("STALE RESULT", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-    RetirementCard {
-        Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
-        Text("${(result.successRate * 100).toInt()}%", style = MaterialTheme.typography.displayMedium, color = RetirementHighlight)
-        Text("${String.format(java.util.Locale.US, "%,d", result.paths)} modeled paths · real dollars", color = RetirementTextSecondary)
+    val retirementAge = plan.retirementAge.coerceIn(result.currentAge, result.endAge)
+    val medianAtRetirement = result.percentile(ForecastChannel.TOTAL, retirementAge, 50.0)
+    if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f) {
+        Column {
+            Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
+            Text("${(result.successRate * 100).toInt()}%", style = MaterialTheme.typography.displayMedium, color = RetirementHighlight)
+        }
+        Column {
+            Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
+            Text(medianAtRetirement.editorialFormat(), style = MaterialTheme.typography.headlineLarge)
+        }
+    } else {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
+                Text("${(result.successRate * 100).toInt()}%", style = MaterialTheme.typography.displayMedium, color = RetirementHighlight)
+            }
+            Column(Modifier.weight(1f)) {
+                Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
+                Text(medianAtRetirement.editorialFormat(), style = MaterialTheme.typography.headlineLarge)
+            }
+        }
     }
     val points = forecastChartPoints(result, plan.retirementAge)
     RetirementCard {
-        Text("Modeled account range", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-        Text("10th–90th percentile with the median line", color = RetirementTextSecondary)
-        ForecastFanChart(points, plan.retirementAge)
-        Text("Retirement marker · age ${plan.retirementAge}", color = RetirementPrimary)
+        Text("10TH–90TH PERCENTILE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
+        ForecastFanChart(points, plan.retirementAge, Modifier.height(250.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Today\n${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+            Text("Retire\n${plan.retirementAge}", color = RetirementGold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+            Text("Plan\n${result.endAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
+        }
+        Text("${String.format(java.util.Locale.US, "%,d", result.paths)} modeled paths · real dollars", color = RetirementTextSecondary)
     }
+    RetirementFlowActionCard(
+        eyebrow = "Forecast",
+        title = "Explore risk",
+        body = "See when modeled paths fall short and compare focused scenarios.",
+        icon = Icons.Default.QueryStats,
+        featured = true,
+        onClick = onRisk,
+    )
     RetirementCard {
         Text("Available at retirement", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         Text("Median modeled amounts at age ${plan.retirementAge.coerceIn(result.currentAge, result.endAge)}" +
@@ -228,28 +253,53 @@ private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, st
         if (!result.taxFundingConverged) Text("Tax funding residual: up to ${result.maximumTaxFundingResidual.format()} across ${result.taxResidualYears} path-years. Modeled success does not certify fully funded taxes.", color = RetirementHighlight)
         result.warnings.forEach { Text(it, color = RetirementTextSecondary) }
     }
-    Button(onClick = onRisk, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Review forecast risk") }
 }
 
 @Composable
 internal fun ForecastFanChart(points: List<ForecastChartPoint>, retirementAge: Int, modifier: Modifier = Modifier) {
     val description = forecastChartDescription(points, retirementAge)
-    Canvas(modifier.fillMaxWidth().height(190.dp).semantics { contentDescription = description }) {
+    Canvas(modifier.fillMaxWidth().heightIn(min = 190.dp).semantics { contentDescription = description }) {
         if (points.size < 2) return@Canvas
         val maxValue = max(1L, points.maxOf { it.high.cents }).toFloat()
         fun x(index: Int) = size.width * index / (points.size - 1)
-        fun y(cents: Long) = size.height - (cents.coerceAtLeast(0).toFloat() / maxValue * (size.height - 12.dp.toPx()))
-        val area = Path().apply {
-            moveTo(x(0), y(points[0].high.cents))
-            points.indices.drop(1).forEach { lineTo(x(it), y(points[it].high.cents)) }
-            points.indices.reversed().forEach { lineTo(x(it), y(points[it].low.cents)) }
+        fun y(cents: Long) = size.height - 8.dp.toPx() - (cents.coerceAtLeast(0).toFloat() / maxValue * (size.height - 20.dp.toPx()))
+        fun smooth(path: Path, values: List<Offset>, move: Boolean) {
+            if (move) path.moveTo(values.first().x, values.first().y) else path.lineTo(values.first().x, values.first().y)
+            for (index in 0 until values.lastIndex) {
+                val p0 = values[maxOf(0, index - 1)]
+                val p1 = values[index]
+                val p2 = values[index + 1]
+                val p3 = values[minOf(values.lastIndex, index + 2)]
+                path.cubicTo(
+                    p1.x + (p2.x - p0.x) / 6f,
+                    p1.y + (p2.y - p0.y) / 6f,
+                    p2.x - (p3.x - p1.x) / 6f,
+                    p2.y - (p3.y - p1.y) / 6f,
+                    p2.x,
+                    p2.y,
+                )
+            }
+        }
+        fun values(selector: (ForecastChartPoint) -> Long) = points.mapIndexed { index, point -> Offset(x(index), y(selector(point))) }
+        fun band(upper: List<Offset>, lower: List<Offset>) = Path().apply {
+            smooth(this, upper, true)
+            smooth(this, lower.reversed(), false)
             close()
         }
-        drawPath(area, RetirementPrimary.copy(alpha = .20f))
-        val median = Path().apply { moveTo(x(0), y(points[0].middle.cents)); points.indices.drop(1).forEach { lineTo(x(it), y(points[it].middle.cents)) } }
-        drawPath(median, RetirementHighlight, style = Stroke(3.dp.toPx()))
+        val high = values { it.high.cents }
+        val low = values { it.low.cents }
+        val middle = values { it.middle.cents }
+        val innerHigh = points.mapIndexed { index, point -> Offset(x(index), y((point.middle.cents + point.high.cents) / 2)) }
+        val innerLow = points.mapIndexed { index, point -> Offset(x(index), y((point.middle.cents + point.low.cents) / 2)) }
+        drawPath(band(high, low), RetirementPrimary.copy(alpha = .16f))
+        drawPath(band(innerHigh, innerLow), RetirementBlue.copy(alpha = .20f))
+        val median = Path().also { smooth(it, middle, true) }
+        drawPath(median, RetirementHighlight, style = Stroke(3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
         val marker = points.indexOfFirst { it.age == retirementAge }
-        if (marker >= 0) drawLine(RetirementPrimary, Offset(x(marker), 0f), Offset(x(marker), size.height), 1.dp.toPx())
+        if (marker >= 0) {
+            drawLine(RetirementGold, Offset(x(marker), 0f), Offset(x(marker), size.height), 1.5.dp.toPx())
+            drawCircle(RetirementGold, 5.dp.toPx(), middle[marker])
+        }
     }
 }
 

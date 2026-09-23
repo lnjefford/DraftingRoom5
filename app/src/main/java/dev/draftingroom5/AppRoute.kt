@@ -44,7 +44,7 @@ internal sealed interface AppRoute {
     data class RetirementScenarioDetail(val generation: Long, val planRevision: Long, val scenarioId: String) : AppRoute
 }
 
-internal enum class AppWorkspace(val label: String) { FITNESS("Fitness"), RETIREMENT("Retirement") }
+internal enum class AppWorkspace(val label: String) { FITNESS("Fitness"), RETIREMENT("Finance") }
 
 internal val AppRoute.workspace: AppWorkspace
     get() = when (this) {

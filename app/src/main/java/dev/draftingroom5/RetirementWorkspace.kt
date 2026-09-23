@@ -31,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
@@ -59,6 +60,8 @@ internal val RetirementText = Color(0xFFEFF8F3)
 internal val RetirementTextSecondary = Color(0xFFB8CEC4)
 internal val RetirementPrimary = Color(0xFF72D9A8)
 internal val RetirementHighlight = Color(0xFFB7EC82)
+internal val RetirementBlue = Color(0xFF76A9FF)
+internal val RetirementGold = Color(0xFFFFC66D)
 
 private val RetirementColors = darkColorScheme(
     primary = RetirementPrimary,
@@ -104,7 +107,7 @@ private data class RetirementTab(val route: AppRoute, val label: String, val ico
 private val RetirementTabs = listOf(
     RetirementTab(AppRoute.RetirementOverview, "Overview", Icons.Default.Home),
     RetirementTab(AppRoute.RetirementForecast, "Forecast", Icons.Default.QueryStats),
-    RetirementTab(AppRoute.RetirementAssets, "Accounts", Icons.Default.AccountBalanceWallet),
+    RetirementTab(AppRoute.RetirementAssets, "Assets", Icons.Default.AccountBalanceWallet),
 )
 
 @Composable
@@ -160,10 +163,10 @@ internal fun RetirementWorkspaceScreen(
                                 is AppRoute.RetirementPropertyDetail -> "Property"
                                 is AppRoute.RetirementPropertyHistory -> "Value history"
                                 is AppRoute.RetirementPropertyEdit -> "Edit property"
-                                else -> "Retirement"
+                                else -> "Finance"
                             })
                         } else BrandTitle(
-                            title = "Retirement",
+                            title = "Finance",
                             onLogoClick = openWorkspaceDrawer,
                             activeWorkspace = AppWorkspace.RETIREMENT,
                         )
@@ -190,6 +193,13 @@ internal fun RetirementWorkspaceScreen(
                                 onClick = { onSelectTab(tab.route) },
                                 icon = { Icon(tab.icon, contentDescription = null) },
                                 label = { Text(tab.label) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = RetirementBackgroundDeep,
+                                    selectedTextColor = RetirementBlue,
+                                    indicatorColor = RetirementBlue,
+                                    unselectedIconColor = RetirementTextSecondary,
+                                    unselectedTextColor = RetirementTextSecondary,
+                                ),
                             )
                         }
                     }
