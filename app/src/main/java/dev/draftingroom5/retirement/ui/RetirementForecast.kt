@@ -18,6 +18,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -256,14 +257,21 @@ private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, st
 }
 
 @Composable
-internal fun ForecastFanChart(points: List<ForecastChartPoint>, retirementAge: Int, modifier: Modifier = Modifier) {
+internal fun ForecastFanChart(
+    points: List<ForecastChartPoint>,
+    retirementAge: Int,
+    modifier: Modifier = Modifier,
+    editorialGuides: Boolean = false,
+) {
     val description = forecastChartDescription(points, retirementAge)
     Canvas(modifier.fillMaxWidth().heightIn(min = 190.dp).semantics { contentDescription = description }) {
         if (points.size < 2) return@Canvas
         val minValue = points.minOf { it.low.cents }.coerceAtLeast(0L).toFloat()
         val maxValue = max(minValue + 1f, points.maxOf { it.high.cents }.toFloat())
         val range = maxValue - minValue
-        fun x(index: Int) = size.width * index / (points.size - 1)
+        val firstAge = points.first().age
+        val ageSpan = maxOf(1, points.last().age - firstAge)
+        fun x(index: Int) = size.width * (points[index].age - firstAge) / ageSpan.toFloat()
         fun y(cents: Long) = size.height - 14.dp.toPx() -
             ((cents.coerceAtLeast(0).toFloat() - minValue) / range * (size.height - 34.dp.toPx()))
         fun smooth(path: Path, values: List<Offset>, move: Boolean) {
@@ -306,8 +314,40 @@ internal fun ForecastFanChart(points: List<ForecastChartPoint>, retirementAge: I
         )
         val marker = points.indexOfFirst { it.age == retirementAge }
         if (marker >= 0) {
-            drawLine(RetirementGold, Offset(x(marker), 0f), Offset(x(marker), size.height), 1.5.dp.toPx())
-            drawCircle(RetirementGold, 5.dp.toPx(), middle[marker])
+            val markerPoint = middle[marker]
+            if (editorialGuides) {
+                val baseline = size.height - 2.dp.toPx()
+                val guideStroke = 1.5.dp.toPx()
+                val dotted = PathEffect.dashPathEffect(floatArrayOf(1.5.dp.toPx(), 6.dp.toPx()))
+                drawLine(
+                    RetirementPrimary.copy(alpha = .72f),
+                    Offset(middle.first().x, middle.first().y + 8.dp.toPx()),
+                    Offset(middle.first().x, baseline),
+                    guideStroke,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    pathEffect = dotted,
+                )
+                drawLine(
+                    RetirementGold,
+                    Offset(markerPoint.x, markerPoint.y + 8.dp.toPx()),
+                    Offset(markerPoint.x, baseline),
+                    guideStroke,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    pathEffect = dotted,
+                )
+                repeat(6) { tick ->
+                    val tickX = size.width * tick / 5f
+                    drawLine(
+                        RetirementTextSecondary.copy(alpha = .34f),
+                        Offset(tickX, baseline - 3.dp.toPx()),
+                        Offset(tickX, baseline + 3.dp.toPx()),
+                        1.dp.toPx(),
+                    )
+                }
+            } else {
+                drawLine(RetirementGold, Offset(x(marker), 0f), Offset(x(marker), size.height), 1.5.dp.toPx())
+            }
+            drawCircle(RetirementGold, 5.dp.toPx(), markerPoint)
         }
     }
 }

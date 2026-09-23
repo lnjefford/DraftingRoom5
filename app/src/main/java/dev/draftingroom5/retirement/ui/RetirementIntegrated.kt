@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -255,7 +257,7 @@ private fun OverviewForecastChart(state: ForecastState, plan: PlanSettings, onOp
                     Text(median.editorialFormat(), style = MaterialTheme.typography.titleLarge)
                 }
             }
-            ForecastFanChart(forecastChartPoints(result, plan.retirementAge), plan.retirementAge, Modifier.height(290.dp))
+            OverviewForecastGraphic(forecastChartPoints(result, plan.retirementAge), retirementAge)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Today\n${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
                 Text("Retire\n$retirementAge", color = RetirementGold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
@@ -276,6 +278,48 @@ private fun OverviewForecastChart(state: ForecastState, plan: PlanSettings, onOp
             }
             Text("MODELED FORECAST", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
             Text(message, color = RetirementTextSecondary, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+@Composable
+private fun OverviewForecastGraphic(points: List<ForecastChartPoint>, retirementAge: Int) {
+    val chartHeight = 290.dp
+    BoxWithConstraints(Modifier.fillMaxWidth().height(chartHeight)) {
+        ForecastFanChart(
+            points = points,
+            retirementAge = retirementAge,
+            modifier = Modifier.fillMaxSize(),
+            editorialGuides = true,
+        )
+        val marker = points.firstOrNull { it.age == retirementAge }
+        if (marker != null && points.size >= 2) {
+            val firstAge = points.first().age
+            val ageSpan = maxOf(1, points.last().age - firstAge)
+            val markerX = maxWidth * ((retirementAge - firstAge) / ageSpan.toFloat())
+            val minValue = points.minOf { it.low.cents }.coerceAtLeast(0L).toFloat()
+            val maxValue = maxOf(minValue + 1f, points.maxOf { it.high.cents }.toFloat())
+            val markerFraction = ((marker.middle.cents.coerceAtLeast(0L).toFloat() - minValue) /
+                (maxValue - minValue)).coerceIn(0f, 1f)
+            val markerY = chartHeight - 14.dp - (chartHeight - 34.dp) * markerFraction
+            val largeText = LocalDensity.current.fontScale >= 1.5f
+            val annotationWidth = if (largeText) 176.dp else 142.dp
+            val annotationX = (markerX + 14.dp).coerceAtMost((maxWidth - annotationWidth).coerceAtLeast(0.dp))
+            val annotationY = (markerY - if (largeText) 126.dp else 84.dp)
+                .coerceIn(0.dp, chartHeight - 96.dp)
+            Column(
+                Modifier
+                    .offset(x = annotationX, y = annotationY)
+                    .width(annotationWidth),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                Text("Age $retirementAge", color = RetirementGold, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "RETIREMENT HORIZON",
+                    color = RetirementTextSecondary,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
         }
     }
 }
