@@ -2,7 +2,6 @@ package dev.draftingroom5
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -179,7 +177,11 @@ internal fun RetirementWorkspaceScreen(
                                 is AppRoute.RetirementPropertyEdit -> "Edit property"
                                 else -> "Finance"
                             })
-                        } else FinanceBrandTitle(openWorkspaceDrawer)
+                        } else BrandTitle(
+                            title = "DraftingRoom5",
+                            onLogoClick = openWorkspaceDrawer,
+                            activeWorkspace = AppWorkspace.RETIREMENT,
+                        )
                     },
                     actions = {
                         if (!detail) {
@@ -252,23 +254,6 @@ internal fun RetirementWorkspaceScreen(
             } else RetirementPlaceholder(route, Modifier.padding(padding))
         }
         }
-    }
-}
-
-@Composable
-private fun FinanceBrandTitle(onOpenWorkspaceDrawer: () -> Unit) {
-    Row(
-        Modifier.clickable(onClick = onOpenWorkspaceDrawer),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.size(42.dp).background(RetirementPrimary.copy(alpha = .16f), RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Switch workspace", tint = RetirementHighlight)
-        }
-        Text("Finance", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
     }
 }
 

@@ -11,8 +11,13 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +40,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.draftingroom5.*
@@ -44,6 +50,9 @@ import dev.draftingroom5.retirement.domain.*
 import dev.draftingroom5.retirement.forecast.*
 import dev.draftingroom5.retirement.provider.RetirementProviders
 import kotlinx.coroutines.*
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -547,6 +556,7 @@ internal fun ScenarioComparisonPreview(base: ForecastResult, compared: ForecastR
     Button(onClick = {}, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Apply only this change") }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan: Boolean = false, onSave: (PlanSettings) -> Unit) {
     val incomePlan = remember(plan) { editableIncomePlan(plan) }
@@ -565,49 +575,51 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
     ForecastPage {
         Text("PLAN INPUTS", color = RetirementPrimary, style = MaterialTheme.typography.labelMedium)
         Text("Forecast settings", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
-        Text("Save once to validate the whole form and trigger one coherent recomputation.", color = RetirementTextSecondary)
+        Text("Set the assumptions that shape your projection. Saving recalculates the plan once.", color = RetirementTextSecondary)
         SettingsSection("Timing") {
-            DraftField("Birth date (YYYY-MM-DD)", draft.birthDate) { draft = draft.copy(birthDate = it) }
-            DraftField("As-of date (YYYY-MM-DD)", draft.referenceDate) { draft = draft.copy(referenceDate = it) }
-            DraftField("Retirement age", draft.retirementAge) { draft = draft.copy(retirementAge = it) }
-            DraftField("Plan through age", draft.endAge) { draft = draft.copy(endAge = it) }
+            DateSetting("Birth date", draft.birthDate, plan.birthDate) { draft = draft.copy(birthDate = it) }
+            DateSetting("Plan as of", draft.referenceDate, plan.referenceDate) { draft = draft.copy(referenceDate = it) }
+            IntegerStepper("Retirement age", draft.retirementAge, 18, 120, 1, plan.retirementAge) { draft = draft.copy(retirementAge = it) }
+            IntegerStepper("Plan through age", draft.endAge, 18, 130, 1, plan.endAge) { draft = draft.copy(endAge = it) }
         }
         SettingsSection("Lifestyle and market") {
-            DraftField("Annual lifestyle spending", draft.annualSpending) { draft = draft.copy(annualSpending = it) }
-            DraftField("Inflation (%)", draft.inflationPercent) { draft = draft.copy(inflationPercent = it) }
-            DraftField("Expected equity return (%)", draft.expectedReturnPercent) { draft = draft.copy(expectedReturnPercent = it) }
-            DraftField("Market volatility scale (%)", draft.volatilityPercent) { draft = draft.copy(volatilityPercent = it) }
+            MoneySetting("Annual lifestyle spending", draft.annualSpending) { draft = draft.copy(annualSpending = it) }
+            PercentStepper("Inflation", draft.inflationPercent, -10.0, 100.0, .25) { draft = draft.copy(inflationPercent = it) }
+            PercentStepper("Expected equity return", draft.expectedReturnPercent, -100.0, 300.0, .25) { draft = draft.copy(expectedReturnPercent = it) }
+            PercentStepper("Market volatility scale", draft.volatilityPercent, 0.0, 300.0, 5.0) { draft = draft.copy(volatilityPercent = it) }
         }
         SettingsSection("Tax and health coverage") {
             EnumSelector("Filing status", draft.filingStatus, FilingStatus.entries) { draft = draft.copy(filingStatus = it) }
-            DraftField("State code", draft.stateCode) { draft = draft.copy(stateCode = it) }
-            DraftField("ACA household size", draft.acaHouseholdSize) { draft = draft.copy(acaHouseholdSize = it) }
-            DraftField("Annual benchmark premium", draft.acaAnnualPremium) { draft = draft.copy(acaAnnualPremium = it) }
+            EnumSelector("State", draft.stateCode, ReferenceTaxPolicy.supportedStates.sorted()) { draft = draft.copy(stateCode = it) }
+            IntegerStepper("ACA household size", draft.acaHouseholdSize, 1, 20, 1) { draft = draft.copy(acaHouseholdSize = it) }
+            MoneySetting("Annual benchmark premium", draft.acaAnnualPremium) { draft = draft.copy(acaAnnualPremium = it) }
+            MoneySetting("Annual medical spending", draft.medicalSpending) { draft = draft.copy(medicalSpending = it) }
             EnumSelector("ACA model", draft.acaRegime, listOf("CLIFF", "EXTENDED")) { draft = draft.copy(acaRegime = it) }
             Text("Policy: ${plan.taxPolicyId}. Reference approximation, not current-law tax advice.", color = RetirementTextSecondary)
         }
         SettingsSection("Annual contributions") {
-            DraftField("Pre-tax", draft.preTaxContribution) { draft = draft.copy(preTaxContribution = it) }
-            DraftField("Roth", draft.rothContribution) { draft = draft.copy(rothContribution = it) }
-            DraftField("Taxable", draft.taxableContribution) { draft = draft.copy(taxableContribution = it) }
+            MoneySetting("Pre-tax", draft.preTaxContribution) { draft = draft.copy(preTaxContribution = it) }
+            MoneySetting("Roth", draft.rothContribution) { draft = draft.copy(rothContribution = it) }
+            MoneySetting("Taxable", draft.taxableContribution) { draft = draft.copy(taxableContribution = it) }
+            MoneySetting("HSA", draft.hsaContribution) { draft = draft.copy(hsaContribution = it) }
         }
         SettingsSection("Social Security and pension income") {
             incomePlan.incomeStreams.forEach { stream ->
                 Text(stream.taxKind.name.lowercase().replace('_',' ').replaceFirstChar { it.uppercase() }, fontWeight = FontWeight.SemiBold)
-                DraftField("Annual amount", draft.incomeAmounts[stream.id].orEmpty()) {
+                MoneySetting("Annual amount", draft.incomeAmounts[stream.id].orEmpty()) {
                     draft = draft.copy(incomeAmounts = draft.incomeAmounts + (stream.id to it))
                 }
-                DraftField("Start age", draft.incomeStartAges[stream.id].orEmpty()) {
+                IntegerStepper("Start age", draft.incomeStartAges[stream.id].orEmpty(), 0, 130, 1) {
                     draft = draft.copy(incomeStartAges = draft.incomeStartAges + (stream.id to it))
                 }
-                DraftField("End age", draft.incomeEndAges[stream.id].orEmpty()) {
+                IntegerStepper("End age", draft.incomeEndAges[stream.id].orEmpty(), 0, 130, 1) {
                     draft = draft.copy(incomeEndAges = draft.incomeEndAges + (stream.id to it))
                 }
             }
             Text("Income type remains fixed; amount and modeled timing are local plan assumptions.", color = RetirementTextSecondary)
         }
         SettingsSection("Home") {
-            DraftField("Real home appreciation (%)", draft.homeAppreciationPercent) { draft = draft.copy(homeAppreciationPercent = it) }
+            PercentStepper("Real home appreciation", draft.homeAppreciationPercent, -50.0, 100.0, .25) { draft = draft.copy(homeAppreciationPercent = it) }
             EnumSelector("At retirement", draft.homeDisposition, HomeDisposition.entries) { draft = draft.copy(homeDisposition = it) }
             Text("Epic position, growth, tax, sale, and projection values are workbook-owned and cannot be edited here.", color = RetirementTextSecondary)
         }
@@ -618,19 +630,118 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
     }
 }
 
-@Composable private fun DraftField(label: String, value: String, onValueChange: (String) -> Unit) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun DateSetting(label: String, value: String, initialIfBlank: LocalDate, onValue: (String) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val parsed = remember(value) { runCatching { LocalDate.parse(value) }.getOrNull() }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text(label, color = RetirementTextSecondary, style = MaterialTheme.typography.labelLarge)
+        OutlinedButton(
+            onClick = { open = true },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).semantics { contentDescription = "$label, ${parsed ?: "not set"}" },
+        ) {
+            Icon(Icons.Default.CalendarMonth, contentDescription = null)
+            Spacer(Modifier.width(10.dp))
+            Text(parsed?.let { "${it.month.name.lowercase().replaceFirstChar(Char::uppercase)} ${it.dayOfMonth}, ${it.year}" } ?: "Choose date", Modifier.weight(1f), textAlign = TextAlign.Start)
+        }
+    }
+    if (open) {
+        val initial = parsed ?: initialIfBlank
+        val picker = rememberDatePickerState(initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+        DatePickerDialog(
+            onDismissRequest = { open = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    picker.selectedDateMillis?.let { onValue(java.time.Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString()) }
+                    open = false
+                }) { Text("Use date") }
+            },
+            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
+        ) { DatePicker(picker) }
+    }
+}
+
+@Composable private fun MoneySetting(label: String, value: String, onValueChange: (String) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, color = RetirementTextSecondary, style = MaterialTheme.typography.labelLarge)
-        OutlinedTextField(value, onValueChange, singleLine = true,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = label })
+        OutlinedTextField(
+            value,
+            { onValueChange(it.take(24)) },
+            singleLine = true,
+            suffix = { Text("USD", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
+        )
+    }
+}
+
+@Composable private fun IntegerStepper(
+    label: String,
+    value: String,
+    minimum: Int,
+    maximum: Int,
+    step: Int,
+    initialIfBlank: Int = minimum,
+    onValue: (String) -> Unit,
+) {
+    val current = value.toIntOrNull()
+    SettingControl(label) {
+        IconButton(
+            onClick = { onValue((current?.minus(step) ?: initialIfBlank).coerceIn(minimum, maximum).toString()) },
+            enabled = current == null || current > minimum,
+        ) { Icon(Icons.Default.Remove, contentDescription = "Decrease $label") }
+        Text(current?.toString() ?: "—", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+        IconButton(
+            onClick = { onValue((current?.plus(step) ?: initialIfBlank).coerceIn(minimum, maximum).toString()) },
+            enabled = current == null || current < maximum,
+        ) { Icon(Icons.Default.Add, contentDescription = "Increase $label") }
+    }
+}
+
+@Composable private fun PercentStepper(label: String, value: String, minimum: Double, maximum: Double, step: Double, onValue: (String) -> Unit) {
+    val current = value.toDoubleOrNull()
+    fun adjusted(delta: Double): String = BigDecimal.valueOf(((current ?: minimum) + delta).coerceIn(minimum, maximum))
+        .setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+    SettingControl(label) {
+        IconButton(onClick = { onValue(adjusted(-step)) }, enabled = current == null || current > minimum) {
+            Icon(Icons.Default.Remove, contentDescription = "Decrease $label")
+        }
+        Text(current?.let { BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() + "%" } ?: "—", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+        IconButton(onClick = { onValue(adjusted(step)) }, enabled = current == null || current < maximum) {
+            Icon(Icons.Default.Add, contentDescription = "Increase $label")
+        }
+    }
+}
+
+@Composable private fun SettingControl(label: String, content: @Composable RowScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text(label, color = RetirementTextSecondary, style = MaterialTheme.typography.labelLarge)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).border(1.dp, RetirementBorder, RoundedCornerShape(16.dp)).padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content,
+        )
     }
 }
 
 @Composable private fun <T> EnumSelector(label: String, value: T, values: List<T>, onValue: (T) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    Box(Modifier.fillMaxWidth()) {
-        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("$label: ${value.toString().lowercase().replace('_',' ')}") }
-        DropdownMenu(expanded, { expanded = false }) { values.forEach { option -> DropdownMenuItem({ Text(option.toString().lowercase().replace('_',' ')) }, { expanded = false; onValue(option) }) } }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text(label, color = RetirementTextSecondary, style = MaterialTheme.typography.labelLarge)
+        Box(Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Text(value.toString().lowercase().replace('_',' ').replaceFirstChar(Char::uppercase), Modifier.weight(1f), textAlign = TextAlign.Start)
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+            }
+            DropdownMenu(expanded, { expanded = false }) {
+                values.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.toString().lowercase().replace('_',' ').replaceFirstChar(Char::uppercase)) },
+                        onClick = { expanded = false; onValue(option) },
+                    )
+                }
+            }
+        }
     }
 }
 
