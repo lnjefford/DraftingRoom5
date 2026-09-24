@@ -329,21 +329,21 @@ private fun ConfidencePanel(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val panelHeight = if (LocalDensity.current.fontScale >= 1.5f) 232.dp else 168.dp
     Card(
-        modifier.clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
+        modifier.height(panelHeight).clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 178.dp)
+            Modifier.fillMaxSize()
                 .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(value, color = RetirementHighlight, style = MaterialTheme.typography.displaySmall)
             Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.height(8.dp))
             if (result != null) SuccessRateChart(result) else Text(status, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -354,7 +354,7 @@ private fun SuccessRateChart(result: ForecastResult) {
     val points = forecastSuccessPoints(result)
     val endingRate = points.lastOrNull()?.rate ?: 0.0
     Canvas(
-        Modifier.fillMaxWidth().height(62.dp).semantics {
+        Modifier.fillMaxWidth().height(40.dp).semantics {
             contentDescription = "Modeled success rate by age from ${result.currentAge} to ${result.endAge}, ending at ${String.format(java.util.Locale.US, "%.0f", endingRate * 100)} percent"
         },
     ) {
@@ -391,29 +391,31 @@ private fun SuccessRateChart(result: ForecastResult) {
 
 @Composable
 private fun HorizonPanel(targetAge: String, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val panelHeight = if (LocalDensity.current.fontScale >= 1.5f) 232.dp else 168.dp
     Card(
-        modifier.clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
+        modifier.height(panelHeight).clickable(onClick = onOpen).semantics(mergeDescendants = true) { role = Role.Button },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 178.dp)
+            Modifier.fillMaxSize()
                 .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text("Age $targetAge", style = MaterialTheme.typography.displaySmall)
             Text("RETIREMENT HORIZON", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(
-                    Modifier.size(46.dp).background(RetirementGold.copy(alpha = .14f), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = RetirementGold)
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        Modifier.size(46.dp).background(RetirementGold.copy(alpha = .14f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = RetirementGold)
+                    }
+                    Text("Adjust retirement age", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
                 }
-                Text("Adjust retirement age", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
