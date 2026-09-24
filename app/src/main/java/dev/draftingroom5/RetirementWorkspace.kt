@@ -126,6 +126,12 @@ internal fun RetirementWorkspaceScreen(
     accountsPreviewState: RetirementState? = null,
     updatePresentation: UpdateSettingsPresentation = updateSettingsPresentation(AppUpdateStatus(), false, null, BuildConfig.VERSION_NAME),
     onUpdate: () -> Unit = {},
+    backupStatus: AutomaticBackupStatus = AutomaticBackupStatus(),
+    backupActionMessage: String? = null,
+    onAutomaticBackupChange: (Boolean) -> Unit = {},
+    onBackUpNow: () -> Unit = {},
+    onRestoreLatest: () -> Unit = {},
+    onOpenBackupSettings: () -> Unit = {},
 ) {
     require(route.workspace == AppWorkspace.RETIREMENT)
     val activity = androidx.activity.compose.LocalActivity.current
@@ -137,7 +143,18 @@ internal fun RetirementWorkspaceScreen(
     val detail = route !in retirementTopLevelRoutes
     if (detail) BackHandler(onBack = onBack)
     RetirementTheme {
-        WorkspaceDrawer(AppWorkspace.RETIREMENT, onSwitchWorkspace, updatePresentation, onUpdate) { openWorkspaceDrawer ->
+        WorkspaceDrawer(
+            active = AppWorkspace.RETIREMENT,
+            onSelect = onSwitchWorkspace,
+            updatePresentation = updatePresentation,
+            onUpdate = onUpdate,
+            backupStatus = backupStatus,
+            backupActionMessage = backupActionMessage,
+            onAutomaticBackupChange = onAutomaticBackupChange,
+            onBackUpNow = onBackUpNow,
+            onRestoreLatest = onRestoreLatest,
+            onOpenBackupSettings = onOpenBackupSettings,
+        ) { openWorkspaceDrawer ->
         Scaffold(
             modifier = Modifier.fillMaxSize().background(RetirementBackground),
             containerColor = RetirementBackground,

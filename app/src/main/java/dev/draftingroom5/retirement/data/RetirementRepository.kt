@@ -11,7 +11,10 @@ sealed interface RetirementResult<out T> {
     data class Invalid(val error: IllegalArgumentException) : RetirementResult<Nothing>
 }
 
-class RetirementRepository(private val dao: RetirementDao) {
+class RetirementRepository(
+    private val dao: RetirementDao,
+    private val onChanged: () -> Unit = {},
+) {
     /** Wakeup signal only. Consumers must reload this repository's coherent committed document. */
     val changes get() = changeSignal.asStateFlow()
     internal fun ifGeneration(expected: Long, publish: () -> Unit): Boolean = synchronized(lock) {
@@ -166,6 +169,35 @@ class RetirementRepository(private val dao: RetirementDao) {
         current.copy(providerItems = current.providerItems.filterNot { it.id == item.id } + item)
     }
 
+    fun restore(snapshot: RetirementState): RetirementResult<RetirementState> = synchronized(lock) {
+        val current = load()
+        val restored = try {
+            require(current.generation < Long.MAX_VALUE)
+            snapshot.copy(generation = current.generation + 1).also(::validateRetirementState)
+        } catch (error: IllegalArgumentException) {
+            return@synchronized RetirementResult.Invalid(error)
+        }
+        if (!dao.restore(
+                current.generation,
+                restored,
+                restored.accounts.flatMap { account -> account.balances.map { balance ->
+                    BalanceLedgerEntity(balance.id, account.id, balance.asOfDate.toString(), balance.acceptedAt.toString(), balance.sequence,
+                        balance.amount.cents, balance.basis?.cents, balance.source.name, balance.batchId, balance.supersedesId)
+                } },
+                restored.properties.flatMap { property -> property.valuations.map { valuation ->
+                    ValuationLedgerEntity(valuation.id, property.id, valuation.estimate.cents, valuation.rangeLow?.cents, valuation.rangeHigh?.cents,
+                        valuation.source.name, valuation.acceptedAt.toString(), valuation.sequence, valuation.batchId, valuation.supersedesId)
+                } },
+                restored.epicImports.map { import -> EpicImportLedgerEntity(import.id, import.formatId, import.parserVersion,
+                    import.acceptedAt.toString(), import.contentDigest, import.replacesImportId) },
+            )) {
+            return@synchronized RetirementResult.Conflict(load().generation)
+        }
+        changeSignal.value = Math.addExact(changeSignal.value, 1)
+        onChanged()
+        RetirementResult.Success(restored)
+    }
+
     private fun mutate(expectedGeneration: Long, transform: (RetirementState) -> RetirementState): RetirementResult<RetirementState> = synchronized(lock) {
         val current = load()
         if (current.generation != expectedGeneration) return@synchronized RetirementResult.Conflict(current.generation)
@@ -180,6 +212,7 @@ class RetirementRepository(private val dao: RetirementDao) {
         val imports = appendedImports(current, candidate)
         check(dao.commit(expectedGeneration, candidate, balances, valuations, imports)) { "Concurrent Retirement write escaped process lock." }
         changeSignal.value = Math.addExact(changeSignal.value, 1)
+        onChanged()
         RetirementResult.Success(candidate)
     }
 

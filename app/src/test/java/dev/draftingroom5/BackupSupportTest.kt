@@ -5,6 +5,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.json.JSONObject
+import dev.draftingroom5.retirement.retirementFixture
 import java.time.ZoneId
 
 class BackupSupportTest {
@@ -119,8 +120,15 @@ class BackupSupportTest {
             partialSessions = listOf(partial),
             history = listOf(history),
         )
-        val snapshot = BackupSnapshot(1_780_272_000_000L, document)
+        val snapshot = BackupSnapshot(1_780_272_000_000L, document, retirementFixture())
         assertEquals(snapshot, decodeBackupSnapshot(encodeBackupSnapshot(snapshot)))
+    }
+
+    @Test fun legacyFitnessOnlySnapshotRemainsReadable() {
+        val snapshot = BackupSnapshot(1, defaultAppDocument())
+        val decoded = decodeBackupSnapshot(encodeBackupSnapshot(snapshot))
+        assertEquals(snapshot, decoded)
+        assertEquals(null, decoded.retirement)
     }
 
     @Test fun backupRoundTripRetainsEveryProgressionRuleValueAndHandledDecision() {

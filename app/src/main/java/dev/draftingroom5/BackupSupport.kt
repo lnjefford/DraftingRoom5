@@ -12,6 +12,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import dev.draftingroom5.retirement.data.RetirementCodec
+import dev.draftingroom5.retirement.data.RetirementResult
+import dev.draftingroom5.retirement.domain.RetirementState
+import dev.draftingroom5.retirement.provider.RetirementProviders
 import org.json.JSONObject
 import java.io.File
 import java.time.Duration
@@ -28,7 +32,11 @@ internal data class AutomaticBackupStatus(
     val hasRecoverySnapshot: Boolean = false,
 )
 
-internal data class BackupSnapshot(val createdAtMillis: Long, val document: AppDocument)
+internal data class BackupSnapshot(
+    val createdAtMillis: Long,
+    val document: AppDocument,
+    val retirement: RetirementState? = null,
+)
 
 /** Each storage write is atomic; rotation never replaces a good fallback with corrupt data. */
 internal class RecoverySnapshotStore(
@@ -96,17 +104,17 @@ internal class AutomaticBackupManager(context: Context) {
 
     fun requestBackup() {
         if (!status().enabled) return
-        val request = OneTimeWorkRequestBuilder<AutomaticBackupWorker>().setInitialDelay(10, TimeUnit.SECONDS)
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
-        WorkManager.getInstance(appContext).enqueueUniqueWork(
-            "current-backup-after-change", ExistingWorkPolicy.REPLACE, request,
-        )
+        requestBackupAfterChange(appContext)
     }
 
     fun createBackup(nowMillis: Long = System.currentTimeMillis()): Result<AutomaticBackupStatus> {
         return synchronized(snapshotLock) { runCatching {
             check(backupDirectory.exists() || backupDirectory.mkdirs()) { "Could not create the backup directory." }
-            val snapshot = BackupSnapshot(nowMillis, requireCurrentDocument())
+            val snapshot = BackupSnapshot(
+                createdAtMillis = nowMillis,
+                document = requireCurrentDocument(),
+                retirement = RetirementProviders.get(appContext).repository.load(),
+            )
             snapshots.write(snapshot)
             statusPreferences.edit().putLong("last-success", nowMillis).remove("last-failure")
                 .remove("last-failure-message").commit()
@@ -120,7 +128,19 @@ internal class AutomaticBackupManager(context: Context) {
 
     fun restoreLatest(): Result<BackupSnapshot> = synchronized(snapshotLock) { runCatching {
         val snapshot = snapshots.read()
-        check(repository.restore(snapshot.document) is RepositoryResult.Success) { "Could not restore app data." }
+        val retirementRepository = RetirementProviders.get(appContext).repository
+        val currentDocument = requireCurrentDocument()
+        val currentRetirement = retirementRepository.load()
+        try {
+            snapshot.retirement?.let {
+                check(retirementRepository.restore(it) is RetirementResult.Success) { "Could not restore Finance data." }
+            }
+            check(repository.restore(snapshot.document) is RepositoryResult.Success) { "Could not restore Fitness data." }
+        } catch (error: Exception) {
+            runCatching { retirementRepository.restore(currentRetirement) }
+            runCatching { repository.restore(currentDocument) }
+            throw error
+        }
         snapshot
     } }
 
@@ -135,9 +155,24 @@ internal class AutomaticBackupManager(context: Context) {
     private fun requireCurrentDocument(): AppDocument =
         checkNotNull((repository.ensureLoaded() as? LoadState.Ready)?.value) { "App data must be readable before creating a backup." }
 
-    private companion object {
-        val snapshotLock = Any()
+    companion object {
+        private val snapshotLock = Any()
+
+        fun requestBackupAfterChange(context: Context) {
+            val appContext = context.applicationContext
+            val current = (AppRepository.get(appContext).ensureLoaded() as? LoadState.Ready)?.value ?: return
+            if (!current.preferences.automaticBackupsEnabled) return
+            val request = OneTimeWorkRequestBuilder<AutomaticBackupWorker>().setInitialDelay(10, TimeUnit.SECONDS)
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
+            WorkManager.getInstance(appContext).enqueueUniqueWork(
+                "current-backup-after-change", ExistingWorkPolicy.REPLACE, request,
+            )
+        }
     }
+}
+
+internal fun requestAutomaticBackupAfterChange(context: Context) {
+    AutomaticBackupManager.requestBackupAfterChange(context)
 }
 
 internal class AutomaticBackupWorker(appContext: Context, parameters: WorkerParameters) : CoroutineWorker(appContext, parameters) {
@@ -149,9 +184,10 @@ internal class AutomaticBackupWorker(appContext: Context, parameters: WorkerPara
 }
 
 internal fun encodeBackupSnapshot(snapshot: BackupSnapshot): String = JSONObject().apply {
-    put("format", "draftingroom5.backup.current")
+    put("format", if (snapshot.retirement == null) "draftingroom5.backup.current" else "draftingroom5.backup.current.v2")
     put("createdAtMillis", snapshot.createdAtMillis)
     put("document", JSONObject(encodeAppDocument(snapshot.document)))
+    snapshot.retirement?.let { put("retirement", JSONObject(RetirementCodec.encode(it))) }
 }.toString().also {
     require(snapshot.createdAtMillis >= 0) { "Backup timestamp must be nonnegative." }
     require(it.toByteArray(Charsets.UTF_8).size <= MAX_DOCUMENT_BYTES) { "Backup exceeds the 16 MiB limit." }
@@ -160,12 +196,20 @@ internal fun encodeBackupSnapshot(snapshot: BackupSnapshot): String = JSONObject
 internal fun decodeBackupSnapshot(value: String): BackupSnapshot {
     inspectJsonStructure(value)
     val root = JSONObject(value)
-    require(root.keys().asSequence().toSet() == setOf("format", "createdAtMillis", "document"))
-    require(root.get("format") == "draftingroom5.backup.current") { "Unsupported backup format." }
+    val format = root.get("format")
+    val fields = root.keys().asSequence().toSet()
+    require(
+        format == "draftingroom5.backup.current" && fields == setOf("format", "createdAtMillis", "document") ||
+            format == "draftingroom5.backup.current.v2" && fields == setOf("format", "createdAtMillis", "document", "retirement")
+    ) { "Unsupported backup format." }
     val created = root.get("createdAtMillis")
     require(created is Int || created is Long) { "Backup timestamp must be an integer." }
     require((created as Number).toLong() >= 0) { "Backup timestamp must be nonnegative." }
-    return BackupSnapshot((created as Number).toLong(), decodeAppDocument(root.getJSONObject("document").toString()))
+    return BackupSnapshot(
+        createdAtMillis = (created as Number).toLong(),
+        document = decodeAppDocument(root.getJSONObject("document").toString()),
+        retirement = root.optJSONObject("retirement")?.let { RetirementCodec.decode(it.toString()) },
+    )
 }
 
 internal fun backupStatusDetail(status: AutomaticBackupStatus, zoneId: ZoneId = ZoneId.systemDefault()): String {

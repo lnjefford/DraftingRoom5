@@ -65,7 +65,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Button
@@ -496,21 +495,13 @@ private fun DraftingRoom5App() {
                     refreshHealth(currentWindow)
                 }
                 updateStatus = updateManager.status()
+                backupStatus = backupManager.status()
                 delay(2000)
             }
         } else {
             workoutVoice.stop()
             healthRefreshJob?.cancel()
             healthUi = healthUi.copy(isLoading = false)
-        }
-    }
-
-    LaunchedEffect(screen, windowFocused) {
-        if (screen == AppRoute.Settings && windowFocused) {
-            while (true) {
-                backupStatus = backupManager.status()
-                delay(1000)
-            }
         }
     }
 
@@ -588,6 +579,34 @@ private fun DraftingRoom5App() {
                 updateActionMessage = updateActionMessage,
                 onInstallUpdate = checkAndInstallUpdate,
                 drawerUpdatePresentation = updateSettingsPresentation(updateStatus, updateBusy, updateActionMessage, BuildConfig.VERSION_NAME),
+                backupStatus = backupStatus,
+                backupActionMessage = backupActionMessage,
+                onAutomaticBackupChange = { enabled ->
+                    runCatching { backupManager.setEnabled(enabled) }.onSuccess {
+                        (appRepository.state.value as? LoadState.Ready)?.value?.let { acceptDocumentResult(RepositoryResult.Success(it)) }
+                        backupStatus = backupManager.status()
+                        backupActionMessage = if (enabled) "Automatic backups enabled." else "Automatic backups disabled."
+                    }.onFailure { backupActionMessage = it.message ?: "Could not save backup settings." }
+                },
+                onBackUpNow = {
+                    val result = backupManager.createBackup()
+                    if (result.isFailure) backupManager.requestBackup()
+                    backupStatus = backupManager.status()
+                    backupActionMessage = if (result.isSuccess) "Fitness and Finance recovery snapshot saved." else backupFailureMessage(backupStatus.enabled)
+                },
+                onRestoreLatest = {
+                    backupManager.restoreLatest().onSuccess {
+                        (appRepository.state.value as? LoadState.Ready)?.value?.let { acceptDocumentResult(RepositoryResult.Success(it)) }
+                        backupActionMessage = "Restored Fitness and Finance from the latest recovery snapshot."
+                    }.onFailure { error ->
+                        backupActionMessage = error.message ?: "Could not restore the latest snapshot."
+                    }
+                    backupStatus = backupManager.status()
+                },
+                onOpenBackupSettings = {
+                    runCatching { openAndroidBackupSettings(context) }
+                        .onFailure { backupActionMessage = "Could not open Android backup settings: ${it.message ?: "Try again."}" }
+                },
                 onOpenMetric = { card -> navigation.navigate(AppRoute.MetricDetail(card)) },
                 onOpenCustom = { session -> navigation.navigate(AppRoute.GuidedSession(
                     session.routine.id, session.occurrence.scheduleEntryId, session.occurrence.scheduledDate)) },
@@ -672,34 +691,6 @@ private fun DraftingRoom5App() {
                     voiceSettings = updated
                     persistDocument { it.copy(preferences = it.preferences.copy(voice = updated)) }
                     requestAutomaticBackup()
-                },
-                backupStatus = backupStatus,
-                backupActionMessage = backupActionMessage,
-                onAutomaticBackupChange = { enabled ->
-                    runCatching { backupManager.setEnabled(enabled) }.onSuccess {
-                        (appRepository.state.value as? LoadState.Ready)?.value?.let { acceptDocumentResult(RepositoryResult.Success(it)) }
-                        backupStatus = backupManager.status()
-                        backupActionMessage = if (enabled) "Automatic backups enabled." else "Automatic backups disabled."
-                    }.onFailure { backupActionMessage = it.message ?: "Could not save backup settings." }
-                },
-                onBackUpNow = {
-                    val result = backupManager.createBackup()
-                    if (result.isFailure) backupManager.requestBackup()
-                    backupStatus = backupManager.status()
-                    backupActionMessage = if (result.isSuccess) "Recovery snapshot saved." else backupFailureMessage(backupStatus.enabled)
-                },
-                onRestoreLatest = {
-                    backupManager.restoreLatest().onSuccess {
-                        (appRepository.state.value as? LoadState.Ready)?.value?.let { acceptDocumentResult(RepositoryResult.Success(it)) }
-                        backupActionMessage = "Restored the latest recovery snapshot."
-                    }.onFailure { error ->
-                        backupActionMessage = error.message ?: "Could not restore the latest snapshot."
-                    }
-                    backupStatus = backupManager.status()
-                },
-                onOpenBackupSettings = {
-                    runCatching { openAndroidBackupSettings(context) }
-                        .onFailure { backupActionMessage = "Could not open Android backup settings: ${it.message ?: "Try again."}" }
                 },
             )
             AppRoute.PlanManagement -> PlanManagementScreen(
@@ -1020,6 +1011,32 @@ private fun DraftingRoom5App() {
                 onNavigate = navigation::navigate,
                 updatePresentation = updateSettingsPresentation(updateStatus, updateBusy, updateActionMessage, BuildConfig.VERSION_NAME),
                 onUpdate = checkAndInstallUpdate,
+                backupStatus = backupStatus,
+                backupActionMessage = backupActionMessage,
+                onAutomaticBackupChange = { enabled ->
+                    runCatching { backupManager.setEnabled(enabled) }.onSuccess {
+                        (appRepository.state.value as? LoadState.Ready)?.value?.let { acceptDocumentResult(RepositoryResult.Success(it)) }
+                        backupStatus = backupManager.status()
+                        backupActionMessage = if (enabled) "Automatic backups enabled." else "Automatic backups disabled."
+                    }.onFailure { backupActionMessage = it.message ?: "Could not save backup settings." }
+                },
+                onBackUpNow = {
+                    val result = backupManager.createBackup()
+                    if (result.isFailure) backupManager.requestBackup()
+                    backupStatus = backupManager.status()
+                    backupActionMessage = if (result.isSuccess) "Fitness and Finance recovery snapshot saved." else backupFailureMessage(backupStatus.enabled)
+                },
+                onRestoreLatest = {
+                    backupManager.restoreLatest().onSuccess {
+                        (appRepository.state.value as? LoadState.Ready)?.value?.let { acceptDocumentResult(RepositoryResult.Success(it)) }
+                        backupActionMessage = "Restored Fitness and Finance from the latest recovery snapshot."
+                    }.onFailure { error -> backupActionMessage = error.message ?: "Could not restore the latest snapshot." }
+                    backupStatus = backupManager.status()
+                },
+                onOpenBackupSettings = {
+                    runCatching { openAndroidBackupSettings(context) }
+                        .onFailure { backupActionMessage = "Could not open Android backup settings: ${it.message ?: "Try again."}" }
+                },
             )
         }
         }
@@ -1043,6 +1060,12 @@ private fun Dashboard(
     updateActionMessage: String?,
     onInstallUpdate: () -> Unit,
     drawerUpdatePresentation: UpdateSettingsPresentation? = null,
+    backupStatus: AutomaticBackupStatus = AutomaticBackupStatus(),
+    backupActionMessage: String? = null,
+    onAutomaticBackupChange: (Boolean) -> Unit = {},
+    onBackUpNow: () -> Unit = {},
+    onRestoreLatest: () -> Unit = {},
+    onOpenBackupSettings: () -> Unit = {},
     onOpenMetric: (DashboardCard) -> Unit,
     onOpenCustom: (DashboardSession) -> Unit,
     onLaunchExternal: (DashboardSession) -> Unit,
@@ -1129,7 +1152,6 @@ private fun Dashboard(
             onDismiss = ::clearPending,
         )
     }
-    val updateAnnouncement = dashboardUpdateAnnouncement(updateAvailableVersion, updateBusy, updateActionMessage)
     WorkspaceDrawer(
         active = AppWorkspace.FITNESS,
         onSelect = onSwitchWorkspace,
@@ -1140,6 +1162,12 @@ private fun Dashboard(
             BuildConfig.VERSION_NAME,
         ),
         onUpdate = onInstallUpdate,
+        backupStatus = backupStatus,
+        backupActionMessage = backupActionMessage,
+        onAutomaticBackupChange = onAutomaticBackupChange,
+        onBackUpNow = onBackUpNow,
+        onRestoreLatest = onRestoreLatest,
+        onOpenBackupSettings = onOpenBackupSettings,
     ) { openWorkspaceDrawer ->
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
@@ -1156,33 +1184,6 @@ private fun Dashboard(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
-                    if (updateAvailableVersion != null || updateBusy) {
-                        IconButton(
-                            onClick = onInstallUpdate,
-                            enabled = !updateBusy,
-                            modifier = Modifier.semantics {
-                                if (updateBusy) {
-                                    contentDescription = checkNotNull(updateAnnouncement)
-                                    stateDescription = "Working"
-                                    liveRegion = LiveRegionMode.Polite
-                                }
-                            },
-                        ) {
-                            if (updateBusy) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = AppGold,
-                                    strokeWidth = 2.dp,
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.SystemUpdate,
-                                    contentDescription = updateAnnouncement,
-                                    tint = AppGold,
-                                )
-                            }
-                        }
-                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
@@ -1225,26 +1226,6 @@ private fun Dashboard(
                             contentDescription = "Undo ${if (feedbackException.disposition == OccurrenceDisposition.DEFERRED) "move" else "skip"} for $feedbackName on ${feedbackException.occurrence.scheduledDate}"
                         },
                     ) { Text(if (feedbackError == null) "Undo" else "Retry Undo") }
-                }
-            }
-            if (updateActionMessage != null) item(key = "update-feedback") {
-                Row(
-                    Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        updateActionMessage,
-                        modifier = Modifier.weight(1f),
-                        color = if (updateActionMessage.contains("failed", true) || updateActionMessage.contains("could not", true)) AppGold else AppBlue,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    if (!updateBusy && updateAvailableVersion != null && (
-                            updateActionMessage.contains("failed", true) || updateActionMessage.contains("could not", true) ||
-                                updateActionMessage.contains("cancel", true) || updateActionMessage.contains("permission", true) ||
-                                updateActionMessage.contains("interrupted", true)
-                        )) {
-                        TextButton(onClick = onInstallUpdate) { Text("Retry") }
-                    }
                 }
             }
             dashboardLayout.dashboardSections().forEachIndexed { sectionIndex, section ->
@@ -1740,26 +1721,11 @@ private fun SettingsScreen(
     voiceSettings: VoiceAnnouncementSettings,
     voiceAvailability: VoiceAvailability,
     onVoiceSettingsChange: (VoiceAnnouncementSettings) -> Unit,
-    backupStatus: AutomaticBackupStatus,
-    backupActionMessage: String?,
-    onAutomaticBackupChange: (Boolean) -> Unit,
-    onBackUpNow: () -> Unit,
-    onRestoreLatest: () -> Unit,
-    onOpenBackupSettings: () -> Unit,
     reviewSection: String? = null,
     initialVoiceExpanded: Boolean = false,
 ) {
     BackHandler(onBack = onBack)
     var voiceExpanded by rememberSaveable { mutableStateOf(initialVoiceExpanded) }
-    var backupExpanded by rememberSaveable { mutableStateOf(false) }
-    var confirmRestore by rememberSaveable { mutableStateOf(false) }
-    if (confirmRestore) AppConfirmationDialog(
-        title = "Restore recovery snapshot?",
-        message = "This replaces your routines, schedule, saved sessions, history, and settings with the recovery copy. Health Connect data is unaffected.",
-        confirmLabel = "Restore",
-        onConfirm = { confirmRestore = false; onRestoreLatest() },
-        onDismiss = { confirmRestore = false },
-    )
     val healthSources = listOf(
         healthUi.stats.weight,
         healthUi.stats.bodyFat,
@@ -1768,7 +1734,6 @@ private fun SettingsScreen(
         healthUi.stats.distance,
     ).flatMap { it.sources.ifEmpty { listOfNotNull(it.source) } }.distinct()
     val healthPresentation = healthSettingsPresentation(healthUi.connection, healthUi.isLoading, healthSources)
-    val backupPresentation = backupSettingsPresentation(backupStatus, (LocalReviewTime.current ?: Instant.now()).toEpochMilli())
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = { SecondaryTopBar("Settings", onBack) },
@@ -1854,27 +1819,6 @@ private fun SettingsScreen(
                     }
                     healthUi.message?.let {
                         Text(it, modifier = Modifier.padding(start = 66.dp, end = 18.dp, bottom = 12.dp), color = AppGold, style = MaterialTheme.typography.bodySmall)
-                    }
-                    SettingsDivider()
-                    SettingsNavigationRow(
-                        Icons.Default.Cloud,
-                        "Automatic backups",
-                        "Offline recovery snapshots",
-                        backupPresentation.summary,
-                        summaryColor = settingsToneColor(backupPresentation.tone),
-                        expanded = backupExpanded,
-                    ) { backupExpanded = !backupExpanded }
-                    if (backupExpanded) {
-                        Column(Modifier.fillMaxWidth().padding(start = 66.dp, end = 18.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            SettingsToggleRow(null, "Automatic snapshots", "Keep two offline recovery copies", backupStatus.enabled, true, onAutomaticBackupChange)
-                            Text("Includes settings, schedules, routines, and workout history. Health Connect data and permissions are excluded.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                            backupActionMessage?.let {
-                                Text(it, color = if (it.contains("fail", true) || it.contains("could not", true)) AppGold else AppMint, style = MaterialTheme.typography.bodySmall)
-                            }
-                            Button(onClick = onBackUpNow, modifier = Modifier.fillMaxWidth()) { Text("Back up now") }
-                            OutlinedButton(onClick = { confirmRestore = true }, enabled = backupStatus.hasRecoverySnapshot, modifier = Modifier.fillMaxWidth()) { Text("Restore latest") }
-                            TextButton(onClick = onOpenBackupSettings, modifier = Modifier.align(Alignment.End).defaultMinSize(minHeight = 48.dp)) { Text("Android backup settings") }
-                        }
                     }
                 }
             }
@@ -2012,12 +1956,6 @@ private fun SettingsScreenPreview(initialVoiceExpanded: Boolean = false) {
             voiceSettings = VoiceAnnouncementSettings(),
             voiceAvailability = VoiceAvailability.READY,
             onVoiceSettingsChange = {},
-            backupStatus = AutomaticBackupStatus(lastSuccessfulMillis = (LocalReviewTime.current ?: Instant.now()).toEpochMilli(), hasRecoverySnapshot = true),
-            backupActionMessage = null,
-            onAutomaticBackupChange = {},
-            onBackUpNow = {},
-            onRestoreLatest = {},
-            onOpenBackupSettings = {},
             initialVoiceExpanded = initialVoiceExpanded,
         )
     }
@@ -2781,7 +2719,7 @@ private fun SettingsHardeningPreview(state: HardeningState) {
     val backupStatus = if (state == HardeningState.BACKUP_FAILURE) {
         AutomaticBackupStatus(lastSuccessfulMillis = now - 86_400_000L, lastFailureMillis = now, lastFailureMessage = "Storage unavailable", hasRecoverySnapshot = true)
     } else AutomaticBackupStatus(lastSuccessfulMillis = now, hasRecoverySnapshot = true)
-    if (state == HardeningState.UPDATE_FAILURE) {
+    if (state == HardeningState.UPDATE_FAILURE || state == HardeningState.BACKUP_FAILURE) {
         DraftingRoom5Theme {
             WorkspaceDrawerContent(
                 active = AppWorkspace.FITNESS,
@@ -2793,6 +2731,9 @@ private fun SettingsHardeningPreview(state: HardeningState) {
                 ),
                 onSelect = {},
                 onUpdate = {},
+                backupStatus = backupStatus,
+                backupActionMessage = if (state == HardeningState.BACKUP_FAILURE) "Backup failed: storage is unavailable. Existing snapshots were kept." else null,
+                initialBackupExpanded = state == HardeningState.BACKUP_FAILURE,
             )
         }
         return
@@ -2809,12 +2750,8 @@ private fun SettingsHardeningPreview(state: HardeningState) {
             voiceSettings = VoiceAnnouncementSettings(),
             voiceAvailability = voiceAvailability,
             onVoiceSettingsChange = {},
-            backupStatus = backupStatus,
-            backupActionMessage = if (state == HardeningState.BACKUP_FAILURE) "Backup failed: storage is unavailable. Existing snapshots were kept." else null,
-            onAutomaticBackupChange = {}, onBackUpNow = {}, onRestoreLatest = {}, onOpenBackupSettings = {},
             reviewSection = when (state) {
                 HardeningState.TTS_UNAVAILABLE -> "WORKOUT FEEDBACK"
-                HardeningState.BACKUP_FAILURE -> "CONNECTIONS & DATA"
                 else -> null
             },
         )

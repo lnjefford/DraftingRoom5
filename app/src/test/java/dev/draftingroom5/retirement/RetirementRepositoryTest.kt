@@ -99,6 +99,20 @@ class RetirementRepositoryTest {
         assertNotNull(state.accounts.first { it.id == imported.id }.archivedAt)
     }
 
+    @Test fun restoreReplacesFinanceStateAdvancesGenerationAndPublishesChange() {
+        val dao = FakeRetirementDao()
+        var notifications = 0
+        val repository = RetirementRepository(dao) { notifications++ }
+        val snapshot = retirementFixture().copy(generation = 42)
+
+        val restored = success(repository.restore(snapshot))
+
+        assertEquals(1L, restored.generation)
+        assertEquals(snapshot.copy(generation = 1), restored)
+        assertEquals(restored, repository.load())
+        assertEquals(1, notifications)
+    }
+
     private fun success(result: RetirementResult<RetirementState>) = (result as RetirementResult.Success).value
 }
 

@@ -7,17 +7,19 @@ import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 
 class RetirementBackupBoundaryTest {
-    @Test fun ordinaryBackupAndDeviceTransferRemainFitnessOnly() {
+    @Test fun ordinaryBackupAndDeviceTransferUseSanitizedGlobalSnapshots() {
         listOf("backup_rules.xml", "data_extraction_rules.xml").forEach { name ->
             val file = projectFile("app/src/main/res/xml/$name")
             val nodes = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).getElementsByTagName("include")
             val includes = List(nodes.length) { nodes.item(it) as Element }.map { it.getAttribute("domain") to it.getAttribute("path") }.toSet()
             assertEquals(setOf("file" to "current-backups/latest.json", "file" to "current-backups/previous.json", "sharedpref" to "current-backup-status.xml"), includes)
-            assertFalse(file.readText().contains("retirement", ignoreCase = true))
         }
         val databaseSource = projectFile("app/src/main/java/dev/draftingroom5/retirement/data/RetirementDatabase.kt").readText()
         assertTrue(databaseSource.contains("context.noBackupFilesDir"))
         assertFalse(projectFile("app/src/main/java/dev/draftingroom5/AppDocumentCodec.kt").readText().contains("retirement", ignoreCase = true))
+        val backupSource = projectFile("app/src/main/java/dev/draftingroom5/BackupSupport.kt").readText()
+        assertTrue(backupSource.contains("RetirementCodec.encode"))
+        assertTrue(backupSource.contains("RetirementCodec.decode"))
     }
 
     @Test fun persistedCodecCannotCarrySecretsOrRawShareworksContent() {

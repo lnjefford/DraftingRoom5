@@ -26,6 +26,8 @@ interface RetirementDao {
     fun valuationCount(): Int
     fun epicImportCount(): Int
     fun commit(expectedGeneration: Long, state: RetirementState, balances: List<BalanceLedgerEntity>, valuations: List<ValuationLedgerEntity>, imports: List<EpicImportLedgerEntity>): Boolean
+    fun restore(expectedGeneration: Long, state: RetirementState, balances: List<BalanceLedgerEntity>, valuations: List<ValuationLedgerEntity>, imports: List<EpicImportLedgerEntity>): Boolean =
+        compareAndSet(expectedGeneration, state.generation, RetirementCodec.encode(state)) == 1
 }
 
 class RetirementDatabase private constructor(private val helper: Helper) : Closeable {
@@ -91,7 +93,30 @@ class RetirementDatabase private constructor(private val helper: Helper) : Close
                 committed
             } finally { db.endTransaction() }
         }
+        override fun restore(expectedGeneration: Long, state: RetirementState, balances: List<BalanceLedgerEntity>, valuations: List<ValuationLedgerEntity>, imports: List<EpicImportLedgerEntity>): Boolean {
+            val db = helper.writableDatabase
+            db.beginTransaction()
+            return try {
+                balances.forEach { value -> insertOrIgnore("balance_snapshots", ContentValues().apply {
+                    put("id", value.id); put("accountId", value.accountId); put("asOfDate", value.asOfDate); put("acceptedAt", value.acceptedAt); put("sequence", value.sequence)
+                    put("amountCents", value.amountCents); value.basisCents?.let { put("basisCents", it) }; put("source", value.source); put("batchId", value.batchId); value.supersedesId?.let { put("supersedesId", it) }
+                }) }
+                valuations.forEach { value -> insertOrIgnore("property_valuations", ContentValues().apply {
+                    put("id", value.id); put("propertyId", value.propertyId); put("estimateCents", value.estimateCents); value.rangeLowCents?.let { put("rangeLowCents", it) }; value.rangeHighCents?.let { put("rangeHighCents", it) }
+                    put("source", value.source); put("acceptedAt", value.acceptedAt); put("sequence", value.sequence); put("batchId", value.batchId); value.supersedesId?.let { put("supersedesId", it) }
+                }) }
+                imports.forEach { value -> insertOrIgnore("epic_imports", ContentValues().apply {
+                    put("id", value.id); put("formatId", value.formatId); put("parserVersion", value.parserVersion); put("acceptedAt", value.acceptedAt); put("contentDigest", value.contentDigest); value.replacesImportId?.let { put("replacesImportId", it) }
+                }) }
+                val restored = compareAndSet(expectedGeneration, state.generation, RetirementCodec.encode(state)) == 1
+                if (restored) db.setTransactionSuccessful()
+                restored
+            } finally { db.endTransaction() }
+        }
         private fun insert(table: String, values: ContentValues) { check(helper.writableDatabase.insertOrThrow(table, null, values) != -1L) }
+        private fun insertOrIgnore(table: String, values: ContentValues) {
+            check(helper.writableDatabase.insertWithOnConflict(table, null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L)
+        }
         private fun count(table: String) = helper.readableDatabase.rawQuery("SELECT COUNT(*) FROM $table", null).use { it.moveToFirst(); it.getInt(0) }
     }
 }
