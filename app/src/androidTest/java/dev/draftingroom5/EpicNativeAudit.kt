@@ -72,7 +72,7 @@ internal class EpicNativeAudit(private val instrumentation: Instrumentation) {
             }
             check(chooseComposed.await(20, java.util.concurrent.TimeUnit.SECONDS))
             stage = "accessible-choose"
-            click("Choose .xlsm workbook")
+            click("Choose Epic workbook")
             check(chosen && !confirmed)
             stage = "accessible-cancel"
             click("Cancel"); check(cancelled && !confirmed)

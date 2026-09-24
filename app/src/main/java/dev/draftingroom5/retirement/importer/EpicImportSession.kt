@@ -28,7 +28,7 @@ class EpicImportSession(private val repository: RetirementRepository) {
 fun workbookMessage(failure: WorkbookFailure): String = when (failure) {
     WorkbookFailure.RECALCULATE -> "Recalculate and save the workbook in Excel, then choose it again. The previous import is unchanged."
     WorkbookFailure.TOO_LARGE -> "This workbook exceeds the safe import limits. The previous import is unchanged."
-    WorkbookFailure.UNSUPPORTED -> "Choose a Shareworks 2026 .xlsm workbook. The previous import is unchanged."
+    WorkbookFailure.UNSUPPORTED -> "Choose a Shareworks 2026 .xlsx or .xlsm workbook. The previous import is unchanged."
     WorkbookFailure.CANCELLED -> "Import cancelled. The previous import is unchanged."
     WorkbookFailure.CONFLICT -> "Retirement data changed during review. Choose the workbook again before replacing data."
     WorkbookFailure.SAVE_FAILED -> "The import could not be saved. The previous import is unchanged. Try again."

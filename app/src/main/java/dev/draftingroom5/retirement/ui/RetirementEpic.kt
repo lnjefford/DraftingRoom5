@@ -29,7 +29,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** Document providers report .xlsm files inconsistently; content validation remains strict after selection. */
+/** Document providers report .xlsx and .xlsm files inconsistently; content validation remains strict after selection. */
 internal fun epicWorkbookPickerMimeTypes() = arrayOf(
     "application/vnd.ms-excel.sheet.macroenabled.12",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -168,7 +168,7 @@ private fun EpicSection(title: String, content: @Composable ColumnScope.() -> Un
 internal fun EpicUploadPage(book: EpicWorkbook?, replacing: Boolean, busy: Boolean, failure: WorkbookFailure?, onChoose: () -> Unit, onConfirm: () -> Unit, onCancel: () -> Unit) {
     EpicPage(
         if (book == null) "Import your workbook" else "Review imported values",
-        if (book == null) "Choose your recalculated Shareworks .xlsm file. We'll extract the saved Epic values."
+        if (book == null) "Choose your Shareworks .xlsx or .xlsm file. We'll extract the saved Epic values."
         else "Make sure these headline values look right, then save them to your plan.",
     ) {
         Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {

@@ -43,11 +43,14 @@ class ShareworksImporter {
     private fun decode(parts: Map<String, ByteArray>, digest: String, cancelled: () -> Boolean): ValidatedEpicCandidate {
         fun xml(path: String, start: (String, Attributes) -> Unit = { _, _ -> }, text: (String, String) -> Unit = { _, _ -> }) =
             xml(parts[path] ?: reject(), cancelled, start, text)
-        var macroType = false
+        var supportedWorkbookType = false
         xml("[Content_Types].xml", { tag, a -> if (tag == "Override" && a.getValue("PartName") == "/xl/workbook.xml") {
-            macroType = a.getValue("ContentType") == "application/vnd.ms-excel.sheet.macroEnabled.main+xml"
+            supportedWorkbookType = a.getValue("ContentType") in setOf(
+                "application/vnd.ms-excel.sheet.macroEnabled.main+xml",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+            )
         } })
-        if (!macroType) throw WorkbookRejected(WorkbookFailure.UNSUPPORTED)
+        if (!supportedWorkbookType) throw WorkbookRejected(WorkbookFailure.UNSUPPORTED)
         val relationships = linkedMapOf<String, String>()
         xml("xl/_rels/workbook.xml.rels", { tag, a -> if (tag == "Relationship") {
             val type = a.getValue("Type") ?: reject()

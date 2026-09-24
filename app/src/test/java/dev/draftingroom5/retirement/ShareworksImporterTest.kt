@@ -33,6 +33,13 @@ class ShareworksImporterTest {
     @Test fun cachedAndLiteralArchivesMatchEverySavedFieldAndParityGolden() {
         val cached = parse(); val values = parse(goldenWorkbook("values.xlsm"))
         assertEquals(values.workbook, cached.workbook)
+        val xlsx = parse(rewriteWorkbook { entries ->
+            entries["[Content_Types].xml"] = entries.getValue("[Content_Types].xml").replace(
+                "application/vnd.ms-excel.sheet.macroEnabled.main+xml",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+            )
+        })
+        assertEquals(cached.workbook, xlsx.workbook)
         val b = cached.workbook
         assertEquals(Money(1000), b.sharePrice)
         assertEquals(EpicTotals("100", "60", Money(60000), "40", Money(40000), Money(5000), Money(55000), Money(60000), Money(100000)), b.totals)
@@ -86,7 +93,7 @@ class ShareworksImporterTest {
         rejected(rewriteWorkbook { it["xl/worksheets/bomb.xml"] = "x".repeat(1_000_000) }, WorkbookFailure.TOO_LARGE)
         rejected(rewriteWorkbook { it["xl/workbook.xml"] = "<!DOCTYPE workbook [<!ENTITY xxe SYSTEM 'file:///private'>]>" + it.getValue("xl/workbook.xml") })
         rejected(rewriteWorkbook { it["xl/_rels/workbook.xml.rels"] = it.getValue("xl/_rels/workbook.xml.rels").replace("Target=", "TargetMode=\"External\" Target=") })
-        rejected(rewriteWorkbook { it["[Content_Types].xml"] = it.getValue("[Content_Types].xml").replace("application/vnd.ms-excel.sheet.macroEnabled.main+xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml") }, WorkbookFailure.UNSUPPORTED)
+        rejected(rewriteWorkbook { it["[Content_Types].xml"] = it.getValue("[Content_Types].xml").replace("application/vnd.ms-excel.sheet.macroEnabled.main+xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml") }, WorkbookFailure.UNSUPPORTED)
         val encrypted = goldenWorkbook().clone()
         for (i in 0..encrypted.size-10) if (encrypted[i] == 0x50.toByte() && encrypted[i+1] == 0x4b.toByte() && encrypted[i+2] == 1.toByte() && encrypted[i+3] == 2.toByte()) encrypted[i+8] = 1
         rejected(encrypted)

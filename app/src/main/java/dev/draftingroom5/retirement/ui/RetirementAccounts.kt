@@ -394,7 +394,7 @@ private fun AddAssetPage(onConnect: () -> Unit, onManual: () -> Unit, onProperty
             Icons.Default.Savings,
         )
         RetirementFlowActionCard("Fastest", "Connect an institution", "Bring in balances and holdings securely through Plaid.", Icons.Default.AccountBalance, featured = true, onClick = onConnect)
-        RetirementFlowActionCard("Shareworks", "Import Epic workbook", "Choose your .xlsm file and review its saved values.", Icons.Default.Savings, onClick = onEpic)
+        RetirementFlowActionCard("Shareworks", "Import Epic workbook", "Choose your .xlsx or .xlsm file and review its saved values.", Icons.Default.Savings, onClick = onEpic)
         RetirementFlowActionCard("Home", "Find or enter a property", "Use a RentCast estimate or keep the value fully manual.", Icons.Default.HomeWork, onClick = onProperty)
         RetirementFlowActionCard("Offline", "Add an account manually", "Enter a balance now and add dated updates later.", Icons.Default.Edit, onClick = onManual)
         Spacer(Modifier.height(16.dp))
