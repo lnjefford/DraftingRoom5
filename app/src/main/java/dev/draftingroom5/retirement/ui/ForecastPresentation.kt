@@ -101,7 +101,7 @@ internal fun editableIncomePlan(plan: PlanSettings): PlanSettings {
 }
 
 internal data class ForecastSettingsDraft(
-    val birthDate: String, val referenceDate: String, val retirementAge: String, val endAge: String,
+    val birthDate: String, val retirementAge: String, val endAge: String,
     val annualSpending: String, val inflationPercent: String, val expectedReturnPercent: String,
     val volatilityPercent: String, val filingStatus: FilingStatus, val stateCode: String,
     val acaHouseholdSize: String, val acaAnnualPremium: String, val acaRegime: String,
@@ -110,16 +110,16 @@ internal data class ForecastSettingsDraft(
     val homeDisposition: HomeDisposition, val incomeAmounts: Map<String, String>,
     val incomeStartAges: Map<String, String>, val incomeEndAges: Map<String, String>,
 ) {
-    fun validated(base: PlanSettings): Result<PlanSettings> = runCatching {
+    fun validated(base: PlanSettings, today: LocalDate = LocalDate.now()): Result<PlanSettings> = runCatching {
         fun money(text: String) = Money.parse(text).also { require(it.cents >= 0) }
         fun integer(text: String) = text.trim().toInt()
         fun bps(text: String): Int = BigDecimal(text.trim()).movePointRight(2).setScale(0, RoundingMode.HALF_UP).intValueExact()
-        val birth = LocalDate.parse(birthDate.trim()); val reference = LocalDate.parse(referenceDate.trim())
+        val birth = LocalDate.parse(birthDate.trim())
         val retirement = integer(retirementAge); val end = integer(endAge)
-        require(reference >= birth && retirement in 0..120 && end in retirement..130)
+        require(today >= birth && retirement in 0..120 && end in retirement..130)
         require(stateCode.trim().uppercase() in ReferenceTaxPolicy.supportedStates)
         base.copy(
-            birthDate = birth, referenceDate = reference, retirementAge = retirement, endAge = end,
+            birthDate = birth, referenceDate = today, retirementAge = retirement, endAge = end,
             annualSpending = money(annualSpending), inflationBps = bps(inflationPercent),
             expectedReturnBps = bps(expectedReturnPercent), volatilityScaleBps = bps(volatilityPercent),
             filingStatus = filingStatus, stateCode = stateCode.trim().uppercase(),
@@ -138,7 +138,7 @@ internal data class ForecastSettingsDraft(
 
     companion object {
         fun from(plan: PlanSettings) = ForecastSettingsDraft(
-            plan.birthDate.toString(), plan.referenceDate.toString(), plan.retirementAge.toString(), plan.endAge.toString(),
+            plan.birthDate.toString(), plan.retirementAge.toString(), plan.endAge.toString(),
             plan.annualSpending.format(), formatBps(plan.inflationBps).removeSuffix("%"),
             formatBps(plan.expectedReturnBps).removeSuffix("%"), formatBps(plan.volatilityScaleBps).removeSuffix("%"),
             plan.filingStatus, plan.stateCode, plan.acaHouseholdSize.toString(), plan.acaAnnualPremium.format(), plan.acaRegime,

@@ -18,6 +18,8 @@ internal fun forecastState(): RetirementState {
     return state.copy(epicImports=emptyList(),activeEpicImportId=null,importMetadata=emptyList(),
         accounts=state.accounts.filter { it.origin != AccountOrigin.EPIC },planSettings=listOf(plan))
 }
+private val FORECAST_TEST_TODAY: LocalDate = LocalDate.of(2026, 1, 1)
+private fun captureForecast(state: RetirementState, today: LocalDate = FORECAST_TEST_TODAY) = ForecastInputs.capture(state, today)
 internal fun forecastRepository(): RetirementRepository {
     val state=forecastState(); val dao=FakeRetirementDao()
     dao.initialize(RetirementStateEntity(generation=state.generation,document=RetirementCodec.encode(state)))
@@ -29,7 +31,7 @@ class ForecastCoordinatorTest {
         val original=forecastState()
         fun age(birth:String,reference:String):Int {
             val plan=original.planSettings.single().copy(birthDate=LocalDate.parse(birth),referenceDate=LocalDate.parse(reference))
-            return (ForecastInputs.capture(original.copy(planSettings=listOf(plan))) as ForecastCapture.Ready).input.currentAge
+            return (captureForecast(original.copy(planSettings=listOf(plan)), LocalDate.parse(reference)) as ForecastCapture.Ready).input.currentAge
         }
         assertEquals(45,age("1980-01-02","2026-01-01"))
         assertEquals(46,age("1980-01-02","2026-01-02"))
@@ -38,21 +40,23 @@ class ForecastCoordinatorTest {
     }
     @Test fun capturedSnapshotUsesConfirmedTaxTreatmentAndStrictRequiredInputs() {
         val state=forecastState()
-        val ready=ForecastInputs.capture(state) as ForecastCapture.Ready
+        val stalePlan = state.planSettings.single().copy(referenceDate = LocalDate.of(2000, 1, 1))
+        val ready=captureForecast(state.copy(planSettings = listOf(stalePlan))) as ForecastCapture.Ready
+        assertEquals(FORECAST_TEST_TODAY, ready.input.referenceDate)
         assertEquals(45,ready.input.currentAge) // Birthday is tomorrow: no approximate year subtraction.
         assertEquals(IncomeKind.SOCIAL_SECURITY,ready.input.incomes.single().kind)
         val account=state.accounts.first().let { a -> a.copy(revisions=a.revisions.map { it.copy(taxTreatment=TaxTreatment.TAXABLE) }) }
-        val reclassified=ForecastInputs.capture(state.copy(accounts=listOf(account),properties=emptyList())) as ForecastCapture.Ready
+        val reclassified=captureForecast(state.copy(accounts=listOf(account),properties=emptyList())) as ForecastCapture.Ready
         assertEquals(Bucket.TAXABLE,reclassified.input.accounts.single().bucket)
-        assertEquals(ForecastCapture.NeedsData(MissingForecastData.PLAN),ForecastInputs.capture(state.copy(planSettings=emptyList())))
-        assertEquals(ForecastCapture.NeedsData(MissingForecastData.UNSUPPORTED_POLICY),ForecastInputs.capture(state.copy(planSettings=listOf(state.planSettings.single().copy(taxPolicyId="current-law")))))
-        assertEquals(ForecastCapture.NeedsData(MissingForecastData.BALANCE),ForecastInputs.capture(state.copy(accounts=listOf(account.copy(balances=emptyList())),properties=emptyList())))
+        assertEquals(ForecastCapture.NeedsData(MissingForecastData.PLAN),captureForecast(state.copy(planSettings=emptyList())))
+        assertEquals(ForecastCapture.NeedsData(MissingForecastData.UNSUPPORTED_POLICY),captureForecast(state.copy(planSettings=listOf(state.planSettings.single().copy(taxPolicyId="current-law")))))
+        assertEquals(ForecastCapture.NeedsData(MissingForecastData.BALANCE),captureForecast(state.copy(accounts=listOf(account.copy(balances=emptyList())),properties=emptyList())))
         val negative=account.copy(balances=account.balances.map { it.copy(amount=Money(-1)) })
-        assertEquals(ForecastCapture.NeedsData(MissingForecastData.INVALID_INPUT),ForecastInputs.capture(state.copy(accounts=listOf(negative),properties=emptyList())))
+        assertEquals(ForecastCapture.NeedsData(MissingForecastData.INVALID_INPUT),captureForecast(state.copy(accounts=listOf(negative),properties=emptyList())))
         val inconsistent=account.copy(revisions=account.revisions.map { it.copy(taxTreatment=TaxTreatment.TAX_FREE) })
-        assertEquals(ForecastCapture.NeedsData(MissingForecastData.INVALID_INPUT),ForecastInputs.capture(state.copy(accounts=listOf(inconsistent),properties=emptyList())))
+        assertEquals(ForecastCapture.NeedsData(MissingForecastData.INVALID_INPUT),captureForecast(state.copy(accounts=listOf(inconsistent),properties=emptyList())))
         val bookState=retirementFixture()
-        assertEquals(ForecastCapture.NeedsData(MissingForecastData.EPIC_PROJECTION),ForecastInputs.capture(bookState))
+        assertEquals(ForecastCapture.NeedsData(MissingForecastData.EPIC_PROJECTION),captureForecast(bookState))
     }
     @Test fun epicAnnualCoverageAllowsADifferentWorkbookProjectionDay() {
         val state = forecastState()
@@ -62,10 +66,11 @@ class ForecastCoordinatorTest {
         val book = imported.workbook.copy(projection = imported.workbook.projection.copy(date = LocalDate.of(2040, 1, 1)), years = years)
         val accepted = imported.copy(workbook = book)
         val withBook = state.copy(planSettings = listOf(plan), epicImports = listOf(accepted), activeEpicImportId = accepted.id)
-        assertTrue(ForecastInputs.capture(withBook) is ForecastCapture.Ready)
+        val today = LocalDate.of(2026, 1, 3)
+        assertTrue(captureForecast(withBook, today) is ForecastCapture.Ready)
         val missingYear = accepted.copy(workbook = book.copy(years = years.filterNot { it.year == 2035 }))
         assertEquals(ForecastCapture.NeedsData(MissingForecastData.EPIC_PROJECTION),
-            ForecastInputs.capture(withBook.copy(epicImports = listOf(missingYear))))
+            captureForecast(withBook.copy(epicImports = listOf(missingYear)), today))
     }
     @Test fun cleanSchemaRoundTripsEveryIncomeKindAndForecastSettingWithoutBooleanInference() {
         val state=forecastState()

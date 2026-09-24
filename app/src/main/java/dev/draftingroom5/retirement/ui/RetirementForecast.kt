@@ -150,7 +150,7 @@ private fun newPlanTemplate(): PlanSettings {
 
 private fun forecastPathCount(plan: PlanSettings?): Int {
     if (plan == null) return 10_000
-    val age = java.time.Period.between(plan.birthDate, plan.referenceDate).years
+    val age = java.time.Period.between(plan.birthDate, java.time.LocalDate.now()).years
     return if (plan.endAge - age > 60) 5_000 else 10_000
 }
 
@@ -561,10 +561,10 @@ internal fun ScenarioComparisonPreview(base: ForecastResult, compared: ForecastR
 internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan: Boolean = false, onSave: (PlanSettings) -> Unit) {
     val incomePlan = remember(plan) { editableIncomePlan(plan) }
     val saver = listSaver<ForecastSettingsDraft, String>(
-        save = { d -> listOf(d.birthDate,d.referenceDate,d.retirementAge,d.endAge,d.annualSpending,d.inflationPercent,d.expectedReturnPercent,d.volatilityPercent,d.filingStatus.name,d.stateCode,d.acaHouseholdSize,d.acaAnnualPremium,d.acaRegime,d.preTaxContribution,d.rothContribution,d.taxableContribution,d.hsaContribution,d.medicalSpending,d.homeAppreciationPercent,d.homeDisposition.name) + d.incomeAmounts.keys.sorted().flatMap { listOf(it, d.incomeAmounts.getValue(it), d.incomeStartAges.getValue(it), d.incomeEndAges.getValue(it)) } },
+        save = { d -> listOf(d.birthDate,d.retirementAge,d.endAge,d.annualSpending,d.inflationPercent,d.expectedReturnPercent,d.volatilityPercent,d.filingStatus.name,d.stateCode,d.acaHouseholdSize,d.acaAnnualPremium,d.acaRegime,d.preTaxContribution,d.rothContribution,d.taxableContribution,d.hsaContribution,d.medicalSpending,d.homeAppreciationPercent,d.homeDisposition.name) + d.incomeAmounts.keys.sorted().flatMap { listOf(it, d.incomeAmounts.getValue(it), d.incomeStartAges.getValue(it), d.incomeEndAges.getValue(it)) } },
         restore = { v ->
-            val rows = v.drop(20).chunked(4)
-            ForecastSettingsDraft(v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],FilingStatus.valueOf(v[8]),v[9],v[10],v[11],v[12],v[13],v[14],v[15],v[16],v[17],v[18],HomeDisposition.valueOf(v[19]),
+            val rows = v.drop(19).chunked(4)
+            ForecastSettingsDraft(v[0],v[1],v[2],v[3],v[4],v[5],v[6],FilingStatus.valueOf(v[7]),v[8],v[9],v[10],v[11],v[12],v[13],v[14],v[15],v[16],v[17],HomeDisposition.valueOf(v[18]),
                 rows.associate { it[0] to it[1] }, rows.associate { it[0] to it[2] }, rows.associate { it[0] to it[3] })
         },
     )
@@ -578,7 +578,6 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
         Text("Set the assumptions that shape your projection. Saving recalculates the plan once.", color = RetirementTextSecondary)
         SettingsSection("Timing") {
             DateSetting("Birth date", draft.birthDate, plan.birthDate) { draft = draft.copy(birthDate = it) }
-            DateSetting("Plan as of", draft.referenceDate, plan.referenceDate) { draft = draft.copy(referenceDate = it) }
             IntegerStepper("Retirement age", draft.retirementAge, 18, 120, 1, plan.retirementAge) { draft = draft.copy(retirementAge = it) }
             IntegerStepper("Plan through age", draft.endAge, 18, 130, 1, plan.endAge) { draft = draft.copy(endAge = it) }
         }

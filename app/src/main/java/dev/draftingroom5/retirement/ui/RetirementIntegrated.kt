@@ -429,7 +429,7 @@ private fun HorizonPanel(targetAge: String, onOpen: () -> Unit, modifier: Modifi
 }
 
 private fun overviewForecastPathCount(plan: dev.draftingroom5.retirement.domain.PlanSettings): Int {
-    val currentAge = Period.between(plan.birthDate, plan.referenceDate).years
+    val currentAge = Period.between(plan.birthDate, LocalDate.now()).years
     return if (plan.endAge - currentAge > 60) 5_000 else 10_000
 }
 

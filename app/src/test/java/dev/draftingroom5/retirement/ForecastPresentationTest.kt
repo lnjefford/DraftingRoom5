@@ -6,6 +6,7 @@ import dev.draftingroom5.retirement.ui.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
+import java.time.LocalDate
 
 class ForecastPresentationTest {
     @Test fun alreadyRetiredPlanUsesCurrentBoundaryWithoutCrashing() {
@@ -18,15 +19,17 @@ class ForecastPresentationTest {
         val ss = editable.incomeStreams.single { it.taxKind == IncomeTaxKind.SOCIAL_SECURITY }
         val pension = editable.incomeStreams.single { it.taxKind == IncomeTaxKind.ORDINARY }
         val draft = ForecastSettingsDraft.from(editable).copy(incomeAmounts = mapOf(ss.id to "32000", pension.id to "18000"))
-        val changed = draft.validated(editable).getOrThrow()
+        val today = LocalDate.of(2026, 1, 1)
+        val changed = draft.validated(editable, today).getOrThrow()
+        assertEquals(today, changed.referenceDate)
         assertEquals(Money(3200000), changed.incomeStreams.single { it.id == ss.id }.annualAmount)
         assertEquals(Money(1800000), changed.incomeStreams.single { it.id == pension.id }.annualAmount)
         assertEquals(changed, editableIncomePlan(changed))
-        val captured = ForecastInputs.capture(forecastState().copy(planSettings = listOf(changed))) as ForecastCapture.Ready
+        val captured = ForecastInputs.capture(forecastState().copy(planSettings = listOf(changed)), today) as ForecastCapture.Ready
         assertEquals(2, captured.input.incomes.size)
     }
     private fun result() = runBlocking {
-        val input = (ForecastInputs.capture(forecastState()) as ForecastCapture.Ready).input
+        val input = (ForecastInputs.capture(forecastState(), LocalDate.of(2026, 1, 1)) as ForecastCapture.Ready).input
         RetirementEngine().calculate(input, 40, 75, true)
     }
 
@@ -75,7 +78,8 @@ class ForecastPresentationTest {
             incomeAmounts = mapOf("ss" to "\$32,000.00"),
             incomeStartAges = mapOf("ss" to "68"), incomeEndAges = mapOf("ss" to "95"),
         )
-        val changed = draft.validated(plan).getOrThrow()
+        val today = LocalDate.of(2026, 1, 1)
+        val changed = draft.validated(plan, today).getOrThrow()
         assertEquals(Money(5_100_000), changed.annualSpending)
         assertEquals(525, changed.expectedReturnBps)
         assertEquals(62, changed.retirementAge)
@@ -84,8 +88,9 @@ class ForecastPresentationTest {
         assertEquals(95, changed.incomeStreams.single().endAge)
         assertEquals(plan.id, changed.id)
         assertEquals(plan.revision, changed.revision)
-        assertTrue(draft.copy(endAge = "20").validated(plan).isFailure)
-        assertTrue(draft.copy(stateCode = "Wisconsin").validated(plan).isFailure)
+        assertEquals(today, changed.referenceDate)
+        assertTrue(draft.copy(endAge = "20").validated(plan, today).isFailure)
+        assertTrue(draft.copy(stateCode = "Wisconsin").validated(plan, today).isFailure)
     }
 
     @Test fun eachScenarioIsOneDisplayedDeltaFromTheBasePlan() {

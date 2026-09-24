@@ -97,7 +97,7 @@ enum class MissingForecastData { PLAN, UNSUPPORTED_POLICY, BALANCE, INVALID_INPU
 
 object ForecastInputs {
     /** Repository.load reads the entire committed document in one snapshot; never load individual entities. */
-    fun capture(state: RetirementState): ForecastCapture {
+    fun capture(state: RetirementState, today: LocalDate = LocalDate.now()): ForecastCapture {
         val plan = state.planSettings.maxByOrNull { it.revision } ?: return ForecastCapture.NeedsData(MissingForecastData.PLAN)
         if (plan.taxPolicyId != ReferenceTaxPolicy.ID || plan.stateCode !in ReferenceTaxPolicy.supportedStates ||
             plan.acaRegime !in setOf("CLIFF", "EXTENDED")) return ForecastCapture.NeedsData(MissingForecastData.UNSUPPORTED_POLICY)
@@ -128,14 +128,14 @@ object ForecastInputs {
                 ForecastProperty(value.estimate, mortgage.outstanding, mortgage.annualRateBps, mortgage.payment,
                     mortgage.remainingMonths, revision.ownershipBps, plan.homeRealAppreciationBps, value.rangeLow, value.rangeHigh)
             }
-            val age = Period.between(plan.birthDate, plan.referenceDate).years
+            val age = Period.between(plan.birthDate, today).years
             val book = state.epicImports.singleOrNull { it.id == state.activeEpicImportId }?.workbook
             val epic = book?.years.orEmpty().map { ForecastEpicYear(it.year, it.netPretax, it.afterTax) }
             if (book != null && (epic.isEmpty() || plan.retirementAge < age ||
-                (0..minOf(plan.endAge - age, plan.retirementAge - age)).any { offset -> epic.none { it.year == plan.referenceDate.year + offset } }))
+                (0..minOf(plan.endAge - age, plan.retirementAge - age)).any { offset -> epic.none { it.year == today.year + offset } }))
                 return ForecastCapture.NeedsData(MissingForecastData.EPIC_PROJECTION)
             if (book != null && book.historicalVolatilityPct == null) notes += "Epic historical uncertainty is unavailable; workbook schedule is deterministic."
-            ForecastCapture.Ready(ForecastInput(state.generation, plan.revision, plan.referenceDate, age,
+            ForecastCapture.Ready(ForecastInput(state.generation, plan.revision, today, age,
                 plan.retirementAge, plan.endAge, plan.annualSpending, accounts,
                 ForecastContributions(plan.annualPreTaxContribution, plan.annualRothContribution, plan.annualTaxableContribution, plan.annualHsaContribution),
                 plan.incomeStreams.map { ForecastIncome(it.annualAmount, it.startAge, it.endAge, when (it.taxKind) {
