@@ -55,11 +55,11 @@ fun ForecastScreenshots(@PreviewParameter(ForecastCases::class) case: Int) {
     val plan = screenshotPlan(); val result = screenshotResult()
     RetirementTheme { Surface {
         when (case) {
-            0 -> ForecastStatePage(ForecastState.Ready(result), plan, {}, {}, {})
-            1 -> ForecastStatePage(ForecastState.Calculating(8, result), plan, {}, {}, {})
-            2 -> ForecastStatePage(ForecastState.NeedsData(MissingForecastData.BALANCE, null), plan, {}, {}, {})
-            3 -> ForecastStatePage(ForecastState.Failed(result), plan, {}, {}, {})
-            4 -> ForecastStatePage(ForecastState.Cancelled(result), plan, {}, {}, {})
+            0 -> ForecastStatePage(ForecastState.Ready(result), plan, {}, {})
+            1 -> ForecastStatePage(ForecastState.Calculating(8, result), plan, {}, {}, animateCalculation = false)
+            2 -> ForecastStatePage(ForecastState.NeedsData(MissingForecastData.BALANCE, null), plan, {}, {})
+            3 -> ForecastStatePage(ForecastState.Failed(result), plan, {}, {})
+            4 -> ForecastStatePage(ForecastState.Cancelled(result), plan, {}, {})
             5 -> ForecastRiskPage(result, plan) {}
             6 -> ForecastSettingsPage(plan, null) {}
             else -> ScenarioComparisonPreview(result, screenshotResult(14), scenarioSpecs(plan).first())

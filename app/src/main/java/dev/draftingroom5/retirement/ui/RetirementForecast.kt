@@ -104,7 +104,7 @@ private fun LiveForecastRouter(route: AppRoute, repository: RetirementRepository
     val resultPlan = displayedResult?.let { result -> state.planSettings.singleOrNull { it.revision == result.planRevision } }
     when (route) {
         AppRoute.RetirementForecast -> ForecastStatePage(forecastState, resultPlan,
-            onRetry = { coordinator.restart(paths = forecastPathCount(plan)) }, onCancel = coordinator::cancel,
+            onRetry = { coordinator.restart(paths = forecastPathCount(plan)) },
             onRisk = { result -> onNavigate(AppRoute.RetirementForecastRisk(result.generation, result.planRevision)) })
         AppRoute.RetirementForecastSettings -> {
             val formPlan = plan ?: newPlanTemplate()
@@ -165,26 +165,32 @@ private fun ResultForRoute(generation: Long, revision: Long, state: ForecastStat
 }
 
 @Composable
-internal fun ForecastStatePage(state: ForecastState, plan: PlanSettings?, onRetry: () -> Unit, onCancel: () -> Unit, onRisk: (ForecastResult) -> Unit) {
+internal fun ForecastStatePage(
+    state: ForecastState,
+    plan: PlanSettings?,
+    onRetry: () -> Unit,
+    onRisk: (ForecastResult) -> Unit,
+    animateCalculation: Boolean = true,
+) {
+    if (state is ForecastState.Calculating || state is ForecastState.Idle) {
+        ForecastCalculationScreen(animateCalculation)
+        return
+    }
     val previous = when (state) {
-        is ForecastState.Calculating -> state.previous
         is ForecastState.NeedsData -> state.previous
         is ForecastState.Failed -> state.previous
         is ForecastState.Cancelled -> state.previous
         else -> null
     }
     val banner = when (state) {
-        is ForecastState.Calculating -> "Calculating a new forecast. The result below is stale until this finishes."
         is ForecastState.NeedsData -> missingDataMessage(state.reason) + if (previous != null) " The previous result below is stale." else ""
         is ForecastState.Failed -> "The forecast could not be calculated. Saved inputs were not changed." + if (previous != null) " The previous result below is stale." else ""
         is ForecastState.Cancelled -> "Calculation stopped safely. No partial result was published." + if (previous != null) " The previous result below is stale." else ""
-        ForecastState.Idle -> "Preparing the forecast."
         is ForecastState.Ready -> null
+        else -> null
     }
     ForecastPage(hero = true) {
-        if (banner != null) StatusCard(banner,
-            primary = if (state is ForecastState.Calculating) ({ onCancel() }) else ({ onRetry() }),
-            primaryLabel = if (state is ForecastState.Calculating) "Stop calculation" else "Recalculate")
+        if (banner != null) StatusCard(banner, primary = { onRetry() }, primaryLabel = "Recalculate")
         val result = (state as? ForecastState.Ready)?.result ?: previous
         if (result != null && plan != null) ForecastResultContent(result, plan, state !is ForecastState.Ready) { onRisk(result) }
         else if (state is ForecastState.NeedsData) EmptyForecastCard(missingDataMessage(state.reason))
@@ -698,7 +704,7 @@ private fun ForecastPreviewRouter(route: AppRoute, state: RetirementState, onNav
                 is ForecastCapture.NeedsData -> ForecastState.NeedsData(capture.reason, null)
             }
         }
-        ForecastStatePage(preview, plan, {}, {}, {})
+        ForecastStatePage(preview, plan, {}, {})
     } else {
         ForecastMessagePage("Projection unavailable", "Add plan timing and balances to calculate projections.")
     }

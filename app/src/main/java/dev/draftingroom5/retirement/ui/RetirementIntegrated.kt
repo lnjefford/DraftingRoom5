@@ -170,6 +170,10 @@ private fun OverviewPage(
     val health = retirementDataHealth(state, if (preview) Instant.parse("2026-09-21T12:00:00Z") else Instant.now())
     val plan = state.planSettings.maxByOrNull { it.revision }
     val forecastState = overviewForecastState(state, repository, plan, preview)
+    if (plan != null && (forecastState is ForecastState.Calculating || forecastState is ForecastState.Idle)) {
+        ForecastCalculationScreen()
+        return
+    }
     FinancePage(hero = true) {
         Spacer(Modifier.width(52.dp).height(3.dp).background(RetirementGold))
         Text(
