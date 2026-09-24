@@ -88,7 +88,7 @@ internal class EpicNativeAudit(private val instrumentation: Instrumentation) {
             stage = "accessible-replace"
             click("Replace Epic data"); check(confirmed)
             check(!hasEditable(automation.rootInActiveWindow))
-            stage = "secure-window"
+            stage = "capture-enabled-window"
             val composed = java.util.concurrent.CountDownLatch(1)
             instrumentation.runOnMainSync {
                 activity!!.setContent {
@@ -99,9 +99,9 @@ internal class EpicNativeAudit(private val instrumentation: Instrumentation) {
             // Main-looper idleness alone does not await a Compose frame after setContent.
             check(composed.await(20, java.util.concurrent.TimeUnit.SECONDS))
             instrumentation.runOnMainSync {
-                check(activity!!.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0)
+                check(activity!!.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE == 0)
             }
-            report.appendLine("PASS: native Choose/Cancel/Replace accessibility actions; explicit confirmation; no editable Epic controls; Retirement window blocks screenshots and recents")
+            report.appendLine("PASS: native Choose/Cancel/Replace accessibility actions; explicit confirmation; no editable Epic controls; Retirement window allows screenshots")
             instrumentation.finish(Activity.RESULT_OK, Bundle().apply { putString("stream", report.toString()) })
         } catch (failure: Throwable) {
             val line = failure.stackTrace.firstOrNull { it.className.startsWith("dev.draftingroom5.EpicNativeAudit") }?.lineNumber

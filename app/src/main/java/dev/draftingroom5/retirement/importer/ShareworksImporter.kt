@@ -64,11 +64,6 @@ class ShareworksImporter {
         var date1904 = false
         xml("xl/workbook.xml", { tag, a -> when (tag) {
             "workbookPr" -> date1904 = a.getValue("date1904") in setOf("1", "true")
-            "calcPr" -> {
-                if (a.getValue("calcMode") in setOf("manual", "autoNoTable") ||
-                    listOf("fullCalcOnLoad", "forceFullCalc").any { a.getValue(it) in setOf("1", "true") } ||
-                    a.getValue("calcCompleted") in setOf("0", "false")) throw WorkbookRejected(WorkbookFailure.RECALCULATE)
-            }
             "sheet" -> {
                 val name = a.getValue("name") ?: reject()
                 require(name.length in 1..120 && sheets.size < 2000)
@@ -103,7 +98,7 @@ class ShareworksImporter {
             xml(sheets[name] ?: reject(), { tag, a -> when (tag) {
                 "c" -> { address = a.getValue("r") ?: reject(); require(address.matches(Regex("[A-Z]{1,3}[1-9][0-9]{0,6}")))
                     type = a.getValue("t") ?: "n"; formula = false; cache = null; inline = StringBuilder() }
-                "f" -> { formula = true; if (selected(address) && a.getValue("ca") in setOf("1", "true")) throw WorkbookRejected(WorkbookFailure.RECALCULATE) }
+                "f" -> formula = true
             } }, { tag, value -> when (tag) {
                 "v" -> { require(cache == null); cache = value }
                 "t" -> { inline.append(value); require(inline.length <= 4096) }
@@ -167,7 +162,7 @@ class ShareworksImporter {
 
     private data class Cell(val raw: String?, val type: String, val formula: Boolean) {
         fun number(): BigDecimal {
-            if (formula && (raw.isNullOrBlank() || type !in setOf("n", ""))) throw WorkbookRejected(WorkbookFailure.RECALCULATE)
+            if (formula && raw.isNullOrBlank()) throw WorkbookRejected(WorkbookFailure.RECALCULATE)
             require(type in setOf("n", "s", "inlineStr", "str"))
             val value = raw?.trim() ?: reject()
             require(value.length <= 80)

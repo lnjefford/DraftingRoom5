@@ -134,12 +134,6 @@ internal fun RetirementWorkspaceScreen(
     onOpenBackupSettings: () -> Unit = {},
 ) {
     require(route.workspace == AppWorkspace.RETIREMENT)
-    val activity = androidx.activity.compose.LocalActivity.current
-    androidx.compose.runtime.DisposableEffect(activity) {
-        val wasSecure = activity?.window?.attributes?.flags?.and(android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
-        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose { if (!wasSecure) activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE) }
-    }
     val detail = route !in retirementTopLevelRoutes
     if (detail) BackHandler(onBack = onBack)
     RetirementTheme {

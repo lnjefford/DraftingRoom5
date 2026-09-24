@@ -56,11 +56,20 @@ class ShareworksImporterTest {
             { it["xl/worksheets/sheet4.xml"] = it.getValue("xl/worksheets/sheet4.xml").replace("<v>0.2</v>", "<v/>") },
         ).forEach { rejected(rewriteWorkbook(change = it)) }
     }
-    @Test fun recalcIndicatorsAreRejectedWithoutEvaluatingAnyFormula() {
+    @Test fun recalcIndicatorsDoNotHideValidSavedResults() {
+        val expected = parse().workbook
         listOf("fullCalcOnLoad=\"0\"" to "fullCalcOnLoad=\"1\"", "forceFullCalc=\"0\"" to "forceFullCalc=\"true\"", "calcMode=\"auto\"" to "calcMode=\"manual\"", "calcCompleted=\"1\"" to "calcCompleted=\"0\"").forEach { (a,b) ->
-            rejected(rewriteWorkbook { it["xl/workbook.xml"] = it.getValue("xl/workbook.xml").replace(a,b) }, WorkbookFailure.RECALCULATE)
+            assertEquals(expected, parse(rewriteWorkbook { it["xl/workbook.xml"] = it.getValue("xl/workbook.xml").replace(a,b) }).workbook)
         }
-        rejected(rewriteWorkbook { it["xl/worksheets/sheet1.xml"] = it.getValue("xl/worksheets/sheet1.xml").replaceFirst("<f>", "<f ca=\"1\">") }, WorkbookFailure.RECALCULATE)
+        assertEquals(expected, parse(rewriteWorkbook {
+            it["xl/worksheets/sheet1.xml"] = it.getValue("xl/worksheets/sheet1.xml").replaceFirst("<f>", "<f ca=\"1\">")
+        }).workbook)
+        assertEquals(expected, parse(rewriteWorkbook {
+            it["xl/worksheets/sheet1.xml"] = it.getValue("xl/worksheets/sheet1.xml").replaceFirst("t=\"n\"><f>", "t=\"str\"><f>")
+        }).workbook)
+        rejected(rewriteWorkbook {
+            it["xl/worksheets/sheet1.xml"] = it.getValue("xl/worksheets/sheet1.xml").replaceFirst("<v>10</v>", "<v/>")
+        }, WorkbookFailure.RECALCULATE)
     }
     @Test fun optionalAbsentHistoryAndAnnualSheetsStayUnavailable() {
         val b = parse(rewriteWorkbook { entries ->

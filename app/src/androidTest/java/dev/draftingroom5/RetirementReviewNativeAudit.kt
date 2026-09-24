@@ -47,15 +47,12 @@ internal class RetirementReviewNativeAudit(private val instrumentation: Instrume
                 SystemClock.sleep(300)
                 check(automation.rootInActiveWindow?.packageName?.toString() == instrumentation.targetContext.packageName)
                 instrumentation.runOnMainSync {
-                    check(activity!!.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0)
-                    // Only the synthetic composition above is captureable; production secure behavior stays asserted.
-                    activity!!.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    check(activity!!.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE == 0)
                 }
                 SystemClock.sleep(250)
                 val image = checkNotNull(automation.takeScreenshot())
                 File(output, "$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG, 100, it) }
                 image.recycle()
-                instrumentation.runOnMainSync { activity!!.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) }
             }
             stage = "private-draft-bundle"
             val saved = Bundle()
@@ -78,13 +75,13 @@ internal class RetirementReviewNativeAudit(private val instrumentation: Instrume
                 store.restore(file.nameWithoutExtension, "preview-property-r1")?.any { it.contains("500 Fixture Way") } == true
             })
             instrumentation.finish(Activity.RESULT_OK, Bundle().apply {
-                putString("stream", "PASS: eight synthetic native Retirement surfaces rendered; secure-window assertion passed before every test-only capture on API ${android.os.Build.VERSION.SDK_INT}\n")
+                putString("stream", "PASS: eight synthetic native Retirement surfaces rendered; screenshot-enabled assertion passed before every capture on API ${android.os.Build.VERSION.SDK_INT}\n")
                 putString("drafts", "PASS: Android saved-state Bundle excludes property address and amounts; opaque draft restores from no-backup storage")
             })
         } catch (failure: Throwable) {
             instrumentation.finish(Activity.RESULT_CANCELED, Bundle().apply {
                 putString("stream", "FAIL: synthetic native review at $stage (${failure.javaClass.simpleName})\n")
             })
-        } finally { activity?.let { instrumentation.runOnMainSync { it.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE); it.finish() } } }
+        } finally { activity?.let { instrumentation.runOnMainSync { it.finish() } } }
     }
 }

@@ -4,7 +4,6 @@ import android.app.KeyguardManager
 import android.os.Bundle
 import android.text.InputType
 import android.view.View
-import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.activity.ComponentActivity
@@ -60,7 +59,6 @@ class PropertyActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setContent { RetirementTheme { Content() } }
         perform {
             credential = withContext(Dispatchers.IO) { runtime.rentCast.credential() }
