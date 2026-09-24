@@ -58,6 +58,7 @@ class ShareworksImporterTest {
             { it["xl/worksheets/sheet1.xml"] = it.getValue("xl/worksheets/sheet1.xml").replaceFirst("<v>10</v>", "<v/>") },
             { it["xl/worksheets/sheet1.xml"] = it.getValue("xl/worksheets/sheet1.xml").replaceFirst("<v>10</v>", "<v>NaN</v>") },
             { it["xl/worksheets/sheet1.xml"] = it.getValue("xl/worksheets/sheet1.xml").replace("<c r=\"E19\" t=\"n\"><f>60</f><v>60</v>", "<c r=\"E19\" t=\"n\"><f>60</f><v>59</v>") },
+            { it["xl/worksheets/sheet1.xml"] = it.getValue("xl/worksheets/sheet1.xml").replace("<c r=\"C19\" t=\"n\"><f>100</f><v>100</v></c>", "<c r=\"C19\" t=\"inlineStr\"><is><t>N/A</t></is></c>") },
             { it["xl/worksheets/sheet2.xml"] = it.getValue("xl/worksheets/sheet2.xml").replace("2030-01-01", "2030-02-30") },
             { it["xl/worksheets/sheet3.xml"] = it.getValue("xl/worksheets/sheet3.xml").replace("</sheetData>", "<row r=\"15\"><c r=\"D15\"><v>2026</v></c></row></sheetData>") },
             { it["xl/worksheets/sheet4.xml"] = it.getValue("xl/worksheets/sheet4.xml").replace("<v>0.2</v>", "<v/>") },
@@ -112,8 +113,20 @@ class ShareworksImporterTest {
         val b = parse(rewriteWorkbook { e ->
             e["xl/worksheets/sheet1.xml"] = e.getValue("xl/worksheets/sheet1.xml").replaceFirst("<v>10</v>", "<v>1.0005E1</v>")
             e["xl/worksheets/sheet2.xml"] = e.getValue("xl/worksheets/sheet2.xml").replace("<c r=\"C38\" t=\"inlineStr\"><is><t>2030-01-01</t></is></c>", "<c r=\"C38\"><v>47484</v></c>")
+            e["xl/worksheets/sheet4.xml"] = e.getValue("xl/worksheets/sheet4.xml").replaceFirst("<v>0.2</v>", "<v>0.200000000000000000</v>")
         }).workbook
         assertEquals(Money(1001), b.sharePrice); assertEquals(LocalDate.parse("2030-01-01"), b.projection.date)
+    }
+
+    @Test fun sarRowsAndWorkbookSpecificAfterTaxFormulasAreSupported() {
+        val row = """<row r="18"><c r="B18" t="inlineStr"><is><t>Synthetic SAR</t></is></c><c r="C18" t="inlineStr"><is><t>N/A</t></is></c><c r="E18" t="n"><v>0</v></c><c r="F18" t="n"><v>0</v></c><c r="G18" t="n"><v>0</v></c><c r="H18" t="n"/><c r="I18" t="inlineStr"><is><t>N/A</t></is></c><c r="J18" t="n"><v>0</v></c><c r="L18" t="n"><v>0</v></c><c r="M18" t="n"><v>0</v></c></row>"""
+        val b = parse(rewriteWorkbook { e ->
+            e["xl/worksheets/sheet1.xml"] = e.getValue("xl/worksheets/sheet1.xml").replace("<row r=\"19\">", row + "<row r=\"19\">")
+            e["xl/worksheets/sheet3.xml"] = e.getValue("xl/worksheets/sheet3.xml")
+                .replace("<c r=\"C51\" t=\"n\"><f>860</f><v>860</v></c>", "<c r=\"C51\" t=\"n\"><f>870</f><v>870</v></c>")
+        }).workbook
+        assertEquals(EpicTotals("N/A", "0", Money(0), "0", Money(0), Money(0), Money(0), Money(0), Money(0)), b.breakdown.last().totals)
+        assertEquals(Money(87000), b.years.single().afterTax)
     }
 
     @Test fun sharedStringsAnd1904DatesRetainReferenceValues() {

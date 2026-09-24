@@ -118,19 +118,22 @@ class ShareworksImporter {
         val consolidated = cells("2026 Consolidated Statement")
         val inputs = cells("Inputs and Summary")
         fun Map<String, Cell>.number(address: String) = (get(address) ?: reject()).number()
-        fun Map<String, Cell>.money(address: String): Money = number(address).let { number ->
+        fun Map<String, Cell>.count(address: String) = (get(address) ?: reject()).count()
+        fun Map<String, Cell>.money(address: String, blankAsZero: Boolean = false): Money =
+            if (blankAsZero && get(address)?.isBlankOrNotApplicable() == true) Money(0) else number(address).let { number ->
             val cents = number.movePointRight(2).setScale(0, RoundingMode.HALF_UP).longValueExact()
             require(cents in -MAX_ASSET_CENTS..MAX_ASSET_CENTS); Money(cents)
         }
         fun Map<String, Cell>.text(address: String) = (get(address) ?: reject()).text()
-        fun totals(row: Int) = EpicTotals(consolidated.number("C$row").plain(), consolidated.number("E$row").plain(), consolidated.money("F$row"),
-            consolidated.number("G$row").plain(), consolidated.money("H$row"), consolidated.money("I$row"), consolidated.money("J$row"), consolidated.money("L$row"), consolidated.money("M$row"))
+        fun totals(row: Int, breakdown: Boolean = false) = EpicTotals(consolidated.count("C$row"), consolidated.count("E$row"), consolidated.money("F$row", breakdown),
+            consolidated.count("G$row"), consolidated.money("H$row", breakdown), consolidated.money("I$row", breakdown), consolidated.money("J$row", breakdown),
+            consolidated.money("L$row", breakdown), consolidated.money("M$row", breakdown))
         val breakdown = (12..18).mapNotNull { row ->
             val name = consolidated["B$row"]?.text()?.replace('\n', ' ')?.trim()
             if (name.isNullOrEmpty()) {
                 require(listOf("C", "E", "F", "G", "H", "I", "J", "L", "M").none { consolidated["$it$row"]?.raw?.isNotEmpty() == true })
                 null
-            } else EpicBreakdown(name, totals(row))
+            } else EpicBreakdown(name, totals(row, breakdown = true))
         }
         val dateCell = inputs["C38"] ?: reject()
         val date = if (dateCell.type == "n") {
@@ -164,6 +167,13 @@ class ShareworksImporter {
     }
 
     private data class Cell(val raw: String?, val type: String, val formula: Boolean) {
+        fun isBlankOrNotApplicable() = !formula && (raw.isNullOrBlank() ||
+            (type in setOf("s", "inlineStr", "str") && raw.trim().equals("N/A", ignoreCase = true)))
+        fun count(): String {
+            val value = raw?.trim() ?: reject()
+            if (type in setOf("s", "inlineStr", "str") && value.equals("N/A", ignoreCase = true)) return "N/A"
+            return number().plain()
+        }
         fun number(): BigDecimal {
             if (formula && raw.isNullOrBlank()) throw WorkbookRejected(WorkbookFailure.RECALCULATE)
             require(type in setOf("n", "s", "inlineStr", "str"))
@@ -172,7 +182,7 @@ class ShareworksImporter {
             // OOXML numeric cells may use scientific notation; decimal text cells retain strict money syntax.
             return if (type == "n") {
                 require(value.matches(Regex("-?\\d+(?:\\.\\d+)?(?:[Ee][+-]?\\d{1,3})?")))
-                BigDecimal(value).also { require(it.scale() in -16..16 && it.abs() <= BigDecimal("1000000000000")) }
+                BigDecimal(value).also { require(it.scale() in -32..32 && it.abs() <= BigDecimal("1000000000000")) }
             } else {
                 require(value.matches(Regex("-?\\$?(?:\\d+|[1-9]\\d{0,2}(?:,\\d{3})+)(?:\\.\\d+)?")))
                 BigDecimal(value.replace("$", "").replace(",", ""))
