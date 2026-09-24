@@ -30,7 +30,10 @@ import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -556,38 +559,87 @@ private fun FinancePage(hero: Boolean = false, content: @Composable ColumnScope.
 @Composable
 private fun LibraryPage(message: String?) {
     val uriHandler = LocalUriHandler.current
-    IntegratedPage(
-        "Reference library",
-        "Good sources, ready when you are",
-        "A small, government-first reading shelf for the decisions that come with retirement.",
-        Icons.Default.AutoStories,
-    ) {
-        Text("Reviewed $RETIREMENT_LIBRARY_REVIEW_DATE", color = RetirementPrimary, fontWeight = FontWeight.SemiBold)
+    FinancePage {
+        Spacer(Modifier.width(52.dp).height(3.dp).background(RetirementGold))
+        Text("OFFICIAL SOURCES", color = RetirementPrimary, style = MaterialTheme.typography.labelMedium)
+        Text("Finance library", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+        Text(
+            "Clear guidance for the decisions around retirement accounts, taxes, health coverage, benefits, and your data.",
+            color = RetirementTextSecondary,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Column(
+            Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text("15 official resources", color = RetirementHighlight, fontWeight = FontWeight.SemiBold)
+            Text("Reviewed $RETIREMENT_LIBRARY_REVIEW_DATE", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+        }
         message?.let { Text(it, color = RetirementHighlight) }
-        RetirementLibraryResources.forEach { resource ->
-            Card(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent), border = BorderStroke(1.dp, RetirementBorder)) {
-                Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementSurfaceRaised.copy(alpha = .78f))))
-                    .padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Box(Modifier.size(44.dp).background(RetirementHighlight.copy(alpha = .12f), androidx.compose.foundation.shape.RoundedCornerShape(15.dp)),
-                            contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.AutoStories, contentDescription = null, tint = RetirementHighlight)
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(resource.organization.uppercase(), color = RetirementPrimary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                            Text(resource.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                        }
+        LibraryCategory.entries.forEachIndexed { categoryIndex, category ->
+            val resources = RetirementLibraryResources.filter { it.category == category }
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        Modifier.size(38.dp).background(
+                            if (categoryIndex % 2 == 0) RetirementHighlight.copy(alpha = .12f) else RetirementBlue.copy(alpha = .12f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(13.dp),
+                        ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            libraryCategoryIcon(category),
+                            contentDescription = null,
+                            tint = if (categoryIndex % 2 == 0) RetirementHighlight else RetirementBlue,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
-                    Text(resource.description, color = RetirementTextSecondary)
-                    OutlinedButton(onClick = { uriHandler.openUri(resource.url) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text("Open official resource")
+                    Column(Modifier.weight(1f)) {
+                        Text(category.title, style = MaterialTheme.typography.titleLarge)
+                        Text("${resources.size} ${if (resources.size == 1) "resource" else "resources"}", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = RetirementSurface.copy(alpha = .74f)),
+                    border = BorderStroke(1.dp, RetirementBorder),
+                ) {
+                    Column {
+                        resources.forEachIndexed { index, resource ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable { uriHandler.openUri(resource.url) }
+                                    .semantics(mergeDescendants = true) {
+                                        role = Role.Button
+                                        contentDescription = "${resource.title}, ${resource.organization}. Open official resource"
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(resource.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+                                    Text(resource.organization.uppercase(), color = RetirementPrimary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                    Text(resource.description, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+                                }
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementTextSecondary, modifier = Modifier.size(18.dp))
+                            }
+                            if (index != resources.lastIndex) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = RetirementBorder.copy(alpha = .72f))
+                        }
                     }
                 }
             }
         }
-        Text("Reference links only. Nothing here is a task or completion list.", color = RetirementTextSecondary)
+        Text("Official reference links only. Guidance can change; each link opens the source's current page.", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
     }
+}
+
+private fun libraryCategoryIcon(category: LibraryCategory): ImageVector = when (category) {
+    LibraryCategory.RETIREMENT_ACCOUNTS -> Icons.Default.AccountBalanceWallet
+    LibraryCategory.INCOME_GAINS_STATE -> Icons.Default.QueryStats
+    LibraryCategory.ACA_MEDICARE -> Icons.Default.HealthAndSafety
+    LibraryCategory.SOCIAL_SECURITY -> Icons.Default.Person
+    LibraryCategory.DATA_SECURITY_CONSENT -> Icons.Default.Security
 }
 
 @Composable

@@ -9,6 +9,7 @@ import dev.draftingroom5.retirement.domain.ProviderStatus
 import dev.draftingroom5.retirement.domain.TaxTreatment
 import dev.draftingroom5.retirement.ui.DataHealthKind
 import dev.draftingroom5.retirement.ui.RetirementLibraryResources
+import dev.draftingroom5.retirement.ui.LibraryCategory
 import dev.draftingroom5.retirement.ui.integratedAssetSummary
 import dev.draftingroom5.retirement.ui.retirementDataHealth
 import org.junit.Assert.assertEquals
@@ -94,8 +95,9 @@ class RetirementOverviewPresentationTest {
 
     @Test
     fun libraryIsBundledGovernmentFirstMetadataWithChecklistIdsOnly() {
-        assertTrue(RetirementLibraryResources.isNotEmpty())
-        assertTrue(RetirementLibraryResources.take(3).all { resource ->
+        assertEquals(15, RetirementLibraryResources.size)
+        assertEquals(LibraryCategory.entries.toSet(), RetirementLibraryResources.map { it.category }.toSet())
+        assertTrue(RetirementLibraryResources.all { resource ->
             resource.url.contains(".gov/") || resource.url.contains(".gov")
         })
         assertEquals(RetirementLibraryResources.size, RetirementLibraryResources.map { it.id }.distinct().size)
