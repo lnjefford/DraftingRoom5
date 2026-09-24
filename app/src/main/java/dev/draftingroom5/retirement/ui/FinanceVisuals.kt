@@ -58,6 +58,15 @@ internal fun Money.editorialFormat(): String {
     }
 }
 
+internal fun Money.chartFormat(): String {
+    val dollars = cents / 100.0
+    return when {
+        abs(dollars) >= 1_000_000 -> String.format(Locale.US, "$%.2fM", dollars / 1_000_000)
+        abs(dollars) >= 1_000 -> String.format(Locale.US, "$%.0fK", dollars / 1_000)
+        else -> String.format(Locale.US, "$%.0f", dollars)
+    }
+}
+
 internal fun Money.wholeDollarEditorialFormat(): String = String.format(Locale.US, "$%,d", cents / 100)
 
 @Composable
@@ -263,6 +272,7 @@ internal fun AssetStreams(rows: List<Pair<String, Money>>, trackedTotal: Money, 
         Canvas(Modifier.matchParentSize()) {
             if (visible.isEmpty()) return@Canvas
             val centerY = size.height * .62f
+            val mergeX = size.width * .68f
             visible.forEachIndexed { index, (_, amount) ->
                 val color = FinanceStreamColors[index % FinanceStreamColors.size]
                 val lane = (index + 1f) / (visible.size + 1f)
@@ -270,14 +280,19 @@ internal fun AssetStreams(rows: List<Pair<String, Money>>, trackedTotal: Money, 
                 val width = (15.dp.toPx() + 46.dp.toPx() * (amount.cents.toFloat() / total)).coerceAtMost(58.dp.toPx())
                 val path = Path().apply {
                     moveTo(-width, startY)
-                    cubicTo(size.width * .30f, startY, size.width * .45f, centerY, size.width * .73f, centerY)
-                    cubicTo(size.width * .86f, centerY, size.width * .92f, centerY + (index - visible.lastIndex / 2f) * 8.dp.toPx(), size.width + width, centerY + (index - visible.lastIndex / 2f) * 14.dp.toPx())
+                    cubicTo(size.width * .30f, startY, size.width * .48f, centerY, mergeX, centerY)
                 }
                 drawPath(path, color.copy(alpha = .68f), style = Stroke(width, cap = StrokeCap.Round))
                 drawPath(path, color, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
             }
-            drawCircle(RetirementHighlight.copy(alpha = .24f), 13.dp.toPx(), Offset(size.width * .73f, centerY))
-            drawCircle(RetirementHighlight, 4.5.dp.toPx(), Offset(size.width * .73f, centerY))
+            val totalPath = Path().apply {
+                moveTo(mergeX, centerY)
+                cubicTo(size.width * .79f, centerY, size.width * .88f, centerY - 8.dp.toPx(), size.width + 12.dp.toPx(), centerY - 8.dp.toPx())
+            }
+            drawPath(totalPath, Color.White.copy(alpha = .28f), style = Stroke(18.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(totalPath, Color.White.copy(alpha = .94f), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+            drawCircle(Color.White.copy(alpha = .24f), 13.dp.toPx(), Offset(mergeX, centerY))
+            drawCircle(Color.White, 4.5.dp.toPx(), Offset(mergeX, centerY))
         }
         Column(
             Modifier.align(Alignment.TopStart).padding(top = 10.dp),

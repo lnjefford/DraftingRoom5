@@ -70,7 +70,7 @@ fun RetirementShellScreenshots(@PreviewParameter(RetirementShellRoutes::class) s
     }
     RetirementWorkspaceScreen(
         route, {}, {}, {}, {}, {},
-        accountsPreviewState = if (route in setOf(AppRoute.RetirementOverview, AppRoute.RetirementAssets, AppRoute.RetirementLibrary)) {
+        accountsPreviewState = if (route in setOf(AppRoute.RetirementOverview, AppRoute.RetirementForecast, AppRoute.RetirementAssets, AppRoute.RetirementLibrary)) {
             retirementIntegratedPreviewState()
         } else null,
     )

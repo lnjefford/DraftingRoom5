@@ -109,8 +109,8 @@ private data class RetirementTab(val route: AppRoute, val label: String, val ico
 
 private val RetirementTabs = listOf(
     RetirementTab(AppRoute.RetirementOverview, "Overview", Icons.Default.Home),
-    RetirementTab(AppRoute.RetirementForecast, "Forecast", Icons.Default.QueryStats),
-    RetirementTab(AppRoute.RetirementAssets, "Assets", Icons.Default.AccountBalanceWallet),
+    RetirementTab(AppRoute.RetirementForecast, "Projections", Icons.Default.QueryStats),
+    RetirementTab(AppRoute.RetirementAssets, "Accounts", Icons.Default.AccountBalanceWallet),
 )
 
 @Composable

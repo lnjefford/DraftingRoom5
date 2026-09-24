@@ -2,6 +2,7 @@ package dev.draftingroom5.retirement.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,9 +56,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -67,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.draftingroom5.AppRoute
+import dev.draftingroom5.R
 import dev.draftingroom5.RetirementBorder
 import dev.draftingroom5.RetirementBackground
 import dev.draftingroom5.RetirementBackgroundDeep
@@ -80,6 +84,7 @@ import dev.draftingroom5.RetirementTextSecondary
 import dev.draftingroom5.retirement.data.RetirementRepository
 import dev.draftingroom5.retirement.domain.RetirementState
 import dev.draftingroom5.retirement.domain.PlanSettings
+import dev.draftingroom5.retirement.domain.AccountOrigin
 import dev.draftingroom5.retirement.forecast.ForecastCapture
 import dev.draftingroom5.retirement.forecast.ForecastChannel
 import dev.draftingroom5.retirement.forecast.ForecastCoordinator
@@ -165,7 +170,7 @@ private fun OverviewPage(
     val health = retirementDataHealth(state, if (preview) Instant.parse("2026-09-21T12:00:00Z") else Instant.now())
     val plan = state.planSettings.maxByOrNull { it.revision }
     val forecastState = overviewForecastState(state, repository, plan, preview)
-    FinancePage {
+    FinancePage(hero = true) {
         Spacer(Modifier.width(52.dp).height(3.dp).background(RetirementGold))
         Text(
             "Financial overview",
@@ -244,14 +249,7 @@ private fun OverviewForecastChart(state: ForecastState, plan: PlanSettings, onOp
         if (result != null) {
             val retirementAge = plan.retirementAge.coerceIn(result.currentAge, result.endAge)
             val median = result.percentile(ForecastChannel.TOTAL, retirementAge, 50.0)
-            if (LocalDensity.current.fontScale >= 1.5f) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("10TH–90TH PERCENTILE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-                    Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-                    Text(median.editorialFormat(), style = MaterialTheme.typography.titleLarge)
-                }
-            } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                Text("10TH–90TH PERCENTILE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Column(horizontalAlignment = Alignment.End) {
                     Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
                     Text(median.editorialFormat(), style = MaterialTheme.typography.titleLarge)
@@ -283,44 +281,13 @@ private fun OverviewForecastChart(state: ForecastState, plan: PlanSettings, onOp
 
 @Composable
 private fun OverviewForecastGraphic(points: List<ForecastChartPoint>, retirementAge: Int) {
-    val chartHeight = 290.dp
-    BoxWithConstraints(Modifier.fillMaxWidth().height(chartHeight)) {
-        ForecastFanChart(
-            points = points,
-            retirementAge = retirementAge,
-            modifier = Modifier.fillMaxSize(),
-            editorialGuides = true,
-        )
-        val marker = points.firstOrNull { it.age == retirementAge }
-        if (marker != null && points.size >= 2) {
-            val firstAge = points.first().age
-            val ageSpan = maxOf(1, points.last().age - firstAge)
-            val markerX = maxWidth * ((retirementAge - firstAge) / ageSpan.toFloat())
-            val minValue = points.minOf { it.low.cents }.coerceAtLeast(0L).toFloat()
-            val maxValue = maxOf(minValue + 1f, points.maxOf { it.high.cents }.toFloat())
-            val markerFraction = ((marker.middle.cents.coerceAtLeast(0L).toFloat() - minValue) /
-                (maxValue - minValue)).coerceIn(0f, 1f)
-            val markerY = chartHeight - 14.dp - (chartHeight - 34.dp) * markerFraction
-            val largeText = LocalDensity.current.fontScale >= 1.5f
-            val annotationWidth = if (largeText) 176.dp else 142.dp
-            val annotationX = (markerX + 14.dp).coerceAtMost((maxWidth - annotationWidth).coerceAtLeast(0.dp))
-            val annotationY = (markerY - if (largeText) 126.dp else 84.dp)
-                .coerceIn(0.dp, chartHeight - 96.dp)
-            Column(
-                Modifier
-                    .offset(x = annotationX, y = annotationY)
-                    .width(annotationWidth),
-                verticalArrangement = Arrangement.spacedBy(1.dp),
-            ) {
-                Text("Age $retirementAge", color = RetirementGold, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "RETIREMENT HORIZON",
-                    color = RetirementTextSecondary,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-        }
-    }
+    ForecastFanChart(
+        points = points,
+        retirementAge = retirementAge,
+        modifier = Modifier.fillMaxWidth().height(290.dp),
+        editorialGuides = true,
+        interactive = true,
+    )
 }
 
 @Composable
@@ -369,7 +336,7 @@ private fun ConfidencePanel(
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 214.dp)
+            Modifier.fillMaxWidth().heightIn(min = 178.dp)
                 .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -431,7 +398,7 @@ private fun HorizonPanel(targetAge: String, onOpen: () -> Unit, modifier: Modifi
         border = BorderStroke(1.dp, RetirementBorder),
     ) {
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 214.dp)
+            Modifier.fillMaxWidth().heightIn(min = 178.dp)
                 .background(Brush.verticalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .96f))))
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -484,45 +451,75 @@ private fun AssetsPage(state: RetirementState, onNavigate: (AppRoute) -> Unit) {
     val summary = integratedAssetSummary(state)
     val rows = summary.rows.filter { it.amount.cents != 0L }.map { taxLabel(it.treatment) to it.amount }
     FinancePage {
-        EditorialHeading("Assets", "Built from many streams", "Different paths. One complete financial picture.")
+        Spacer(Modifier.width(52.dp).height(3.dp).background(RetirementGold))
+        EditorialHeading("Accounts", "Funding sources")
         AssetStreams(rows, summary.tracked)
-        Text("Asset mix", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-        Card(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = RetirementSurface), border = BorderStroke(1.dp, RetirementBorder)) {
-            Column {
-                rows.forEachIndexed { index, row ->
-                    AssetValueRow(row.first, row.second.format(), FinanceStreamColors[index % FinanceStreamColors.size])
-                    if (index != rows.lastIndex) HorizontalDivider(color = RetirementBorder)
-                }
-            }
+        Text("YOUR PORTFOLIO", color = RetirementPrimary, style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+        val activeAccounts = state.accounts.filter { it.archivedAt == null && it.origin in setOf(AccountOrigin.MANUAL, AccountOrigin.PLAID) }
+        activeAccounts.forEachIndexed { index, account ->
+            FundingSourceRow(
+                label = account.currentRevision.displayName,
+                value = account.currentBalance?.amount?.wholeDollarEditorialFormat() ?: "Balance unavailable",
+                context = sourceLabel(account),
+                color = FinanceStreamColors[index % FinanceStreamColors.size],
+            ) { onNavigate(AppRoute.RetirementAccountDetail(account.id)) }
+        }
+        state.properties.filter { it.archivedAt == null }.forEachIndexed { index, property ->
+            FundingSourceRow(
+                label = property.currentRevision.address,
+                value = property.equity()?.wholeDollarEditorialFormat() ?: "Equity unavailable",
+                context = "Property equity",
+                color = FinanceStreamColors[(activeAccounts.size + index) % FinanceStreamColors.size],
+            ) { onNavigate(AppRoute.RetirementPropertyDetail(property.id)) }
+        }
+        state.activeEpicImportId?.let { id -> state.epicImports.singleOrNull { it.id == id } }?.let { epic ->
+            FundingSourceRow(
+                label = "Epic stock",
+                value = (epic.vestedValue - epic.loans).wholeDollarEditorialFormat(),
+                context = "Shareworks workbook",
+                color = FinanceStreamColors[(activeAccounts.size + state.properties.count { it.archivedAt == null }) % FinanceStreamColors.size],
+            ) { onNavigate(AppRoute.RetirementEpicDetail) }
         }
         if (summary.tracked.cents == 0L) Text("No tracked accounts yet. Accounts can be linked or added manually.", color = RetirementTextSecondary)
-        Row(
-            Modifier.fillMaxWidth().clickable { onNavigate(AppRoute.RetirementAccounts) }.padding(vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Button(
+            onClick = { onNavigate(AppRoute.RetirementAddAsset) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         ) {
-            Text("Open accounts", color = RetirementPrimary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementPrimary)
+            Text("Add to plan")
         }
     }
 }
 
 @Composable
-private fun AssetValueRow(label: String, value: String, color: Color) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 58.dp).padding(horizontal = 16.dp, vertical = 10.dp)
-            .semantics(mergeDescendants = true) { contentDescription = "$label, $value" },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+private fun FundingSourceRow(label: String, value: String, context: String, color: Color, onOpen: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().clickable(onClick = onOpen)
+            .semantics(mergeDescendants = true) { role = Role.Button; contentDescription = "$label, $value, $context" },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, RetirementBorder),
     ) {
-        Box(Modifier.size(10.dp).background(color, androidx.compose.foundation.shape.RoundedCornerShape(5.dp)))
-        Text(label, color = RetirementTextSecondary, modifier = Modifier.weight(1f))
-        Text(value, fontWeight = FontWeight.SemiBold)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 68.dp)
+                .background(Brush.horizontalGradient(listOf(RetirementSurface, RetirementBackground.copy(alpha = .92f))))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.width(4.dp).height(36.dp).background(color, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(label, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(context, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
+            Text(value, fontWeight = FontWeight.SemiBold)
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = RetirementTextSecondary, modifier = Modifier.size(18.dp))
+        }
     }
 }
 
 @Composable
-private fun FinancePage(content: @Composable ColumnScope.() -> Unit) {
+private fun FinancePage(hero: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     Box(
         Modifier.fillMaxSize().background(
             Brush.radialGradient(
@@ -531,6 +528,15 @@ private fun FinancePage(content: @Composable ColumnScope.() -> Unit) {
             ),
         ),
     ) {
+        if (hero) {
+            Image(
+                painter = painterResource(R.drawable.finance_planning_hero),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alpha = .52f,
+                modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(.78f).height(520.dp),
+            )
+        }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),

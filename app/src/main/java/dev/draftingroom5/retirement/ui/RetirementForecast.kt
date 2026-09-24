@@ -2,7 +2,12 @@ package dev.draftingroom5.retirement.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
@@ -20,7 +26,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -36,6 +46,7 @@ import dev.draftingroom5.retirement.provider.RetirementProviders
 import kotlinx.coroutines.*
 import java.util.UUID
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 @Composable
 internal fun RetirementForecastHost(
@@ -170,7 +181,7 @@ internal fun ForecastStatePage(state: ForecastState, plan: PlanSettings?, onRetr
         ForecastState.Idle -> "Preparing the forecast."
         is ForecastState.Ready -> null
     }
-    ForecastPage {
+    ForecastPage(hero = true) {
         if (banner != null) StatusCard(banner,
             primary = if (state is ForecastState.Calculating) ({ onCancel() }) else ({ onRetry() }),
             primaryLabel = if (state is ForecastState.Calculating) "Stop calculation" else "Recalculate")
@@ -189,70 +200,126 @@ private fun missingDataMessage(reason: MissingForecastData) = when (reason) {
     MissingForecastData.INVALID_INPUT -> "One or more plan values are outside the supported forecast range."
 }
 
+private enum class ProjectionSection(val label: String) { BALANCE("Balance"), CASH_FLOW("Cash flow"), RISK("Risk") }
+
 @Composable
 private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, stale: Boolean, onRisk: () -> Unit) {
-    EditorialHeading("Forecast", "The future has a shape")
+    Spacer(Modifier.width(52.dp).height(3.dp).background(RetirementGold))
+    EditorialHeading("Projections", "Plan projection")
     if (stale) Text("STALE RESULT", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+    var section by rememberSaveable { mutableStateOf(ProjectionSection.BALANCE) }
+    ProjectionSectionPicker(section) { section = it }
     val retirementAge = plan.retirementAge.coerceIn(result.currentAge, result.endAge)
     val medianAtRetirement = result.percentile(ForecastChannel.TOTAL, retirementAge, 50.0)
     if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f) {
         Column {
-            Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
             Text("${(result.successRate * 100).toInt()}%", style = MaterialTheme.typography.displayMedium, color = RetirementHighlight)
+            Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
         }
         Column {
-            Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
             Text(medianAtRetirement.editorialFormat(), style = MaterialTheme.typography.headlineLarge)
+            Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
         }
     } else {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             Column(Modifier.weight(1f)) {
-                Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
                 Text("${(result.successRate * 100).toInt()}%", style = MaterialTheme.typography.displayMedium, color = RetirementHighlight)
+                Text("MODELED SUCCESS", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
             }
             Column(Modifier.weight(1f)) {
-                Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
                 Text(medianAtRetirement.editorialFormat(), style = MaterialTheme.typography.headlineLarge)
+                Text("MEDIAN AT $retirementAge", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
             }
         }
     }
-    val points = forecastChartPoints(result, plan.retirementAge)
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("10TH–90TH PERCENTILE", color = RetirementTextSecondary, style = MaterialTheme.typography.labelMedium)
-        ForecastFanChart(points, plan.retirementAge, Modifier.height(340.dp))
+    when (section) {
+        ProjectionSection.BALANCE -> BalanceProjection(result, plan, retirementAge)
+        ProjectionSection.CASH_FLOW -> CashFlowProjection(result, plan, retirementAge)
+        ProjectionSection.RISK -> RiskProjection(result)
+    }
+}
+
+@Composable
+private fun ProjectionSectionPicker(selected: ProjectionSection, onSelect: (ProjectionSection) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().height(48.dp).border(1.dp, RetirementBorder, RoundedCornerShape(18.dp)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ProjectionSection.entries.forEach { item ->
+            Box(
+                Modifier.weight(1f).fillMaxHeight()
+                    .background(if (item == selected) RetirementPrimary.copy(alpha = .14f) else Color.Transparent, RoundedCornerShape(18.dp))
+                    .then(if (item == selected) Modifier.border(1.dp, RetirementHighlight, RoundedCornerShape(18.dp)) else Modifier)
+                    .clickable { onSelect(item) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(item.label, color = if (item == selected) RetirementHighlight else RetirementText, fontWeight = if (item == selected) FontWeight.SemiBold else FontWeight.Normal)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BalanceProjection(result: ForecastResult, plan: PlanSettings, retirementAge: Int) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val points = forecastChartPoints(result, plan.retirementAge)
+        ForecastFanChart(points, plan.retirementAge, Modifier.height(270.dp), editorialGuides = true, interactive = true)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Today\n${result.currentAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall)
-            Text("Retire\n${plan.retirementAge}", color = RetirementGold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
             Text("Plan\n${result.endAge}", color = RetirementTextSecondary, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
         }
-        Text("${String.format(java.util.Locale.US, "%,d", result.paths)} modeled paths · real dollars", color = RetirementTextSecondary)
+        val low = result.percentile(ForecastChannel.TOTAL, retirementAge, 10.0)
+        val middle = result.percentile(ForecastChannel.TOTAL, retirementAge, 50.0)
+        val high = result.percentile(ForecastChannel.TOTAL, retirementAge, 90.0)
+        ProjectionValueRow("10th percentile", low.editorialFormat())
+        ProjectionValueRow("Median", middle.editorialFormat())
+        ProjectionValueRow("90th percentile", high.editorialFormat())
+        RiskOutlook(result)
+        Text("${String.format(java.util.Locale.US, "%,d", result.paths)} modeled paths · real dollars", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
     }
-    RetirementFlowActionCard(
-        eyebrow = "Forecast",
-        title = "Explore risk",
-        body = "See when modeled paths fall short and compare focused scenarios.",
-        icon = Icons.Default.QueryStats,
-        featured = true,
-        onClick = onRisk,
-    )
-    RetirementCard {
-        Text("Available at retirement", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-        Text("Median modeled amounts at age ${plan.retirementAge.coerceIn(result.currentAge, result.endAge)}" +
-            if (plan.retirementAge < result.currentAge) " (already retired; current modeled boundary)" else "", color = RetirementTextSecondary)
-        availableAtRetirement(result, plan.retirementAge).forEach { LabelValue(it.label, it.amount.format()) }
-        if (availableAtRetirement(result, plan.retirementAge).isEmpty()) Text("No modeled accounts are available at retirement.", color = RetirementTextSecondary)
+}
+
+@Composable
+private fun CashFlowProjection(result: ForecastResult, plan: PlanSettings, retirementAge: Int) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Available at retirement", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
+        availableAtRetirement(result, retirementAge).forEach { ProjectionValueRow(it.label, it.amount.editorialFormat()) }
+        ProjectionValueRow("Annual lifestyle spending", plan.annualSpending.editorialFormat())
+        Text("Values are modeled in today's dollars.", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
     }
-    RetirementCard {
-        Text("Lifestyle spending", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-        Text(plan.annualSpending.format(), style = MaterialTheme.typography.headlineMedium)
-        Text("per year in today's dollars, beginning at age ${plan.retirementAge}", color = RetirementTextSecondary)
+}
+
+@Composable
+private fun RiskProjection(result: ForecastResult) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        RiskOutlook(result)
+        if (!result.taxFundingConverged) {
+            Text("Tax funding residual up to ${result.maximumTaxFundingResidual.format()} across ${result.taxResidualYears} path-years.", color = RetirementGold)
+        }
+        result.warnings.forEach { Text(it, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall) }
     }
-    RetirementCard {
-        Text("Model limits", style = MaterialTheme.typography.titleMedium)
-        Text("${result.taxPolicyId} · ${result.engineVersion}", color = RetirementTextSecondary)
-        Text("Reference-policy approximation; this is planning output, not current-law tax or financial advice.", color = RetirementTextSecondary)
-        if (!result.taxFundingConverged) Text("Tax funding residual: up to ${result.maximumTaxFundingResidual.format()} across ${result.taxResidualYears} path-years. Modeled success does not certify fully funded taxes.", color = RetirementHighlight)
-        result.warnings.forEach { Text(it, color = RetirementTextSecondary) }
+}
+
+@Composable
+private fun RiskOutlook(result: ForecastResult) {
+    val risk = summarizeRisk(result)
+    Text("Risk outlook", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 10.dp).semantics { heading() })
+    ProjectionValueRow("Paths fully funded", "${result.paths - risk.failedPaths} of ${result.paths}")
+    ProjectionValueRow("First observed shortfall", risk.firstFailureAge?.let { "Age $it" } ?: "None")
+}
+
+@Composable
+private fun ProjectionValueRow(label: String, value: String) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 42.dp).padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, color = RetirementTextSecondary)
+            Text(value, fontWeight = FontWeight.SemiBold)
+        }
+        HorizontalDivider(color = RetirementBorder)
     }
 }
 
@@ -262,18 +329,38 @@ internal fun ForecastFanChart(
     retirementAge: Int,
     modifier: Modifier = Modifier,
     editorialGuides: Boolean = false,
+    interactive: Boolean = false,
 ) {
     val description = forecastChartDescription(points, retirementAge)
-    Canvas(modifier.fillMaxWidth().heightIn(min = 190.dp).semantics { contentDescription = description }) {
-        if (points.size < 2) return@Canvas
+    if (points.size < 2) {
+        Canvas(modifier.fillMaxWidth().heightIn(min = 190.dp).semantics { contentDescription = description }) {}
+        return
+    }
+    val retirementIndex = points.indexOfFirst { it.age == retirementAge }.coerceAtLeast(0)
+    var selectedIndex by remember(points, retirementAge) { mutableStateOf(retirementIndex) }
+    BoxWithConstraints(modifier.fillMaxWidth().heightIn(min = 190.dp).semantics { contentDescription = description }) {
         val minValue = points.minOf { it.low.cents }.coerceAtLeast(0L).toFloat()
         val maxValue = max(minValue + 1f, points.maxOf { it.high.cents }.toFloat())
         val range = maxValue - minValue
         val firstAge = points.first().age
         val ageSpan = maxOf(1, points.last().age - firstAge)
-        fun x(index: Int) = size.width * (points[index].age - firstAge) / ageSpan.toFloat()
-        fun y(cents: Long) = size.height - 14.dp.toPx() -
-            ((cents.coerceAtLeast(0).toFloat() - minValue) / range * (size.height - 34.dp.toPx()))
+        fun selectAt(x: Float, width: Float) {
+            selectedIndex = ((x.coerceIn(0f, width) / width) * points.lastIndex).roundToInt().coerceIn(0, points.lastIndex)
+        }
+        val gestureModifier = if (interactive) {
+            Modifier
+                .pointerInput(points) { detectTapGestures { selectAt(it.x, size.width.toFloat()) } }
+                .pointerInput(points) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { selectAt(it.x, size.width.toFloat()) },
+                        onHorizontalDrag = { change, _ -> selectAt(change.position.x, size.width.toFloat()) },
+                    )
+                }
+        } else Modifier
+        Canvas(Modifier.matchParentSize().then(gestureModifier)) {
+            fun x(index: Int) = size.width * (points[index].age - firstAge) / ageSpan.toFloat()
+            fun y(cents: Long) = size.height - 14.dp.toPx() -
+                ((cents.coerceAtLeast(0).toFloat() - minValue) / range * (size.height - 34.dp.toPx()))
         fun smooth(path: Path, values: List<Offset>, move: Boolean) {
             if (move) path.moveTo(values.first().x, values.first().y) else path.lineTo(values.first().x, values.first().y)
             for (index in 0 until values.lastIndex) {
@@ -312,21 +399,13 @@ internal fun ForecastFanChart(
             Offset(size.width, size.height - 2.dp.toPx()),
             1.dp.toPx(),
         )
-        val marker = points.indexOfFirst { it.age == retirementAge }
+        val marker = if (interactive) selectedIndex else retirementIndex
         if (marker >= 0) {
             val markerPoint = middle[marker]
             if (editorialGuides) {
                 val baseline = size.height - 2.dp.toPx()
                 val guideStroke = 1.5.dp.toPx()
                 val dotted = PathEffect.dashPathEffect(floatArrayOf(1.5.dp.toPx(), 6.dp.toPx()))
-                drawLine(
-                    RetirementPrimary.copy(alpha = .72f),
-                    Offset(middle.first().x, middle.first().y + 8.dp.toPx()),
-                    Offset(middle.first().x, baseline),
-                    guideStroke,
-                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                    pathEffect = dotted,
-                )
                 drawLine(
                     RetirementGold,
                     Offset(markerPoint.x, markerPoint.y + 8.dp.toPx()),
@@ -348,6 +427,34 @@ internal fun ForecastFanChart(
                 drawLine(RetirementGold, Offset(x(marker), 0f), Offset(x(marker), size.height), 1.5.dp.toPx())
             }
             drawCircle(RetirementGold, 5.dp.toPx(), markerPoint)
+        }
+        }
+        if (interactive) {
+            val selected = points[selectedIndex]
+            val xFraction = (selected.age - firstAge) / ageSpan.toFloat()
+            val yFraction = ((selected.middle.cents.coerceAtLeast(0L).toFloat() - minValue) / range).coerceIn(0f, 1f)
+            val markerX = maxWidth * xFraction
+            val markerY = maxHeight - 14.dp - (maxHeight - 34.dp) * yFraction
+            val tooltipWidth = if (LocalDensity.current.fontScale >= 1.5f) 188.dp else 150.dp
+            val tooltipX = (markerX + 10.dp).coerceAtMost((maxWidth - tooltipWidth).coerceAtLeast(0.dp))
+            val tooltipY = (markerY - 82.dp).coerceIn(0.dp, (maxHeight - 96.dp).coerceAtLeast(0.dp))
+            Column(
+                Modifier.offset(x = tooltipX, y = tooltipY).width(tooltipWidth)
+                    .background(RetirementBackgroundDeep.copy(alpha = .92f), RoundedCornerShape(10.dp))
+                    .border(1.dp, RetirementBorder, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                Text("Age ${selected.age}", color = RetirementGold, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Median", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+                    Text(selected.middle.chartFormat(), style = MaterialTheme.typography.bodySmall)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Range", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+                    Text("${selected.low.chartFormat()}–${selected.high.chartFormat()}", style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                }
+            }
         }
     }
 }
@@ -526,7 +633,7 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
     Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() }); content()
 }
 
-@Composable private fun ForecastPage(content: @Composable ColumnScope.() -> Unit) {
+@Composable private fun ForecastPage(hero: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     Box(
         Modifier.fillMaxSize().background(
             Brush.radialGradient(
@@ -535,6 +642,15 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
             ),
         ),
     ) {
+        if (hero) {
+            Image(
+                painter = painterResource(dev.draftingroom5.R.drawable.finance_planning_hero),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alpha = .52f,
+                modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(.78f).height(520.dp),
+            )
+        }
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -572,6 +688,19 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
 @Composable
 private fun ForecastPreviewRouter(route: AppRoute, state: RetirementState, onNavigate: (AppRoute) -> Unit, onBack: () -> Unit) {
     val plan = state.planSettings.maxByOrNull { it.revision }
-    if (route == AppRoute.RetirementForecastSettings && plan != null) ForecastSettingsPage(plan, null) {}
-    else ForecastMessagePage("Forecast preview", "Live modeled results are shown in the dedicated Forecast screenshot cases.")
+    if (route == AppRoute.RetirementForecastSettings && plan != null) {
+        ForecastSettingsPage(plan, null) {}
+    } else if (route == AppRoute.RetirementForecast && plan != null) {
+        val preview = remember(state.generation, plan.revision) {
+            when (val capture = ForecastInputs.capture(state)) {
+                is ForecastCapture.Ready -> runCatching {
+                    ForecastState.Ready(runBlocking { RetirementEngine().calculate(capture.input, 20, 27L, true) })
+                }.getOrElse { ForecastState.Failed(null) }
+                is ForecastCapture.NeedsData -> ForecastState.NeedsData(capture.reason, null)
+            }
+        }
+        ForecastStatePage(preview, plan, {}, {}, {})
+    } else {
+        ForecastMessagePage("Projection unavailable", "Add plan timing and balances to calculate projections.")
+    }
 }
