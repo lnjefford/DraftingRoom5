@@ -194,7 +194,6 @@ internal fun ForecastStatePage(state: ForecastState, plan: PlanSettings?, onRetr
 private fun missingDataMessage(reason: MissingForecastData) = when (reason) {
     MissingForecastData.PLAN -> "Plan settings are required before a forecast can run."
     MissingForecastData.BALANCE -> "Every included account and property needs an accepted value."
-    MissingForecastData.EPIC_DATE -> "The Shareworks projection date must match the retirement birthday."
     MissingForecastData.EPIC_PROJECTION -> "The accepted workbook does not cover every required projection year."
     MissingForecastData.UNSUPPORTED_POLICY -> "The selected tax policy or state is not supported by this model."
     MissingForecastData.INVALID_INPUT -> "One or more plan values are outside the supported forecast range."

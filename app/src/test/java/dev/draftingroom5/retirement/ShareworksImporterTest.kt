@@ -85,7 +85,7 @@ class ShareworksImporterTest {
         }).workbook
         assertTrue(b.years.isEmpty()); assertNull(b.historicalVolatilityPct)
         assertTrue(epicDateNotice(b, LocalDate.parse("2030-01-01"))!!.contains("no annual projection"))
-        assertTrue(epicDateNotice(b, LocalDate.parse("2031-01-01"))!!.contains("differs"))
+        assertTrue(epicDateNotice(b, LocalDate.parse("2031-01-01"))!!.contains("no annual projection"))
     }
     @Test fun malformedAndHostileArchivesNeverEscapeToFilesystemOrNetwork() {
         rejected(goldenWorkbook().dropLast(1).toByteArray())
@@ -116,6 +116,11 @@ class ShareworksImporterTest {
             e["xl/worksheets/sheet4.xml"] = e.getValue("xl/worksheets/sheet4.xml").replaceFirst("<v>0.2</v>", "<v>0.200000000000000000</v>")
         }).workbook
         assertEquals(Money(1001), b.sharePrice); assertEquals(LocalDate.parse("2030-01-01"), b.projection.date)
+    }
+
+    @Test fun annualCoverageDoesNotRequireTheWorkbookDateToMatchTheRetirementDay() {
+        val b = parse().workbook
+        assertNull(epicDateNotice(b, LocalDate.parse("2026-12-31")))
     }
 
     @Test fun sarRowsAndWorkbookSpecificAfterTaxFormulasAreSupported() {

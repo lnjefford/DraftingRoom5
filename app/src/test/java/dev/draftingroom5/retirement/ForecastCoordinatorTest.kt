@@ -54,6 +54,19 @@ class ForecastCoordinatorTest {
         val bookState=retirementFixture()
         assertEquals(ForecastCapture.NeedsData(MissingForecastData.EPIC_PROJECTION),ForecastInputs.capture(bookState))
     }
+    @Test fun epicAnnualCoverageAllowsADifferentWorkbookProjectionDay() {
+        val state = forecastState()
+        val plan = state.planSettings.single().copy(referenceDate = LocalDate.of(2026, 1, 3), retirementAge = 60)
+        val imported = retirementFixture().epicImports.single()
+        val years = (2026..2040).map { year -> EpicYear(year, "0", Money(0), Money(0), Money(0), Money(0), Money(0), Money(0), Money(0), Money(0), Money(0), Money(0)) }
+        val book = imported.workbook.copy(projection = imported.workbook.projection.copy(date = LocalDate.of(2040, 1, 1)), years = years)
+        val accepted = imported.copy(workbook = book)
+        val withBook = state.copy(planSettings = listOf(plan), epicImports = listOf(accepted), activeEpicImportId = accepted.id)
+        assertTrue(ForecastInputs.capture(withBook) is ForecastCapture.Ready)
+        val missingYear = accepted.copy(workbook = book.copy(years = years.filterNot { it.year == 2035 }))
+        assertEquals(ForecastCapture.NeedsData(MissingForecastData.EPIC_PROJECTION),
+            ForecastInputs.capture(withBook.copy(epicImports = listOf(missingYear))))
+    }
     @Test fun cleanSchemaRoundTripsEveryIncomeKindAndForecastSettingWithoutBooleanInference() {
         val state=forecastState()
         val plan=state.planSettings.single().copy(annualHsaContribution=Money(430000),annualMedicalSpending=Money(200000),homeRealAppreciationBps=125,volatilityScaleBps=12000,

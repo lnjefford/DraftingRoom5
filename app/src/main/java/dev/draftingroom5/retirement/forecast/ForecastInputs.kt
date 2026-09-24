@@ -93,7 +93,7 @@ sealed interface ForecastCapture {
     data class Ready(val input: ForecastInput) : ForecastCapture
     data class NeedsData(val reason: MissingForecastData) : ForecastCapture
 }
-enum class MissingForecastData { PLAN, UNSUPPORTED_POLICY, BALANCE, INVALID_INPUT, EPIC_PROJECTION, EPIC_DATE }
+enum class MissingForecastData { PLAN, UNSUPPORTED_POLICY, BALANCE, INVALID_INPUT, EPIC_PROJECTION }
 
 object ForecastInputs {
     /** Repository.load reads the entire committed document in one snapshot; never load individual entities. */
@@ -130,8 +130,6 @@ object ForecastInputs {
             }
             val age = Period.between(plan.birthDate, plan.referenceDate).years
             val book = state.epicImports.singleOrNull { it.id == state.activeEpicImportId }?.workbook
-            if (book != null && book.projection.date != plan.birthDate.plusYears(plan.retirementAge.toLong()))
-                return ForecastCapture.NeedsData(MissingForecastData.EPIC_DATE)
             val epic = book?.years.orEmpty().map { ForecastEpicYear(it.year, it.netPretax, it.afterTax) }
             if (book != null && (epic.isEmpty() || plan.retirementAge < age ||
                 (0..minOf(plan.endAge - age, plan.retirementAge - age)).any { offset -> epic.none { it.year == plan.referenceDate.year + offset } }))

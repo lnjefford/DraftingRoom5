@@ -37,7 +37,6 @@ fun workbookMessage(failure: WorkbookFailure): String = when (failure) {
 
 fun epicDateNotice(book: EpicWorkbook, retirementDate: java.time.LocalDate?): String? = when {
     retirementDate == null -> "Workbook projection date: ${book.projection.date}. A retirement date has not been configured."
-    retirementDate != book.projection.date -> "Workbook date ${book.projection.date} differs from retirement date $retirementDate. Upload an updated workbook for matching retirement values."
     book.years.none { it.year == retirementDate.year } -> "The workbook has no annual projection for ${retirementDate.year}. Upload an updated workbook; missing years are not extrapolated."
     else -> null
 }
