@@ -34,6 +34,18 @@ changed PNGs, and then validate it:
 Omit `-ScreenshotTests` only when the complete visual baseline genuinely needs
 refreshing. Never accept reference changes solely to make validation green.
 
+## Saved-data compatibility gate
+
+Every released app-document schema must have an immutable serialized fixture under
+`app/src/test/resources/compatibility/`. `ReleasedDocumentCompatibilityTest` must
+decode every fixture, validate the complete domain object, and re-encode it into
+the current explicit schema version. Schema-changing work must add a new fixture
+and upgrader before release; it must not rewrite or remove older fixtures merely
+to make the current codec pass. Unknown future versions and mixed-schema payloads
+must continue to fail closed. The same fixtures cover documents embedded in local
+recovery backups, and repository tests must prove that an upgrade is written
+atomically only after successful decoding and validation.
+
 ## Stable Windows build state
 
 `gradlew.ps1` derives a key from the checkout path and places generated state at

@@ -2,13 +2,18 @@ package dev.draftingroom5
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.LocalDate
+
+private const val CURRENT_SCHEMA_VERSION = 2
 
 internal fun encodeAppDocument(document: AppDocument): String {
     validateAppDocument(document)
     val value = JSONObject().apply {
         put("format", document.format)
+        put("schemaVersion", CURRENT_SCHEMA_VERSION)
         put("generation", document.generation)
         put("plan", encodePlan(document.plan))
         put("preferences", encodePreferences(document.preferences))
@@ -40,24 +45,25 @@ internal fun decodeAppDocument(value: String): AppDocument = try {
     require(value.toByteArray(Charsets.UTF_8).size <= MAX_DOCUMENT_BYTES) { "Document exceeds the 16 MiB limit." }
     inspectJsonStructure(value)
     val root = JSONObject(value)
-    root.exact(*CURRENT_DOCUMENT_FIELDS.toTypedArray())
+    val schema = detectDocumentSchema(root)
+    when (schema) {
+        DocumentSchema.CURRENT -> {
+            root.exact(*CURRENT_DOCUMENT_FIELDS.toTypedArray())
+            require(root.strictInt("schemaVersion") == CURRENT_SCHEMA_VERSION) { "Unsupported document schema version." }
+        }
+        DocumentSchema.RELEASED_V02731,
+        DocumentSchema.RELEASED_V02730 -> root.exact(*PREVERSION_DOCUMENT_FIELDS.toTypedArray())
+        DocumentSchema.RELEASED_V025 -> root.exact(*V025_DOCUMENT_FIELDS.toTypedArray())
+    }
     val document = AppDocument(
         format = root.strictString("format"),
         generation = root.strictLong("generation"),
-        plan = decodePlan(root.strictObject("plan")),
+        plan = decodePlan(root.strictObject("plan"), schema),
         preferences = decodePreferences(root.strictObject("preferences")),
-        partialSessions = root.strictArray("partialSessions").objects { decodeSession(it) },
-        history = root.strictArray("history").objects { decodeHistory(it) },
-        progressionReceipts = root.strictArray("progressionReceipts").objects {
-            it.exact("sessionId", "routineId", "before", "choice", "appliedRevision", "undone", "manualPrescription")
-            ProgressionReceipt(it.strictString("sessionId"), it.strictString("routineId"),
-                decodeExercise(it.strictObject("before")), ProgressionChoice.valueOf(it.strictString("choice")),
-                it.strictLong("appliedRevision"), it.strictBoolean("undone"),
-                it.nullableObject("manualPrescription")?.let { p ->
-                    p.exact("name", "notes", "setCount", "reps", "durationSeconds", "artworkId", "weightPounds")
-                    decodePrescription(p)
-                })
-        },
+        partialSessions = root.strictArray("partialSessions").objects { decodeSession(it, schema) },
+        history = root.strictArray("history").objects { decodeHistory(it, schema) },
+        progressionReceipts = if (schema == DocumentSchema.RELEASED_V025) emptyList() else
+            root.strictArray("progressionReceipts").objects { decodeProgressionReceipt(it, schema) },
         occurrenceExceptions = root.strictArray("occurrenceExceptions").objects {
             it.exact("occurrence", "disposition", "effectiveDate")
             OccurrenceException(decodeOccurrence(it.strictObject("occurrence")),
@@ -89,10 +95,10 @@ private fun encodePlan(plan: TrainingPlan) = JSONObject().apply {
     } })
 }
 
-private fun decodePlan(value: JSONObject): TrainingPlan {
+private fun decodePlan(value: JSONObject, schema: DocumentSchema): TrainingPlan {
     value.exact("routines", "schedule")
     return TrainingPlan(
-        routines = value.strictArray("routines").objects { decodeRoutine(it) },
+        routines = value.strictArray("routines").objects { decodeRoutine(it, schema) },
         schedule = value.strictArray("schedule").objects { entry ->
             entry.exact("id", "routineId", "days")
             val days = entry.strictArray("days").strings().map { DayOfWeek.valueOf(it) }
@@ -112,7 +118,9 @@ internal fun encodeRoutine(routine: Routine) = JSONObject().apply {
     put("exercises", JSONArray().apply { routine.exercises.forEach { put(encodeExercise(it)) } })
 }
 
-internal fun decodeRoutine(value: JSONObject): Routine {
+internal fun decodeRoutine(value: JSONObject): Routine = decodeRoutine(value, DocumentSchema.CURRENT)
+
+private fun decodeRoutine(value: JSONObject, schema: DocumentSchema): Routine {
     value.exact("id", "revision", "name", "artworkId", "execution", "appLink", "exercises")
     return Routine(
         id = value.strictString("id"), revision = value.strictLong("revision"), name = value.strictString("name"),
@@ -121,9 +129,7 @@ internal fun decodeRoutine(value: JSONObject): Routine {
             it.exact("packageName", "deepLink")
             AppLink(it.strictString("packageName"), it.nullableString("deepLink"))
         },
-        exercises = value.strictArray("exercises").objects { exercise ->
-            decodeExercise(exercise)
-        },
+        exercises = value.strictArray("exercises").objects { exercise -> decodeExercise(exercise, schema) },
     )
 }
 
@@ -133,6 +139,12 @@ internal fun encodeExercise(exercise: Exercise) = encodePrescription(exercise.pr
 }
 
 internal fun decodeExercise(value: JSONObject): Exercise {
+    return decodeExercise(value, DocumentSchema.CURRENT)
+}
+
+private fun decodeExercise(value: JSONObject, schema: DocumentSchema): Exercise {
+    if (schema == DocumentSchema.RELEASED_V025) return decodeV025Exercise(value)
+    if (schema == DocumentSchema.RELEASED_V02730) return decodeV02730Exercise(value)
     value.exact("id", "name", "notes", "setCount", "reps", "durationSeconds", "artworkId", "weightPounds", "progression")
     val prescription = decodePrescription(value)
     return Exercise(
@@ -146,6 +158,91 @@ internal fun decodeExercise(value: JSONObject): Exercise {
         weightPounds = prescription.weightPounds,
         progression = value.nullableObject("progression")?.let(::decodeProgression),
     )
+}
+
+private fun decodeV025Exercise(value: JSONObject): Exercise {
+    value.exact("id", "name", "notes", "setCount", "target", "timerSeconds", "artworkId")
+    val target = value.strictString("target")
+    val duration = value.nullableInt("timerSeconds")
+    val reps = legacyReps(target)
+    return Exercise(
+        id = value.strictString("id"), name = value.strictString("name"),
+        notes = preserveLegacyTarget(value.strictString("notes"), target, reps, duration),
+        setCount = value.strictInt("setCount"), reps = reps, durationSeconds = duration,
+        artworkId = value.strictString("artworkId"), weightPounds = null, progression = null,
+    )
+}
+
+private fun decodeV02730Exercise(value: JSONObject): Exercise {
+    value.exact("id", "name", "notes", "setCount", "target", "timerSeconds", "artworkId", "measurements", "progression")
+    val prescription = decodeV02730Prescription(value)
+    val progression = value.nullableObject("progression")?.let { legacy ->
+        when (legacy.strictString("kind")) {
+            "AUTOMATIC" -> {
+                legacy.exact("kind", "weightPounds", "durationSeconds")
+                null
+            }
+            "CUSTOM" -> decodeV02730CustomProgression(legacy)
+            else -> throw IllegalArgumentException("Unsupported legacy exercise progression kind.")
+        }
+    }
+    return Exercise(
+        id = value.strictString("id"), name = prescription.name, notes = prescription.notes,
+        setCount = prescription.setCount, reps = prescription.reps, durationSeconds = prescription.durationSeconds,
+        artworkId = prescription.artworkId, weightPounds = prescription.weightPounds, progression = progression,
+    )
+}
+
+private fun decodeV02730Prescription(value: JSONObject): ExercisePrescription {
+    val measurements = value.strictObject("measurements").also { it.exact("weightPounds", "durationSeconds") }
+    val target = value.strictString("target")
+    val timer = value.nullableInt("timerSeconds")
+    val duration = measurements.nullableInt("durationSeconds") ?: timer
+    val reps = legacyReps(target)
+    return ExercisePrescription(
+        name = value.strictString("name"),
+        notes = preserveLegacyTarget(value.strictString("notes"), target, reps, duration),
+        setCount = value.strictInt("setCount"), reps = reps, durationSeconds = duration,
+        artworkId = value.strictString("artworkId"),
+        weightPounds = measurements.nullableFiniteDouble("weightPounds")?.let(::normalizeLegacyWeight),
+    )
+}
+
+private fun decodeV02730CustomProgression(value: JSONObject): CustomExerciseProgression {
+    value.exact("kind", "steps")
+    return CustomExerciseProgression(value.strictArray("steps").objects { step ->
+        step.exact("replacement", "insertedExercises")
+        val replacement = step.strictObject("replacement").also {
+            it.exact("name", "notes", "setCount", "target", "timerSeconds", "artworkId", "measurements")
+        }
+        CustomProgressionStep(
+            replacement = decodeV02730Prescription(replacement),
+            insertedExercises = step.strictArray("insertedExercises").objects { decodeV02730Exercise(it) },
+        )
+    })
+}
+
+private fun legacyReps(target: String): Int? {
+    val match = LEGACY_REPS.matchEntire(target.trim()) ?: return null
+    return match.groupValues[1].toLongOrNull()?.takeIf { it in 1..Int.MAX_VALUE }?.toInt()
+}
+
+private fun preserveLegacyTarget(notes: String, target: String, reps: Int?, duration: Int?): String {
+    val trimmed = target.trim()
+    if (trimmed.isEmpty()) return notes
+    val canonical = when {
+        duration != null && trimmed.matches(Regex("(?i)^$duration\\s*(?:s|sec|secs|second|seconds)$")) -> true
+        reps != null && trimmed.matches(Regex("(?i)^$reps\\s*reps?$")) -> true
+        else -> false
+    }
+    if (canonical || notes.contains("Previous target: $trimmed")) return notes
+    return listOf("Previous target: $trimmed", notes).filter(String::isNotBlank).joinToString("\n").take(4_000)
+}
+
+private fun normalizeLegacyWeight(value: Double): Int {
+    val maximum = Int.MAX_VALUE - Int.MAX_VALUE % 5
+    return BigDecimal.valueOf(value).divide(BigDecimal.valueOf(5), 0, RoundingMode.HALF_UP)
+        .multiply(BigDecimal.valueOf(5)).max(BigDecimal.valueOf(5)).min(BigDecimal.valueOf(maximum.toLong())).toInt()
 }
 
 internal fun encodePrescription(value: ExercisePrescription) = JSONObject().apply {
@@ -232,16 +329,21 @@ private fun encodeSession(value: GuidedSession) = JSONObject().apply {
     put("handledProgressionExerciseIds", JSONArray(value.handledProgressionExerciseIds.sorted()))
 }
 
-private fun decodeSession(value: JSONObject): GuidedSession {
+private fun decodeSession(value: JSONObject, schema: DocumentSchema): GuidedSession {
+    if (schema == DocumentSchema.RELEASED_V025) {
+        value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision", "effectiveDate")
+    } else {
         value.exact("id", "occurrence", "routineId", "snapshot", "focusedExerciseId", "completedSets", "timer", "startedAtMillis", "updatedAtMillis", "eventRevision", "effectiveDate", "handledProgressionExerciseIds")
+    }
     val sets = value.strictObject("completedSets")
     return GuidedSession(
         value.strictString("id"), decodeOccurrence(value.strictObject("occurrence")), value.strictString("routineId"),
-        decodeRoutine(value.strictObject("snapshot")), value.strictString("focusedExerciseId"),
+        decodeRoutine(value.strictObject("snapshot"), schema), value.strictString("focusedExerciseId"),
         sets.keys().asSequence().associateWith { sets.strictInt(it) }, decodeTimer(value.strictObject("timer")),
         value.strictLong("startedAtMillis"), value.strictLong("updatedAtMillis"), value.strictLong("eventRevision"),
         LocalDate.parse(value.strictString("effectiveDate")),
-        value.strictArray("handledProgressionExerciseIds").strings().toSet(),
+        if (schema == DocumentSchema.RELEASED_V025) emptySet() else
+            value.strictArray("handledProgressionExerciseIds").strings().toSet(),
     )
 }
 
@@ -272,16 +374,111 @@ private fun encodeHistory(value: WorkoutHistoryEntry) = JSONObject().apply {
     put("effectiveDate", value.effectiveDate.toString())
 }
 
-private fun decodeHistory(value: JSONObject): WorkoutHistoryEntry {
+private fun decodeHistory(value: JSONObject, schema: DocumentSchema): WorkoutHistoryEntry {
     value.exact("id", "occurrence", "snapshot", "startedAtMillis", "completedAtMillis", "effectiveDate")
     return WorkoutHistoryEntry(value.strictString("id"), decodeOccurrence(value.strictObject("occurrence")),
-        decodeRoutine(value.strictObject("snapshot")), value.strictLong("startedAtMillis"), value.strictLong("completedAtMillis"),
+        decodeRoutine(value.strictObject("snapshot"), schema), value.strictLong("startedAtMillis"), value.strictLong("completedAtMillis"),
         LocalDate.parse(value.strictString("effectiveDate")))
 }
 
-private val CURRENT_DOCUMENT_FIELDS = setOf(
+private fun decodeProgressionReceipt(value: JSONObject, schema: DocumentSchema): ProgressionReceipt {
+    if (schema != DocumentSchema.RELEASED_V02730) {
+        value.exact("sessionId", "routineId", "before", "choice", "appliedRevision", "undone", "manualPrescription")
+        return ProgressionReceipt(
+            value.strictString("sessionId"), value.strictString("routineId"),
+            decodeExercise(value.strictObject("before"), schema), ProgressionChoice.valueOf(value.strictString("choice")),
+            value.strictLong("appliedRevision"), value.strictBoolean("undone"),
+            value.nullableObject("manualPrescription")?.let { prescription ->
+                prescription.exact("name", "notes", "setCount", "reps", "durationSeconds", "artworkId", "weightPounds")
+                decodePrescription(prescription)
+            },
+        )
+    }
+    value.exact("sessionId", "routineId", "before", "choice", "appliedRevision", "undone")
+    val beforeJson = value.strictObject("before")
+    val before = decodeV02730Exercise(beforeJson)
+    val oldChoice = value.strictString("choice")
+    val choice = if (oldChoice == "CUSTOM") ProgressionChoice.CUSTOM else ProgressionChoice.MANUAL
+    val manual = if (choice == ProgressionChoice.MANUAL) legacyAutomaticOutcome(beforeJson, oldChoice) else null
+    return ProgressionReceipt(
+        value.strictString("sessionId"), value.strictString("routineId"), before, choice,
+        value.strictLong("appliedRevision"), value.strictBoolean("undone"), manual,
+    )
+}
+
+private fun legacyAutomaticOutcome(beforeJson: JSONObject, choice: String): ExercisePrescription {
+    require(choice in setOf("WEIGHT", "DURATION", "HEAVIER_SHORTER")) { "Unsupported legacy progression choice." }
+    val before = decodeV02730Prescription(beforeJson)
+    val progression = beforeJson.strictObject("progression").also { it.exact("kind", "weightPounds", "durationSeconds") }
+    require(progression.strictString("kind") == "AUTOMATIC")
+    var weight = before.weightPounds
+    var duration = before.durationSeconds
+    if (choice == "WEIGHT" || choice == "HEAVIER_SHORTER") {
+        val rule = progression.strictObject("weightPounds").also { it.exact("increment", "minimum", "maximum") }
+        val current = beforeJson.strictObject("measurements").strictFiniteDouble("weightPounds")
+        val maximum = rule.nullableFiniteDouble("maximum") ?: Double.MAX_VALUE
+        weight = normalizeLegacyWeight(minOf(current + rule.strictFiniteDouble("increment"), maximum))
+    }
+    if (choice == "DURATION") {
+        val rule = progression.strictObject("durationSeconds").also { it.exact("increment", "minimum", "maximum") }
+        duration = minOf(
+            requireNotNull(before.durationSeconds).toLong() + rule.strictInt("increment"),
+            (rule.nullableInt("maximum") ?: Int.MAX_VALUE).toLong(),
+        ).toInt()
+    } else if (choice == "HEAVIER_SHORTER") {
+        val rule = progression.strictObject("durationSeconds").also { it.exact("increment", "minimum", "maximum") }
+        duration = maxOf(
+            requireNotNull(before.durationSeconds).toLong() - rule.strictInt("increment"),
+            (rule.nullableInt("minimum") ?: 1).toLong(),
+        ).toInt()
+    }
+    return before.copy(weightPounds = weight, durationSeconds = duration)
+}
+
+private fun detectDocumentSchema(root: JSONObject): DocumentSchema {
+    val fields = root.keys().asSequence().toSet()
+    if (fields == CURRENT_DOCUMENT_FIELDS) return DocumentSchema.CURRENT
+    if (fields == V025_DOCUMENT_FIELDS) return DocumentSchema.RELEASED_V025
+    require(fields == PREVERSION_DOCUMENT_FIELDS) { "Unexpected or missing fields." }
+    val shapes = mutableSetOf<DocumentSchema>()
+    fun inspectRoutine(routine: JSONObject) {
+        routine.strictArray("exercises").objects { exercise ->
+            shapes += when (exercise.keys().asSequence().toSet()) {
+                CURRENT_EXERCISE_FIELDS -> DocumentSchema.RELEASED_V02731
+                V02730_EXERCISE_FIELDS -> DocumentSchema.RELEASED_V02730
+                else -> throw IllegalArgumentException("Unexpected or missing exercise fields.")
+            }
+        }
+    }
+    root.strictObject("plan").strictArray("routines").objects(::inspectRoutine)
+    root.strictArray("partialSessions").objects { inspectRoutine(it.strictObject("snapshot")) }
+    root.strictArray("history").objects { inspectRoutine(it.strictObject("snapshot")) }
+    root.strictArray("progressionReceipts").objects { receipt ->
+        val before = receipt.strictObject("before")
+        shapes += when (before.keys().asSequence().toSet()) {
+            CURRENT_EXERCISE_FIELDS -> DocumentSchema.RELEASED_V02731
+            V02730_EXERCISE_FIELDS -> DocumentSchema.RELEASED_V02730
+            else -> throw IllegalArgumentException("Unexpected or missing exercise fields.")
+        }
+    }
+    require(shapes.size <= 1) { "Mixed document schemas are not supported." }
+    return shapes.singleOrNull() ?: DocumentSchema.RELEASED_V02731
+}
+
+private enum class DocumentSchema { CURRENT, RELEASED_V02731, RELEASED_V02730, RELEASED_V025 }
+
+private val PREVERSION_DOCUMENT_FIELDS = setOf(
     "format", "generation", "plan", "preferences", "partialSessions", "history", "occurrenceExceptions", "progressionReceipts",
 )
+private val CURRENT_DOCUMENT_FIELDS = PREVERSION_DOCUMENT_FIELDS + "schemaVersion"
+private val V025_DOCUMENT_FIELDS = PREVERSION_DOCUMENT_FIELDS - "progressionReceipts"
+private val CURRENT_EXERCISE_FIELDS = setOf(
+    "id", "name", "notes", "setCount", "reps", "durationSeconds", "artworkId", "weightPounds", "progression",
+)
+private val V02730_EXERCISE_FIELDS = setOf(
+    "id", "name", "notes", "setCount", "target", "timerSeconds", "artworkId", "measurements", "progression",
+)
+private val LEGACY_REPS = Regex("(?i)^\\s*(\\d+)(?:\\s*-\\s*\\d+)?(?:\\s*reps?)?(?:\\s*/\\s*side)?\\s*$")
 
 private fun JSONObject.exact(vararg expected: String): JSONObject {
     require(keys().asSequence().toSet() == expected.toSet()) { "Unexpected or missing fields." }
@@ -296,6 +493,7 @@ private fun JSONObject.nullableInt(name: String) = if (isNull(name)) null else s
 private fun JSONObject.strictLong(name: String) = get(name).let { require(it is Int || it is Long) { "$name must be an integer." }; (it as Number).toLong() }
 private fun JSONObject.nullableLong(name: String) = if (isNull(name)) null else strictLong(name)
 private fun JSONObject.strictFiniteDouble(name: String) = get(name).let { require(it is Number && it.toDouble().isFinite()) { "$name must be finite." }; it.toDouble() }
+private fun JSONObject.nullableFiniteDouble(name: String) = if (isNull(name)) null else strictFiniteDouble(name)
 private fun JSONObject.strictObject(name: String) = get(name).let { require(it is JSONObject) { "$name must be an object." }; it }
 private fun JSONObject.nullableObject(name: String) = if (isNull(name)) null else strictObject(name)
 private fun JSONObject.strictArray(name: String) = get(name).let { require(it is JSONArray) { "$name must be an array." }; it }

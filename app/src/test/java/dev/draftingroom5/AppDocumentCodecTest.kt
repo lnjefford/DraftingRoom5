@@ -32,9 +32,26 @@ class AppDocumentCodecTest {
 
     @Test fun currentDocumentRoundTripPreservesDefaultsAndIntegerSets() {
         val document = defaultAppDocument()
-        val restored = decodeAppDocument(encodeAppDocument(document))
+        val encoded = encodeAppDocument(document)
+        val restored = decodeAppDocument(encoded)
         assertEquals(document, restored)
+        assertEquals(2, JSONObject(encoded).getInt("schemaVersion"))
         assertEquals(3, restored.plan.routines.single { it.id == "routine-forearm" }.exercises.first().setCount)
+    }
+
+    @Test fun futureSchemaVersionsFailClosedInsteadOfGuessing() {
+        val root = JSONObject(encodeAppDocument(defaultAppDocument())).put("schemaVersion", 3)
+        assertThrows(IllegalArgumentException::class.java) { decodeAppDocument(root.toString()) }
+    }
+
+    @Test fun mixedReleasedExerciseSchemasAreRejected() {
+        val current = JSONObject(compatibilityFixture("v0.27.31.json"))
+        val legacyExercise = JSONObject(compatibilityFixture("v0.27.30.json"))
+            .getJSONObject("plan").getJSONArray("routines").getJSONObject(0)
+            .getJSONArray("exercises").getJSONObject(0)
+        current.getJSONObject("plan").getJSONArray("routines").getJSONObject(0)
+            .getJSONArray("exercises").put(legacyExercise)
+        assertThrows(IllegalArgumentException::class.java) { decodeAppDocument(current.toString()) }
     }
 
     @Test fun missingCurrentDocumentFieldIsRejected() {
@@ -77,3 +94,7 @@ class AppDocumentCodecTest {
         assertEquals(defaultDashboardCards(), decodeAppDocument(root.toString()).preferences.dashboardLayout.cards)
     }
 }
+
+private fun AppDocumentCodecTest.compatibilityFixture(release: String): String = checkNotNull(
+    javaClass.getResource("/compatibility/$release"),
+).readText()
