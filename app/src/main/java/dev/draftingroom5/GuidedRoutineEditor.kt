@@ -694,10 +694,11 @@ private fun TargetStepper(
             onClear?.let { TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Clear $title" }) { Text("Clear") } }
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = onDecrement, modifier = Modifier.size(48.dp).semantics { contentDescription = decrementLabel }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { Text("−") }
-                Text(value, modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                Text(value, modifier = Modifier.weight(1f).padding(end = 12.dp)
                     .semantics { contentDescription = "$title value $value" },
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold)
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End, fontWeight = FontWeight.Bold)
+                OutlinedButton(onClick = onDecrement, modifier = Modifier.size(48.dp).semantics { contentDescription = decrementLabel }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { Text("−") }
+                Spacer(Modifier.width(8.dp))
                 OutlinedButton(onClick = onIncrement, modifier = Modifier.size(48.dp).semantics { contentDescription = incrementLabel }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { Text("+") }
             }
         }
