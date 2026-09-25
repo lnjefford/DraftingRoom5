@@ -43,13 +43,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,7 +88,7 @@ import dev.draftingroom5.retirement.domain.PlanSettings
 import dev.draftingroom5.retirement.domain.AccountOrigin
 import dev.draftingroom5.retirement.forecast.ForecastCapture
 import dev.draftingroom5.retirement.forecast.ForecastChannel
-import dev.draftingroom5.retirement.forecast.ForecastCoordinator
+import dev.draftingroom5.retirement.forecast.DailyForecastService
 import dev.draftingroom5.retirement.forecast.ForecastInputs
 import dev.draftingroom5.retirement.forecast.ForecastResult
 import dev.draftingroom5.retirement.forecast.ForecastState
@@ -113,6 +111,7 @@ internal fun RetirementIntegratedHost(
 ) {
     val context = LocalContext.current
     var repository by remember { mutableStateOf<RetirementRepository?>(null) }
+    var forecast by remember { mutableStateOf<DailyForecastService?>(null) }
     var state by remember { mutableStateOf(previewState ?: RetirementState()) }
     var loadState by remember { mutableStateOf(if (previewState == null) IntegratedLoadState.LOADING else IntegratedLoadState.READY) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -124,7 +123,7 @@ internal fun RetirementIntegratedHost(
             val runtime = runCatching { withContext(Dispatchers.IO) { RetirementProviders.get(context) } }.getOrNull()
             if (runtime == null) loadState = IntegratedLoadState.ERROR else {
                 runCatching { withContext(Dispatchers.IO) { runtime.repository.upgradePlanningAssumptions() } }
-                    .onSuccess { repository = runtime.repository; state = it; loadState = IntegratedLoadState.READY }
+                    .onSuccess { repository = runtime.repository; forecast = runtime.forecast; state = it; loadState = IntegratedLoadState.READY }
                     .onFailure { loadState = IntegratedLoadState.ERROR }
             }
         }
@@ -136,7 +135,7 @@ internal fun RetirementIntegratedHost(
                 .onFailure { loadState = IntegratedLoadState.ERROR }
         }
     }
-    RetirementIntegratedPage(route, state, loadState, message, onNavigate, repository, previewState != null)
+    RetirementIntegratedPageWithForecast(route, state, loadState, message, onNavigate, forecast, previewState != null)
 }
 
 @Composable
@@ -148,12 +147,23 @@ internal fun RetirementIntegratedPage(
     onNavigate: (AppRoute) -> Unit = {},
     repository: RetirementRepository? = null,
     preview: Boolean = true,
+) = RetirementIntegratedPageWithForecast(route, state, loadState, message, onNavigate, null, preview)
+
+@Composable
+private fun RetirementIntegratedPageWithForecast(
+    route: AppRoute,
+    state: RetirementState,
+    loadState: IntegratedLoadState,
+    message: String? = null,
+    onNavigate: (AppRoute) -> Unit = {},
+    forecast: DailyForecastService? = null,
+    preview: Boolean = true,
 ) {
     when (loadState) {
         IntegratedLoadState.LOADING -> IntegratedMessage("Loading retirement", "Reading the latest accepted accounts, workbook, property, and plan.")
         IntegratedLoadState.ERROR -> IntegratedMessage("Retirement data unavailable", "Unlock the phone and try again. Saved values were not changed.", error = true)
         IntegratedLoadState.READY -> when (route) {
-            AppRoute.RetirementOverview -> OverviewPage(state, repository, preview, onNavigate)
+            AppRoute.RetirementOverview -> OverviewPage(state, forecast, preview, onNavigate)
             AppRoute.RetirementAssets -> AssetsPage(state, onNavigate)
             AppRoute.RetirementLibrary -> LibraryPage(message)
             else -> error("Not an integrated Retirement route")
@@ -164,14 +174,14 @@ internal fun RetirementIntegratedPage(
 @Composable
 private fun OverviewPage(
     state: RetirementState,
-    repository: RetirementRepository?,
+    forecast: DailyForecastService?,
     preview: Boolean,
     onNavigate: (AppRoute) -> Unit,
 ) {
     val summary = integratedAssetSummary(state)
     val health = retirementDataHealth(state, if (preview) Instant.parse("2026-09-21T12:00:00Z") else Instant.now())
     val plan = state.planSettings.maxByOrNull { it.revision }
-    val forecastState = overviewForecastState(state, repository, plan, preview)
+    val forecastState = overviewForecastState(state, forecast, plan, preview)
     if (plan != null && (forecastState is ForecastState.Calculating || forecastState is ForecastState.Idle)) {
         ForecastCalculationScreen()
         return
@@ -210,17 +220,14 @@ private fun OverviewPage(
 @Composable
 private fun overviewForecastState(
     state: RetirementState,
-    repository: RetirementRepository?,
+    forecast: DailyForecastService?,
     plan: PlanSettings?,
     preview: Boolean,
 ): ForecastState {
     if (plan == null) return ForecastState.Idle
-    if (repository != null) {
-        val scope = rememberCoroutineScope()
-        val coordinator = remember(repository) { ForecastCoordinator(repository, scope) }
-        val observed by coordinator.state.collectAsState()
-        DisposableEffect(coordinator) { onDispose { coordinator.close() } }
-        LaunchedEffect(state.generation, plan.revision) { coordinator.restart(paths = overviewForecastPathCount(plan)) }
+    if (forecast != null) {
+        val observed by forecast.state.collectAsState()
+        LaunchedEffect(forecast, plan.revision) { forecast.ensure(paths = overviewForecastPathCount(plan)) }
         return observed
     }
     if (preview) {

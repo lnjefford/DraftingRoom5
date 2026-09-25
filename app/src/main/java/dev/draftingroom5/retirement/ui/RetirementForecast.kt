@@ -66,33 +66,34 @@ internal fun RetirementForecastHost(
 ) {
     val context = LocalContext.current
     var repository by remember { mutableStateOf<RetirementRepository?>(null) }
+    var forecast by remember { mutableStateOf<DailyForecastService?>(null) }
     var loadFailed by remember { mutableStateOf(false) }
     LaunchedEffect(previewState) {
         if (previewState == null) {
-            repository = withContext(Dispatchers.IO) { runCatching { RetirementProviders.get(context).repository }.getOrNull() }
+            val runtime = withContext(Dispatchers.IO) { runCatching { RetirementProviders.get(context) }.getOrNull() }
+            repository = runtime?.repository
+            forecast = runtime?.forecast
             loadFailed = repository == null
         }
     }
     when {
         previewState != null -> ForecastPreviewRouter(route, previewState, onNavigate, onBack)
-        repository != null -> LiveForecastRouter(route, repository!!, onNavigate, onBack)
+        repository != null && forecast != null -> LiveForecastRouter(route, repository!!, forecast!!, onNavigate, onBack)
         else -> ForecastMessagePage(if (loadFailed) "Forecast unavailable" else "Loading forecast",
             if (loadFailed) "Unlock the phone and try again. Saved financial data was not changed." else "Opening the private planning model.")
     }
 }
 
 @Composable
-private fun LiveForecastRouter(route: AppRoute, repository: RetirementRepository, onNavigate: (AppRoute) -> Unit, onBack: () -> Unit) {
+private fun LiveForecastRouter(route: AppRoute, repository: RetirementRepository, forecast: DailyForecastService, onNavigate: (AppRoute) -> Unit, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
-    val coordinator = remember(repository) { ForecastCoordinator(repository, scope) }
-    DisposableEffect(coordinator) { onDispose { coordinator.close() } }
     var snapshot by remember { mutableStateOf<RetirementState?>(null) }
     var saveMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    val forecastState by coordinator.state.collectAsState()
+    val forecastState by forecast.state.collectAsState()
     LaunchedEffect(repository) {
         snapshot = withContext(Dispatchers.IO) { repository.upgradePlanningAssumptions() }
         val plan = snapshot!!.planSettings.maxByOrNull { it.revision }
-        coordinator.restart(paths = forecastPathCount(plan))
+        forecast.ensure(paths = forecastPathCount(plan))
     }
     LaunchedEffect(forecastState) {
         if (forecastState is ForecastState.Ready || forecastState is ForecastState.NeedsData) {
@@ -113,7 +114,7 @@ private fun LiveForecastRouter(route: AppRoute, repository: RetirementRepository
     val resultPlan = displayedResult?.let { result -> state.planSettings.singleOrNull { it.revision == result.planRevision } }
     when (route) {
         AppRoute.RetirementForecast -> ForecastStatePage(forecastState, resultPlan,
-            onRetry = { coordinator.restart(paths = forecastPathCount(plan)) },
+            onRetry = { forecast.restart(paths = forecastPathCount(plan)) },
             onRisk = { result -> onNavigate(AppRoute.RetirementForecastRisk(result.generation, result.planRevision)) })
         AppRoute.RetirementForecastSettings -> {
             val formPlan = plan ?: newPlanTemplate()
@@ -124,7 +125,12 @@ private fun LiveForecastRouter(route: AppRoute, repository: RetirementRepository
                         if (current?.revision != plan?.revision) RetirementResult.Conflict(latest.generation)
                         else repository.savePlan(latest.generation, candidate.copy(id = UUID.randomUUID().toString(), revision = (current?.revision ?: 0) + 1))
                     }
-                    if (result is RetirementResult.Success) { snapshot = result.value; saveMessage = null; onBack() }
+                    if (result is RetirementResult.Success) {
+                        snapshot = result.value
+                        saveMessage = null
+                        forecast.restart(paths = forecastPathCount(result.value.planSettings.maxByOrNull { it.revision }))
+                        onBack()
+                    }
                     else saveMessage = "The plan changed before this form was saved. Review the latest values and try again."
                 }
             }
@@ -558,7 +564,12 @@ internal fun ScenarioComparisonPreview(base: ForecastResult, compared: ForecastR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan: Boolean = false, onSave: (PlanSettings) -> Unit) {
+internal fun ForecastSettingsPage(
+    plan: PlanSettings,
+    message: String?,
+    newPlan: Boolean = false,
+    onSave: (PlanSettings) -> Unit,
+) {
     val incomePlan = remember(plan) { editableIncomePlan(plan) }
     val saver = listSaver<ForecastSettingsDraft, String>(
         save = { d -> listOf(d.birthDate,d.retirementAge,d.endAge,d.annualSpending,d.inflationPercent,d.expectedReturnPercent,d.volatilityPercent,d.filingStatus.name,d.stateCode,d.acaHouseholdSize,d.acaAnnualPremium,d.acaRegime,d.preTaxContribution,d.rothContribution,d.taxableContribution,d.hsaContribution,d.medicalSpending,d.homeAppreciationPercent,d.homeDisposition.name,d.spouseBirthYear) + d.incomeAmounts.keys.sorted().flatMap { listOf(it, d.incomeAmounts.getValue(it), d.incomeStartAges.getValue(it), d.incomeEndAges.getValue(it)) } },

@@ -43,6 +43,12 @@ class ForecastResult internal constructor(
         require(age in currentAge..endAge)
         return forecastMoney(spending[age - currentAge])
     }
+    internal fun writeSeries(write: (Double) -> Unit) {
+        for (channel in ForecastChannel.entries) for (path in 0 until paths) for (age in currentAge..endAge) {
+            write(raw(channel, path, age))
+        }
+    }
+    internal fun writeSpending(write: (Double) -> Unit) { spending.forEach(write) }
     fun depletionAge(path: Int): Int { require(path in 0 until paths); return failures.firstOrNull { it.path == path }?.age ?: endAge + 1 }
     override fun toString() = "ForecastResult(generation=$generation, paths=$paths, [private])"
 }

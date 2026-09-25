@@ -6,7 +6,11 @@ import androidx.work.*
 import dev.draftingroom5.requestAutomaticBackupAfterChange
 import dev.draftingroom5.retirement.data.RetirementDatabase
 import dev.draftingroom5.retirement.data.RetirementRepository
+import dev.draftingroom5.retirement.forecast.AndroidForecastCacheStorage
+import dev.draftingroom5.retirement.forecast.DailyForecastService
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.util.UUID
@@ -15,6 +19,8 @@ import java.util.concurrent.TimeUnit
 internal class RetirementProviders private constructor(context: Context) {
     val database = RetirementDatabase.open(context)
     val repository = RetirementRepository(database.dao) { requestAutomaticBackupAfterChange(context) }
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val forecast = DailyForecastService(repository, applicationScope, AndroidForecastCacheStorage(context))
     val key = AndroidVaultKey(context)
     val vault = ProviderCredentialVault(AndroidVaultStorage(context), key)
     val plaid = PlaidNativeProvider(vault, SecureProviderTransport(), repository)

@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicInteger
 
 internal fun forecastState(): RetirementState {
@@ -27,6 +29,58 @@ internal fun forecastRepository(): RetirementRepository {
 }
 
 class ForecastCoordinatorTest {
+    private class MemoryForecastCache : ForecastCacheStorage {
+        var bytes: ByteArray? = null
+        override fun read() = bytes?.let { ForecastCacheCodec.decode(ByteArrayInputStream(it)) }
+        override fun write(value: CachedForecast) {
+            bytes = ByteArrayOutputStream().also { ForecastCacheCodec.encode(value, it) }.toByteArray()
+        }
+        override fun clear() { bytes = null }
+    }
+
+    @Test fun dailyForecastReusesMemoryAndDiskUntilTomorrowOrManualRestart() = runBlocking {
+        val repository = forecastRepository()
+        val cache = MemoryForecastCache()
+        var date = FORECAST_TEST_TODAY
+        val calls = AtomicInteger()
+        suspend fun calculated(input: ForecastInput): ForecastResult {
+            calls.incrementAndGet()
+            return RetirementEngine().calculate(input, 1, 74, true)
+        }
+        val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val first = DailyForecastService(repository, firstScope, cache, { date }) { input, _, _, _ -> calculated(input) }
+        try {
+            first.ensure(1)
+            withTimeout(5000) { first.state.first { it is ForecastState.Ready } }
+            first.ensure(1)
+            delay(100)
+            assertEquals(1, calls.get())
+
+            first.restart(1)
+            withTimeout(5000) { first.state.first { it is ForecastState.Ready && calls.get() == 2 } }
+            assertEquals(2, calls.get())
+
+            date = date.plusDays(1)
+            first.ensure(1)
+            withTimeout(5000) { first.state.first { it is ForecastState.Ready && calls.get() == 3 } }
+            assertEquals(3, calls.get())
+        } finally { firstScope.cancel() }
+
+        val restoredCalls = AtomicInteger()
+        val secondScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val restored = DailyForecastService(repository, secondScope, cache, { date }) { input, _, _, _ ->
+            restoredCalls.incrementAndGet(); RetirementEngine().calculate(input, 1, 74, true)
+        }
+        try {
+            restored.ensure(1)
+            val ready = withTimeout(5000) { restored.state.first { it is ForecastState.Ready } } as ForecastState.Ready
+            assertEquals(0, restoredCalls.get())
+            assertEquals(repository.load().generation, ready.result.generation)
+            assertEquals(ready.result.percentile(ForecastChannel.TOTAL, ready.result.endAge, 50.0),
+                ForecastCacheCodec.decode(ByteArrayInputStream(cache.bytes!!)).result.percentile(ForecastChannel.TOTAL, ready.result.endAge, 50.0))
+        } finally { secondScope.cancel() }
+    }
+
     @Test fun anniversaryAndLeapDayAgePolicyAreExplicit() {
         val original=forecastState()
         fun age(birth:String,reference:String):Int {
