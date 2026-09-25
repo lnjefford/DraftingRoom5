@@ -51,7 +51,7 @@ This release supports Android 17+ (API 37). Android 17 runtime behavior is not c
 
 ## Local build
 
-Open the project in Android Studio with Android SDK 37 and Java 17 or newer installed. On Windows, run `./gradlew.ps1 testDebugUnitTest lintDebug assembleDebug`; the bootstrap validates `JAVA_HOME`, then searches `%USERPROFILE%/.jdks`, a repository-local JDK under `.tooling/jdk17/`, and Android Studio's JBR, and uses the ignored `.gradle-user-home` cache when no cache is configured. It fails early with installation guidance instead of silently using an older system Java. Linux and macOS builds, including CI, continue to use `./gradlew testDebugUnitTest lintDebug assembleDebug`.
+Open the project in Android Studio with Android SDK 37 and Java 17 or newer installed. On Windows, use `./tools/verify.ps1 -Tier Fast`, `Commit`, or `Release` as described in [the validation guide](docs/VALIDATION.md). The bootstrap validates `JAVA_HOME`, searches `%USERPROFILE%/.jdks`, a repository-local JDK under `.tooling/jdk17/`, and Android Studio's JBR, and isolates generated Gradle/build state under `%LOCALAPPDATA%\DraftingRoom5` to avoid OneDrive locks. Linux and macOS builds, including CI, continue to use `./gradlew testDebugUnitTest lintDebug assembleDebug`.
 
 Add **DraftingRoom5 living icon** from the launcher's widget picker to place the one-cell tile. Android controls the exact delivery time of its approximately-hourly refresh, so the image is not promised to change on the hour; opening the app and system widget lifecycle events can also refresh the current time-selected look. The whole tile opens the normal app route.
 

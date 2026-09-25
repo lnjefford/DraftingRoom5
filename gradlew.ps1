@@ -2,6 +2,17 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = $PSScriptRoot
 $gradleArguments = $args
 
+function Get-RepositoryKey([string]$Path) {
+    $normalized = [System.IO.Path]::GetFullPath($Path).TrimEnd('\').ToLowerInvariant()
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($normalized))
+        return ([System.BitConverter]::ToString($digest).Replace('-', '').Substring(0, 12).ToLowerInvariant())
+    } finally {
+        $sha.Dispose()
+    }
+}
+
 function Get-CompatibleJavaMajor([string]$JavaHome) {
     if ([string]::IsNullOrWhiteSpace($JavaHome)) { return $null }
     $java = Join-Path $JavaHome 'bin/java.exe'
@@ -61,15 +72,32 @@ if (-not $selectedJavaHome) {
 
 $env:JAVA_HOME = $selectedJavaHome
 $env:Path = "$(Join-Path $selectedJavaHome 'bin');$env:Path"
+$localStateParent = if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+    Join-Path ([System.IO.Path]::GetTempPath()) 'DraftingRoom5'
+} else {
+    Join-Path $env:LOCALAPPDATA 'DraftingRoom5'
+}
+$repositoryKey = Get-RepositoryKey $repositoryRoot
+$repositoryStateRoot = Join-Path $localStateParent "repositories/$repositoryKey"
 if (-not $env:GRADLE_USER_HOME) {
-    $env:GRADLE_USER_HOME = Join-Path $repositoryRoot '.gradle-user-home'
+    $env:GRADLE_USER_HOME = Join-Path $localStateParent 'gradle-user-home'
 }
 if (-not $env:ANDROID_USER_HOME) {
-    $env:ANDROID_USER_HOME = Join-Path $repositoryRoot '.gradle-user-home/android-user-home'
+    $env:ANDROID_USER_HOME = Join-Path $localStateParent 'android-user-home'
 }
-New-Item -ItemType Directory -Path $env:ANDROID_USER_HOME -Force | Out-Null
+if (-not $env:DR5_BUILD_ROOT) {
+    $env:DR5_BUILD_ROOT = Join-Path $repositoryStateRoot 'build'
+}
+$projectCache = Join-Path $repositoryStateRoot 'project-cache'
+New-Item -ItemType Directory -Path $env:GRADLE_USER_HOME,$env:ANDROID_USER_HOME,$env:DR5_BUILD_ROOT,$projectCache -Force | Out-Null
+
+$hasProjectCache = $gradleArguments | Where-Object { $_ -eq '--project-cache-dir' -or $_ -like '--project-cache-dir=*' }
+if (-not $hasProjectCache) {
+    $gradleArguments = @('--project-cache-dir', $projectCache) + $gradleArguments
+}
 
 $javaMajor = Get-CompatibleJavaMajor $selectedJavaHome
 Write-Host "DraftingRoom5 Gradle: Java $javaMajor from $selectedJavaHome"
+Write-Host "DraftingRoom5 Gradle: isolated state at $repositoryStateRoot"
 & (Join-Path $repositoryRoot 'gradlew.bat') @gradleArguments
 exit $LASTEXITCODE
