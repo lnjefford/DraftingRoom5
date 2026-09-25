@@ -90,7 +90,7 @@ private fun LiveForecastRouter(route: AppRoute, repository: RetirementRepository
     var saveMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val forecastState by coordinator.state.collectAsState()
     LaunchedEffect(repository) {
-        snapshot = withContext(Dispatchers.IO) { repository.load() }
+        snapshot = withContext(Dispatchers.IO) { repository.upgradePlanningAssumptions() }
         val plan = snapshot!!.planSettings.maxByOrNull { it.revision }
         coordinator.restart(paths = forecastPathCount(plan))
     }
@@ -143,9 +143,9 @@ private fun LiveForecastRouter(route: AppRoute, repository: RetirementRepository
 
 private fun newPlanTemplate(): PlanSettings {
     val today = java.time.LocalDate.now()
-    return PlanSettings("new", 1, today, today, 65, 95, Money(0), 250, 650,
-        FilingStatus.SINGLE, "WI", ReferenceTaxPolicy.ID, 1, Money(0), "CLIFF",
-        Money(0), Money(0), Money(0), emptyList(), HomeDisposition.KEEP)
+    return PlanSettings("new", 1, today, today, 45, 95, Money(0), 250, 650,
+        FilingStatus.MARRIED_FILING_JOINTLY, "WI", PlanningTaxPolicy.ID, 2, Money(0), "CLIFF",
+        Money(0), Money(0), Money(0), emptyList(), HomeDisposition.KEEP, spouseBirthYear = 1988)
 }
 
 private fun forecastPathCount(plan: PlanSettings?): Int {
@@ -296,10 +296,10 @@ private fun BalanceProjection(result: ForecastResult, plan: PlanSettings, retire
 @Composable
 private fun CashFlowProjection(result: ForecastResult, retirementAge: Int) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Available at retirement", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
+        Text("Assets at retirement", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
         availableAtRetirement(result, retirementAge).forEach { ProjectionValueRow(it.label, it.amount.editorialFormat()) }
         ProjectionValueRow("Annual spending at retirement", result.annualSpending(retirementAge).editorialFormat())
-        Text("Saved mortgage payments are included until their payoff date. All values are in today's dollars.", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+        Text("Home equity is included above but cannot fund spending while you keep the home. Mortgage principal/interest stops at payoff. All values use today's dollars.", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -308,7 +308,7 @@ private fun RiskProjection(result: ForecastResult) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         RiskOutlook(result)
         if (!result.taxFundingConverged) {
-            Text("Tax funding residual up to ${result.maximumTaxFundingResidual.format()} across ${result.taxResidualYears} path-years.", color = RetirementGold)
+            Text("Unfunded taxes up to ${result.maximumTaxFundingResidual.format()} across ${result.taxResidualYears} path-years; these count as failures.", color = RetirementGold)
         }
         result.warnings.forEach { Text(it, color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall) }
     }
@@ -486,7 +486,7 @@ internal fun ForecastRiskPage(result: ForecastResult, plan: PlanSettings?, onSce
         LabelValue("Largest unmet annual amount", risk.largestUnmet.format())
     }
     Text("These are factual path diagnostics, not a qualitative risk score or a prediction of what caused a market outcome.", color = RetirementTextSecondary)
-    if (!result.taxFundingConverged) StatusCard("Tax funding was short by up to ${result.maximumTaxFundingResidual.format()} in ${result.taxResidualYears} path-years. This is separate from the failure counts above.")
+    if (!result.taxFundingConverged) StatusCard("Unfunded taxes reached ${result.maximumTaxFundingResidual.format()} in ${result.taxResidualYears} path-years. These are included in the failure counts above.")
     if (plan != null) {
         Text("Focused stress scenarios", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         scenarioSpecs(plan).forEach { scenario ->
@@ -561,11 +561,11 @@ internal fun ScenarioComparisonPreview(base: ForecastResult, compared: ForecastR
 internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan: Boolean = false, onSave: (PlanSettings) -> Unit) {
     val incomePlan = remember(plan) { editableIncomePlan(plan) }
     val saver = listSaver<ForecastSettingsDraft, String>(
-        save = { d -> listOf(d.birthDate,d.retirementAge,d.endAge,d.annualSpending,d.inflationPercent,d.expectedReturnPercent,d.volatilityPercent,d.filingStatus.name,d.stateCode,d.acaHouseholdSize,d.acaAnnualPremium,d.acaRegime,d.preTaxContribution,d.rothContribution,d.taxableContribution,d.hsaContribution,d.medicalSpending,d.homeAppreciationPercent,d.homeDisposition.name) + d.incomeAmounts.keys.sorted().flatMap { listOf(it, d.incomeAmounts.getValue(it), d.incomeStartAges.getValue(it), d.incomeEndAges.getValue(it)) } },
+        save = { d -> listOf(d.birthDate,d.retirementAge,d.endAge,d.annualSpending,d.inflationPercent,d.expectedReturnPercent,d.volatilityPercent,d.filingStatus.name,d.stateCode,d.acaHouseholdSize,d.acaAnnualPremium,d.acaRegime,d.preTaxContribution,d.rothContribution,d.taxableContribution,d.hsaContribution,d.medicalSpending,d.homeAppreciationPercent,d.homeDisposition.name,d.spouseBirthYear) + d.incomeAmounts.keys.sorted().flatMap { listOf(it, d.incomeAmounts.getValue(it), d.incomeStartAges.getValue(it), d.incomeEndAges.getValue(it)) } },
         restore = { v ->
-            val rows = v.drop(19).chunked(4)
+            val rows = v.drop(20).chunked(4)
             ForecastSettingsDraft(v[0],v[1],v[2],v[3],v[4],v[5],v[6],FilingStatus.valueOf(v[7]),v[8],v[9],v[10],v[11],v[12],v[13],v[14],v[15],v[16],v[17],HomeDisposition.valueOf(v[18]),
-                rows.associate { it[0] to it[1] }, rows.associate { it[0] to it[2] }, rows.associate { it[0] to it[3] })
+                rows.associate { it[0] to it[1] }, rows.associate { it[0] to it[2] }, rows.associate { it[0] to it[3] }, v[19])
         },
     )
     var draft by rememberSaveable(plan.revision, newPlan, stateSaver = privateDraftSaver("forecast:${plan.id}:${plan.revision}", saver)) {
@@ -578,23 +578,25 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
         Text("Set the assumptions that shape your projection. Saving recalculates the plan once.", color = RetirementTextSecondary)
         SettingsSection("Timing") {
             DateSetting("Birth date", draft.birthDate, plan.birthDate) { draft = draft.copy(birthDate = it) }
+            IntegerStepper("Spouse birth year (annual age estimate)", draft.spouseBirthYear, 1900, LocalDate.now().year, 1, 1988) { draft = draft.copy(spouseBirthYear = it) }
             IntegerStepper("Retirement age", draft.retirementAge, 18, 120, 1, plan.retirementAge) { draft = draft.copy(retirementAge = it) }
             IntegerStepper("Plan through age", draft.endAge, 18, 130, 1, plan.endAge) { draft = draft.copy(endAge = it) }
         }
         SettingsSection("Lifestyle and market") {
-            MoneySetting("Annual lifestyle spending (today's dollars)", draft.annualSpending) { draft = draft.copy(annualSpending = it) }
+            MoneySetting("Annual household spending (before subsidies and income tax)", draft.annualSpending) { draft = draft.copy(annualSpending = it) }
+            Text("Includes gross insurance premiums for both spouses and mortgage principal/interest. Income taxes are calculated separately.", color = RetirementTextSecondary)
             PercentStepper("Inflation", draft.inflationPercent, -10.0, 100.0, .25) { draft = draft.copy(inflationPercent = it) }
             PercentStepper("Expected real equity return", draft.expectedReturnPercent, -100.0, 300.0, .25) { draft = draft.copy(expectedReturnPercent = it) }
             PercentStepper("Market volatility scale", draft.volatilityPercent, 0.0, 300.0, 5.0) { draft = draft.copy(volatilityPercent = it) }
         }
         SettingsSection("Tax and health coverage") {
             EnumSelector("Filing status", draft.filingStatus, FilingStatus.entries) { draft = draft.copy(filingStatus = it) }
-            EnumSelector("State", draft.stateCode, ReferenceTaxPolicy.supportedStates.sorted()) { draft = draft.copy(stateCode = it) }
+            EnumSelector("State", draft.stateCode, PlanningTaxPolicy.supportedStates.sorted()) { draft = draft.copy(stateCode = it) }
             IntegerStepper("ACA household size", draft.acaHouseholdSize, 1, 20, 1) { draft = draft.copy(acaHouseholdSize = it) }
-            MoneySetting("Annual benchmark premium", draft.acaAnnualPremium) { draft = draft.copy(acaAnnualPremium = it) }
+            MoneySetting("Full household annual benchmark premium (already in spending)", draft.acaAnnualPremium) { draft = draft.copy(acaAnnualPremium = it) }
             MoneySetting("Annual medical spending", draft.medicalSpending) { draft = draft.copy(medicalSpending = it) }
-            EnumSelector("ACA model", draft.acaRegime, listOf("CLIFF", "EXTENDED")) { draft = draft.copy(acaRegime = it) }
-            Text("Policy: ${plan.taxPolicyId}. Reference approximation, not current-law tax advice.", color = RetirementTextSecondary)
+            Text("ACA: Wisconsin Marketplace, individual Medicare transitions; equal premium shares assumed. No employer coverage.", color = RetirementTextSecondary)
+            Text("2026 federal/Wisconsin planning rules; future indexed limits follow inflation.", color = RetirementTextSecondary)
         }
         SettingsSection("Annual contributions") {
             MoneySetting("Pre-tax", draft.preTaxContribution) { draft = draft.copy(preTaxContribution = it) }
@@ -602,9 +604,9 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
             MoneySetting("Taxable", draft.taxableContribution) { draft = draft.copy(taxableContribution = it) }
             MoneySetting("HSA", draft.hsaContribution) { draft = draft.copy(hsaContribution = it) }
         }
-        SettingsSection("Social Security and pension income") {
+        SettingsSection("Social Security income") {
             incomePlan.incomeStreams.forEach { stream ->
-                Text(stream.taxKind.name.lowercase().replace('_',' ').replaceFirstChar { it.uppercase() }, fontWeight = FontWeight.SemiBold)
+                Text("${if (stream.owner == Owner.SPOUSE) "Spouse" else "Your"} ${stream.taxKind.name.lowercase().replace('_',' ')}", fontWeight = FontWeight.SemiBold)
                 MoneySetting("Annual amount (today's dollars)", draft.incomeAmounts[stream.id].orEmpty()) {
                     draft = draft.copy(incomeAmounts = draft.incomeAmounts + (stream.id to it))
                 }
@@ -615,13 +617,13 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
                     draft = draft.copy(incomeEndAges = draft.incomeEndAges + (stream.id to it))
                 }
             }
-            Text("Social Security is held constant in today's dollars, which models annual cost-of-living adjustments.", color = RetirementTextSecondary)
+            Text("Amounts use today's dollars and estimates assuming work stops at retirement. Ages apply to each recipient. Age 67 is a placeholder until you choose; no benefit is invented for a zero amount.", color = RetirementTextSecondary)
         }
         SettingsSection("Home") {
             PercentStepper("Real home appreciation", draft.homeAppreciationPercent, -50.0, 100.0, .25) { draft = draft.copy(homeAppreciationPercent = it) }
             EnumSelector("At retirement", draft.homeDisposition, HomeDisposition.entries) { draft = draft.copy(homeDisposition = it) }
-            Text("Mortgage payments and payoff timing come from the saved home details.", color = RetirementTextSecondary)
-            Text("Epic position, growth, tax, sale, and projection values are workbook-owned and cannot be edited here.", color = RetirementTextSecondary)
+            Text("Saved mortgage principal/interest stops at payoff. Property tax, insurance and maintenance remain in spending. Home equity remains in total wealth.", color = RetirementTextSecondary)
+            Text("Epic is sold at retirement using workbook net proceeds and at most 1% uncertainty. Proceeds and surplus immediately enter 60% stock / 40% bond index funds. Spouse investments are excluded; existing taxable investments assume zero basis.", color = RetirementTextSecondary)
         }
         (error ?: message)?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = {

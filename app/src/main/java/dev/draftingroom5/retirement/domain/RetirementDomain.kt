@@ -203,7 +203,7 @@ data class ImportMetadata(
 )
 
 enum class IncomeTaxKind { ORDINARY, SOCIAL_SECURITY, TAX_FREE }
-data class IncomeStream(val id: String, val annualAmount: Money, val startAge: Int, val endAge: Int, val taxKind: IncomeTaxKind)
+data class IncomeStream(val id: String, val annualAmount: Money, val startAge: Int, val endAge: Int, val taxKind: IncomeTaxKind, val owner: Owner = Owner.SELF)
 data class PlanSettings(
     val id: String,
     val revision: Long,
@@ -229,6 +229,7 @@ data class PlanSettings(
     val annualMedicalSpending: Money = Money(0),
     val homeRealAppreciationBps: Int = 0,
     val volatilityScaleBps: Int = 10000,
+    val spouseBirthYear: Int? = null,
 )
 
 data class ChecklistState(val catalogId: String, val checked: Boolean, val updatedAt: Instant)
@@ -338,6 +339,7 @@ fun validateRetirementState(state: RetirementState) {
         validateEpicWorkbook(it.workbook)
     }
     state.planSettings.forEach { plan ->
+        require(plan.spouseBirthYear == null || plan.spouseBirthYear in 1900..plan.referenceDate.year)
         require(plan.revision > 0 && plan.retirementAge in 0..120 && plan.endAge in plan.retirementAge..130)
         require(plan.inflationBps in -1000..10_000 && plan.expectedReturnBps in -10_000..30_000)
         require(plan.stateCode.matches(Regex("[A-Z]{2}")) && plan.acaHouseholdSize in 1..20)
@@ -347,6 +349,6 @@ fun validateRetirementState(state: RetirementState) {
         require(listOf(plan.annualSpending, plan.acaAnnualPremium, plan.annualPreTaxContribution,
             plan.annualRothContribution, plan.annualTaxableContribution, plan.annualHsaContribution,
             plan.annualMedicalSpending).all { it.cents in 0..MAX_ASSET_CENTS })
-        plan.incomeStreams.forEach { require(it.annualAmount.cents in 0..MAX_ASSET_CENTS && it.startAge in 0..130 && it.endAge in it.startAge..200) }
+        plan.incomeStreams.forEach { require(it.owner != Owner.JOINT); require(it.annualAmount.cents in 0..MAX_ASSET_CENTS && it.startAge in 0..130 && it.endAge in it.startAge..200) }
     }
 }

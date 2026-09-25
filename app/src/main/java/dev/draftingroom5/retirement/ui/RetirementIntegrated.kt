@@ -123,9 +123,8 @@ internal fun RetirementIntegratedHost(
         } else {
             val runtime = runCatching { withContext(Dispatchers.IO) { RetirementProviders.get(context) } }.getOrNull()
             if (runtime == null) loadState = IntegratedLoadState.ERROR else {
-                repository = runtime.repository
-                runCatching { withContext(Dispatchers.IO) { runtime.repository.load() } }
-                    .onSuccess { state = it; loadState = IntegratedLoadState.READY }
+                runCatching { withContext(Dispatchers.IO) { runtime.repository.upgradePlanningAssumptions() } }
+                    .onSuccess { repository = runtime.repository; state = it; loadState = IntegratedLoadState.READY }
                     .onFailure { loadState = IntegratedLoadState.ERROR }
             }
         }

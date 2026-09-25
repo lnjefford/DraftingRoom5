@@ -14,6 +14,7 @@ data class Allocation(val us: Double = 0.0, val international: Double = 0.0, val
     init { val w = array(); require(w.all { it.isFinite() && it >= 0 } && abs(w.sum() - 1.0) < 1e-9) }
     internal fun array() = doubleArrayOf(us, international, bonds, reits, cash, crypto)
     companion object {
+        val INDEX_FUNDS = Allocation(us = .40, international = .20, bonds = .40)
         fun defaultFor(type: AccountType): Allocation = when (type) {
             AccountType.CASH, AccountType.CD -> Allocation(cash = 1.0)
             AccountType.CRYPTO -> Allocation(crypto = 1.0)
@@ -36,11 +37,11 @@ data class ForecastProperty(val value: Money, val mortgage: Money, val rateBps: 
         if (low != null) require(low.cents >= 0 && low.cents <= value.cents && high!!.cents >= value.cents && high.cents <= MAX_ASSET_CENTS)
     }
 }
-data class ForecastEpicYear(val year: Int, val pretax: Money, val afterTax: Money) {
+data class ForecastEpicYear(val year: Int, val pretax: Money, val afterTax: Money, val capitalGain: Money = Money(0), val ordinaryIncome: Money = Money(0)) {
     init { require(year in 1900..2500 && pretax.cents in 0..MAX_ASSET_CENTS && afterTax.cents in 0..pretax.cents) }
 }
 enum class IncomeKind { ORDINARY, SOCIAL_SECURITY, TAX_FREE }
-data class ForecastIncome(val annual: Money, val startAge: Int, val endAge: Int, val kind: IncomeKind) {
+data class ForecastIncome(val annual: Money, val startAge: Int, val endAge: Int, val kind: IncomeKind, val owner: Owner = Owner.SELF) {
     init { require(annual.cents in 0..MAX_ASSET_CENTS && startAge in 0..130 && endAge in startAge..200) }
 }
 data class ForecastContributions(val traditional: Money = Money(0), val roth: Money = Money(0),
@@ -62,7 +63,8 @@ class ForecastInput(
     val acaHousehold: Int = 1, val acaPremium: Money = Money(0), val acaExtended: Boolean = false,
     val sellHome: Boolean = true, rules: List<WithdrawalRule> = WithdrawalPolicy.defaultRules(),
     val spendingIncludesMortgage: Boolean = false,
-    warnings: List<String> = emptyList(), val policyId: String = ReferenceTaxPolicy.ID,
+    warnings: List<String> = emptyList(), val policyId: String = PlanningTaxPolicy.ID,
+    val spouseCurrentAge: Int? = null, val birthYear: Int = referenceDate.year - currentAge,
 ) {
     val accounts = frozen(accounts)
     val incomes = frozen(incomes)
@@ -77,7 +79,8 @@ class ForecastInput(
         require(spending.cents in 0..MAX_ASSET_CENTS && acaPremium.cents in 0..MAX_ASSET_CENTS)
         require(inflationBps in -1000..10000 && equityMeanShiftBps in -10000..30000 && volatilityScaleBps in 0..30000)
         require(epicVolatility.isFinite() && epicVolatility >= 0 && acaHousehold in 1..20)
-        require(policyId == ReferenceTaxPolicy.ID && stateCode in ReferenceTaxPolicy.supportedStates)
+        require(policyId in setOf(PlanningTaxPolicy.ID, ReferenceTaxPolicy.ID) && stateCode in PlanningTaxPolicy.supportedStates)
+        require(spouseCurrentAge == null || spouseCurrentAge in 0..130)
         require(accounts.size <= 1000 && properties.size <= 100 && incomes.size <= 100 && rules.size <= 20)
         require(epicYears.map { it.year }.distinct().size == epicYears.size)
         // No invented Epic extensions: rows must cover each boundary through sale, or the full horizon.
@@ -97,15 +100,33 @@ sealed interface ForecastCapture {
 enum class MissingForecastData { PLAN, UNSUPPORTED_POLICY, BALANCE, INVALID_INPUT, EPIC_PROJECTION }
 
 object ForecastInputs {
+    private fun allocationFor(account: Account, notes: MutableList<String>): Allocation {
+        val snapshot = account.holdingSnapshots.maxByOrNull { it.acceptedAt }
+        val weights = DoubleArray(6)
+        if (snapshot?.availability == HoldingAvailability.COMPLETE && snapshot.holdings.isNotEmpty()) {
+            for (holding in snapshot.holdings) {
+                val slot = when (holding.assetClass.uppercase()) {
+                    "US_STOCKS" -> 0; "INTERNATIONAL_STOCKS" -> 1; "BONDS" -> 2
+                    "REITS" -> 3; "CASH" -> 4; "CRYPTO" -> 5; else -> -1
+                }
+                if (slot < 0 || holding.price == null) { weights.fill(0.0); break }
+                weights[slot] += holding.quantity.toDouble() * dollars(holding.price)
+            }
+            val total = weights.sum()
+            if (total > 0) return Allocation(weights[0]/total,weights[1]/total,weights[2]/total,weights[3]/total,weights[4]/total,weights[5]/total)
+        }
+        notes += "Accounts without complete classified holdings use account-type allocations."
+        return Allocation.defaultFor(account.currentRevision.type)
+    }
     /** Repository.load reads the entire committed document in one snapshot; never load individual entities. */
     fun capture(state: RetirementState, today: LocalDate = LocalDate.now()): ForecastCapture {
         val plan = state.planSettings.maxByOrNull { it.revision } ?: return ForecastCapture.NeedsData(MissingForecastData.PLAN)
-        if (plan.taxPolicyId != ReferenceTaxPolicy.ID || plan.stateCode !in ReferenceTaxPolicy.supportedStates ||
+        if (plan.taxPolicyId !in setOf(ReferenceTaxPolicy.ID, PlanningTaxPolicy.ID) || plan.stateCode !in PlanningTaxPolicy.supportedStates ||
             plan.acaRegime !in setOf("CLIFF", "EXTENDED")) return ForecastCapture.NeedsData(MissingForecastData.UNSUPPORTED_POLICY)
-        val notes = mutableListOf("Frozen reference tax/ACA approximations; planning software, not advice.")
+        val notes = mutableListOf("2026 federal/Wisconsin planning policy; future indexed limits follow assumed inflation.")
         return try {
             val accounts = state.accounts.filter { it.archivedAt == null && it.currentRevision.includedInForecast &&
-                it.origin in setOf(AccountOrigin.MANUAL, AccountOrigin.PLAID) }.sortedBy { it.id }.map { account ->
+                it.currentRevision.owner != Owner.SPOUSE && it.origin in setOf(AccountOrigin.MANUAL, AccountOrigin.PLAID) }.sortedBy { it.id }.map { account ->
                 val balance = account.currentBalance ?: return ForecastCapture.NeedsData(MissingForecastData.BALANCE)
                 val revision = account.currentRevision
                 val bucket = when (revision.taxTreatment) {
@@ -115,13 +136,11 @@ object ForecastInputs {
                     TaxTreatment.TAXABLE -> Bucket.TAXABLE
                     else -> return ForecastCapture.NeedsData(MissingForecastData.INVALID_INPUT)
                 }
-                val basis = balance.basis ?: if (revision.type == AccountType.CASH) balance.amount else {
-                    if (bucket == Bucket.TAXABLE) notes += "Missing taxable basis uses the reference 70% basis assumption."
-                    forecastMoney(dollars(balance.amount) * .70)
-                }
-                // Providers may report unknown/security-level classifications. No guessed holding allocation.
-                notes += "Account-type reference allocations are used; holdings are not extra balances."
-                ForecastAccount(bucket, balance.amount, basis, Allocation.defaultFor(revision.type))
+                val basis = if (bucket == Bucket.TAXABLE && revision.type !in setOf(AccountType.CASH, AccountType.CD)) {
+                    notes += "Existing taxable investments use the agreed zero-basis assumption; new purchases retain their cost."
+                    Money(0)
+                } else balance.basis ?: balance.amount
+                ForecastAccount(bucket, balance.amount, basis, allocationFor(account, notes))
             }
             val properties = state.properties.filter { it.archivedAt == null && it.currentRevision.includedInForecast }.sortedBy { it.id }.map {
                 val revision = it.currentRevision; val mortgage = revision.mortgage
@@ -131,11 +150,16 @@ object ForecastInputs {
             }
             val age = Period.between(plan.birthDate, today).years
             val book = state.epicImports.singleOrNull { it.id == state.activeEpicImportId }?.workbook
-            val epic = book?.years.orEmpty().map { ForecastEpicYear(it.year, it.netPretax, it.afterTax) }
+            val epic = book?.years.orEmpty().map { ForecastEpicYear(it.year, it.netPretax, it.afterTax, it.taxableGain,
+                if (it.sarOrdinaryTax.cents == 0L) Money(0) else {
+                    val rate = book!!.projection.incomeTaxRate.toDouble()
+                    require(rate > 0) { "Epic SAR income needs a workbook tax rate." }
+                    forecastMoney(dollars(it.sarOrdinaryTax) / rate)
+                }) }
             if (book != null && (epic.isEmpty() || plan.retirementAge < age ||
                 (0..minOf(plan.endAge - age, plan.retirementAge - age)).any { offset -> epic.none { it.year == today.year + offset } }))
                 return ForecastCapture.NeedsData(MissingForecastData.EPIC_PROJECTION)
-            if (book != null && book.historicalVolatilityPct == null) notes += "Epic historical uncertainty is unavailable; workbook schedule is deterministic."
+            if (book != null) notes += "Epic uses workbook net sale proceeds with at most 1% uncertainty; proceeds and surplus are invested in 60% stock / 40% bond index funds."
             ForecastCapture.Ready(ForecastInput(state.generation, plan.revision, today, age,
                 plan.retirementAge, plan.endAge, plan.annualSpending, accounts,
                 ForecastContributions(plan.annualPreTaxContribution, plan.annualRothContribution, plan.annualTaxableContribution, plan.annualHsaContribution),
@@ -143,11 +167,12 @@ object ForecastInputs {
                     IncomeTaxKind.ORDINARY -> IncomeKind.ORDINARY
                     IncomeTaxKind.SOCIAL_SECURITY -> IncomeKind.SOCIAL_SECURITY
                     IncomeTaxKind.TAX_FREE -> IncomeKind.TAX_FREE
-                }) }, properties, epic, (book?.historicalVolatilityPct?.toDouble() ?: 0.0) / 100,
+                }, it.owner) }, properties, epic, (book?.historicalVolatilityPct?.toDouble() ?: 0.0) / 100,
                 plan.inflationBps, plan.expectedReturnBps - 650, plan.volatilityScaleBps, plan.filingStatus,
                 plan.stateCode, plan.acaHouseholdSize, plan.acaAnnualPremium, plan.acaRegime == "EXTENDED",
                 plan.homeDisposition == HomeDisposition.SELL_AT_RETIREMENT, WithdrawalPolicy.defaultRules(plan.annualMedicalSpending),
-                spendingIncludesMortgage = true, warnings = notes.distinct()))
+                spendingIncludesMortgage = true, warnings = notes.distinct(),
+                spouseCurrentAge = plan.spouseBirthYear?.let { today.year - it }, birthYear = plan.birthDate.year))
         } catch (_: IllegalArgumentException) { ForecastCapture.NeedsData(MissingForecastData.INVALID_INPUT) }
     }
 }

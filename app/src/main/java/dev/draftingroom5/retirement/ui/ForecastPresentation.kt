@@ -90,11 +90,12 @@ internal fun formatBps(value: Int): String = BigDecimal.valueOf(value.toLong(), 
 /** New plans must expose income entry even before any streams have been saved. */
 internal fun editableIncomePlan(plan: PlanSettings): PlanSettings {
     val streams = plan.incomeStreams.toMutableList()
-    listOf(IncomeTaxKind.SOCIAL_SECURITY to 67, IncomeTaxKind.ORDINARY to plan.retirementAge).forEach { (kind, start) ->
-        if (streams.none { it.taxKind == kind }) {
-            var id = "income-${kind.name.lowercase()}"
+    val owners = if (plan.spouseBirthYear == null) listOf(Owner.SELF) else listOf(Owner.SELF, Owner.SPOUSE)
+    owners.forEach { owner ->
+        if (streams.none { it.taxKind == IncomeTaxKind.SOCIAL_SECURITY && it.owner == owner }) {
+            var id = "income-ss-${owner.name.lowercase()}"
             while (streams.any { it.id == id }) id += "-new"
-            streams += IncomeStream(id, Money(0), start, maxOf(start, plan.endAge), kind)
+            streams += IncomeStream(id, Money(0), 67, 130, IncomeTaxKind.SOCIAL_SECURITY, owner)
         }
     }
     return plan.copy(incomeStreams = streams)
@@ -109,6 +110,7 @@ internal data class ForecastSettingsDraft(
     val hsaContribution: String, val medicalSpending: String, val homeAppreciationPercent: String,
     val homeDisposition: HomeDisposition, val incomeAmounts: Map<String, String>,
     val incomeStartAges: Map<String, String>, val incomeEndAges: Map<String, String>,
+    val spouseBirthYear: String = "",
 ) {
     fun validated(base: PlanSettings, today: LocalDate = LocalDate.now()): Result<PlanSettings> = runCatching {
         fun money(text: String) = Money.parse(text).also { require(it.cents >= 0) }
@@ -117,9 +119,11 @@ internal data class ForecastSettingsDraft(
         val birth = LocalDate.parse(birthDate.trim())
         val retirement = integer(retirementAge); val end = integer(endAge)
         require(today >= birth && retirement in 0..120 && end in retirement..130)
-        require(stateCode.trim().uppercase() in ReferenceTaxPolicy.supportedStates)
+        require(stateCode.trim().uppercase() in PlanningTaxPolicy.supportedStates)
         base.copy(
             birthDate = birth, referenceDate = today, retirementAge = retirement, endAge = end,
+            spouseBirthYear = spouseBirthYear.trim().takeIf { it.isNotEmpty() }?.toInt(),
+            taxPolicyId = PlanningTaxPolicy.ID,
             annualSpending = money(annualSpending), inflationBps = bps(inflationPercent),
             expectedReturnBps = bps(expectedReturnPercent), volatilityScaleBps = bps(volatilityPercent),
             filingStatus = filingStatus, stateCode = stateCode.trim().uppercase(),
@@ -148,6 +152,7 @@ internal data class ForecastSettingsDraft(
             plan.incomeStreams.associate { it.id to it.annualAmount.format() },
             plan.incomeStreams.associate { it.id to it.startAge.toString() },
             plan.incomeStreams.associate { it.id to it.endAge.toString() },
+            plan.spouseBirthYear?.toString().orEmpty(),
         )
         fun blank(plan: PlanSettings) = from(plan).copy(
             birthDate = "", retirementAge = "", endAge = "", annualSpending = "",

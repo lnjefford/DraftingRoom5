@@ -15,11 +15,11 @@ class ForecastCases : PreviewParameterProvider<Int> { override val values = (0..
 
 private fun screenshotPlan() = PlanSettings(
     "plan", 3, LocalDate.of(1980, 1, 2), LocalDate.of(2026, 1, 1), 60, 90,
-    Money(5_400_000), 250, 650, FilingStatus.MARRIED_FILING_JOINTLY, "WI", "finance-reference-v1",
+    Money(5_400_000), 250, 650, FilingStatus.MARRIED_FILING_JOINTLY, "WI", PlanningTaxPolicy.ID,
     2, Money(1_800_000), "CLIFF", Money(2_300_000), Money(700_000), Money(600_000),
     listOf(IncomeStream("ss", Money(3_200_000), 67, 90, IncomeTaxKind.SOCIAL_SECURITY),
-        IncomeStream("pension", Money(1_200_000), 62, 90, IncomeTaxKind.ORDINARY)),
-    HomeDisposition.SELL_AT_RETIREMENT, Money(400_000), Money(250_000), 100, 10_000,
+        IncomeStream("spouse-ss", Money(1_200_000), 67, 130, IncomeTaxKind.SOCIAL_SECURITY, Owner.SPOUSE)),
+    HomeDisposition.KEEP, Money(400_000), Money(250_000), 100, 10_000, spouseBirthYear = 1988,
 )
 
 private fun screenshotResult(successPaths: Int = 16): ForecastResult {
@@ -42,7 +42,7 @@ private fun screenshotResult(successPaths: Int = 16): ForecastResult {
             if (index % 2 == 0) FailureCause.ASSETS_EXHAUSTED else FailureCause.ACCESS_OR_RULE_LIMIT)
     }
     return ForecastResult(7, 3, currentAge, endAge, paths, 75, true, series, failures, Money(18_400), 37,
-        listOf("Tax funding has a measured residual; modeled success does not certify fully funded taxes."),
+        listOf("Unfunded taxes are included in failed paths."),
         DoubleArray(width) { 54_000.0 })
 }
 

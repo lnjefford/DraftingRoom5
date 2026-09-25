@@ -24,10 +24,10 @@ class ForecastEngineTest {
             listOf(ForecastAccount(Bucket.TAXABLE,Money(10000000),Money(10000000),Allocation(cash=1.0))),
             acaPremium=Money(1200000),acaExtended=true)
         val result=engine.compute(input,1,0,false)
-        assertEquals(1200000L,result.value(ForecastChannel.ACA,0,64).cents)
+        assertEquals(0L,result.value(ForecastChannel.ACA,0,64).cents) // No Marketplace credit below WI eligibility income.
         assertEquals(0L,result.value(ForecastChannel.ACA,0,65).cents)
         assertEquals(0L,result.value(ForecastChannel.TAX,0,65).cents)
-        assertEquals(9100250L,result.value(ForecastChannel.TAXABLE,0,66).cents)
+        assertEquals(8095250L,result.value(ForecastChannel.TAXABLE,0,66).cents)
     }
     @Test fun seedRepeatabilityDifferentSeedAndStableScenarioDraws() {
         val input = simpleInput()
@@ -77,7 +77,7 @@ class ForecastEngineTest {
         val result=engine.compute(simpleInput(age=59,retire=60,end=61,spending=0,accounts=emptyList(),contributions=c),1,0,false)
         assertEquals(10050L,result.value(ForecastChannel.TRADITIONAL,0,60).cents)
         assertEquals(10100L,result.value(ForecastChannel.TRADITIONAL,0,61).cents)
-        assertEquals(30150L,result.value(ForecastChannel.TAXABLE,0,60).cents)
+        assertEquals(31290L,result.value(ForecastChannel.TAXABLE,0,60).cents)
     }
     @Test fun pensionAndSocialSecurityUseClosedAgeRangeAndIncomeDoesNotBecomeAnAsset() {
         val account=listOf(ForecastAccount(Bucket.ROTH,Money(10000000),Money(0),Allocation(cash=1.0)))
@@ -91,19 +91,18 @@ class ForecastEngineTest {
     @Test fun rmdIsAConservingTransferBeforeGrowthAndTaxFunding() {
         val account=listOf(ForecastAccount(Bucket.TRADITIONAL,Money(2650000),Money(0),Allocation(cash=1.0)))
         val result=engine.compute(simpleInput(age=73,retire=73,end=74,spending=0,accounts=account),1,0,false)
-        assertEquals(100500L,result.value(ForecastChannel.TAXABLE,0,74).cents)
+        assertEquals(104300L,result.value(ForecastChannel.TAXABLE,0,74).cents)
         assertEquals(2562750L,result.value(ForecastChannel.TRADITIONAL,0,74).cents)
-        assertEquals(2663250L,result.value(ForecastChannel.TOTAL,0,74).cents)
+        assertEquals(2667050L,result.value(ForecastChannel.TOTAL,0,74).cents)
     }
-    @Test fun taxApproximationResidualIsMeasuredInsteadOfHiddenByTolerance() {
+    @Test fun taxFundingReconcilesActualWithdrawalToSpendingAndTax() {
         val result=engine.compute(simpleInput(age=60,retire=60,end=61,spending=15000000,
             accounts=listOf(ForecastAccount(Bucket.TRADITIONAL,Money(100000000),Money(0),Allocation(cash=1.0)))),1,0,false)
-        assertFalse(result.taxFundingConverged)
-        assertTrue(result.maximumTaxFundingResidual.cents>10000)
+        assertTrue(result.taxFundingConverged)
+        assertEquals(0L,result.maximumTaxFundingResidual.cents)
         val withdrawn=1000000*1.005-result.raw(ForecastChannel.TRADITIONAL,0,61)
-        val unpaid=result.raw(ForecastChannel.TAX,0,60)-(withdrawn-150000)
-        assertEquals(unpaid,result.raw(ForecastChannel.TAX_RESIDUAL,0,60),1e-8)
-        assertTrue(result.warnings.any { it.contains("residual") })
+        assertEquals(150000+result.raw(ForecastChannel.TAX,0,60),withdrawn,.0001)
+        assertEquals(1.0,result.successRate,0.0)
     }
     @Test fun medicalCapsLockedAssetsAndFailureTimingRemainVisible() {
         val input=simpleInput(age=59,retire=59,end=61,spending=100000,accounts=listOf(
@@ -133,7 +132,7 @@ class ForecastEngineTest {
         assertThrows(IllegalArgumentException::class.java) { engine.compute(simpleInput(retire=200,spending=0,shift=30000),1,0,false) }
         val crash=engine.compute(simpleInput(age=60,retire=60,end=61,spending=10000),1,0,true,
             ReturnTape(1,1,doubleArrayOf(-2.0,0.0,0.0,0.0,0.0,0.0)))
-        assertEquals(0L,crash.value(ForecastChannel.TOTAL,0,61).cents)
+        assertEquals(-10000L,crash.value(ForecastChannel.TOTAL,0,61).cents) // Unpaid spending remains a liability.
         assertEquals(10000L,crash.value(ForecastChannel.UNMET,0,60).cents)
         val home=ForecastProperty(Money(200000),Money(300000),1000,Money(0),360,10000)
         val result=engine.compute(simpleInput(age=40,retire=100,end=42,spending=0,accounts=emptyList(),properties=listOf(home)),1,0,false)

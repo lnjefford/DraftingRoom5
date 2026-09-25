@@ -39,6 +39,23 @@ class RetirementRepository(
         }
     }
 
+    /** Apply the agreed household defaults once, retaining the old plan revision for audit/history. */
+    fun upgradePlanningAssumptions(): RetirementState = synchronized(lock) {
+        val state = load()
+        val old = state.planSettings.maxByOrNull { it.revision } ?: return@synchronized state
+        if (old.taxPolicyId != dev.draftingroom5.retirement.forecast.ReferenceTaxPolicy.ID) return@synchronized state
+        val plan = old.copy(id = java.util.UUID.randomUUID().toString(), revision = old.revision + 1,
+            taxPolicyId = dev.draftingroom5.retirement.forecast.PlanningTaxPolicy.ID,
+            retirementAge = 45, endAge = maxOf(old.endAge, 46), homeDisposition = HomeDisposition.KEEP,
+            filingStatus = FilingStatus.MARRIED_FILING_JOINTLY, stateCode = "WI", acaHouseholdSize = 2,
+            acaRegime = "CLIFF", spouseBirthYear = 1988,
+            incomeStreams = old.incomeStreams.filter { it.taxKind == IncomeTaxKind.SOCIAL_SECURITY })
+        when (val result = savePlan(state.generation, plan)) {
+            is RetirementResult.Success -> result.value
+            else -> state
+        }
+    }
+
     fun addManualAccount(expectedGeneration: Long, account: Account): RetirementResult<RetirementState> = mutate(expectedGeneration) { current ->
         require(account.origin == AccountOrigin.MANUAL && account.providerIdentity == null && account.archivedAt == null)
         require(account.balances.all { it.source == BalanceSource.MANUAL })

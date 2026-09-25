@@ -143,7 +143,7 @@ object WithdrawalPolicy {
     data class Result(val balances: DoubleArray, val ordinary: Double, val gains: Double, val taxFree: Double, val unmet: Double, val taxableWithdrawn: Double)
     fun apply(balances: DoubleArray, age: Int, need: Double, rules: List<WithdrawalRule>, gainRatio: Double = .30): Result {
         require(balances.size == 5 && balances.all { it.isFinite() && it >= 0 }); checkedAmount(need)
-        require(need >= 0 && gainRatio.isFinite() && gainRatio in 0.0..1.0)
+        require(need >= 0 && gainRatio.isFinite() && gainRatio <= 1.0)
         val out = balances.copyOf()
         var remaining = need; var ordinary = 0.0; var gains = 0.0; var free = 0.0; var taxable = 0.0
         for (rule in rules) {

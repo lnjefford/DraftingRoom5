@@ -13,11 +13,11 @@ class ForecastPresentationTest {
         val result = result()
         assertEquals(availableAtRetirement(result, result.currentAge), availableAtRetirement(result, result.currentAge - 5))
     }
-    @Test fun newPlanCanEnterAndPersistSocialSecurityAndPension() {
-        val base = forecastState().planSettings.single().copy(incomeStreams = emptyList())
+    @Test fun newPlanCanEnterAndPersistBothSpousesSocialSecurity() {
+        val base = forecastState().planSettings.single().copy(incomeStreams = emptyList(), spouseBirthYear = 1988)
         val editable = editableIncomePlan(base)
-        val ss = editable.incomeStreams.single { it.taxKind == IncomeTaxKind.SOCIAL_SECURITY }
-        val pension = editable.incomeStreams.single { it.taxKind == IncomeTaxKind.ORDINARY }
+        val ss = editable.incomeStreams.single { it.owner == Owner.SELF }
+        val pension = editable.incomeStreams.single { it.owner == Owner.SPOUSE }
         val draft = ForecastSettingsDraft.from(editable).copy(incomeAmounts = mapOf(ss.id to "32000", pension.id to "18000"))
         val today = LocalDate.of(2026, 1, 1)
         val changed = draft.validated(editable, today).getOrThrow()
