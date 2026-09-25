@@ -15,12 +15,13 @@ class ForecastResult internal constructor(
     val paths: Int, val seed: Long?, val stochastic: Boolean,
     private val series: Array<DoubleArray>, failures: List<PathFailure>,
     val maximumTaxFundingResidual: Money, val taxResidualYears: Int,
-    warnings: List<String>,
+    warnings: List<String>, spendingByAge: DoubleArray,
 ) {
-    val engineVersion = "dr5-reference-engine-1"
+    val engineVersion = "dr5-reference-engine-2"
     val taxPolicyId = ReferenceTaxPolicy.ID
     val failures = frozen(failures)
     val warnings = frozen(warnings)
+    private val spending = spendingByAge.copyOf()
     val successRate: Double = (paths - failures.size).toDouble() / paths
     val taxFundingConverged get() = taxResidualYears == 0
     private val width = endAge - currentAge + 1
@@ -37,6 +38,10 @@ class ForecastResult internal constructor(
         return forecastMoney(sorted[low] + (sorted[high] - sorted[low]) * (index - low))
     }
     fun mean(channel: ForecastChannel, age: Int): Money = forecastMoney((0 until paths).sumOf { raw(channel, it, age) / paths })
+    fun annualSpending(age: Int): Money {
+        require(age in currentAge..endAge)
+        return forecastMoney(spending[age - currentAge])
+    }
     fun depletionAge(path: Int): Int { require(path in 0 until paths); return failures.firstOrNull { it.path == path }?.age ?: endAge + 1 }
     override fun toString() = "ForecastResult(generation=$generation, paths=$paths, [private])"
 }
@@ -138,6 +143,7 @@ class RetirementEngine {
         val rmd = DoubleArray(paths); val ratios = DoubleArray(paths)
         val failures = ArrayList<PathFailure>(); val failed = BooleanArray(paths)
         var maxResidual = 0.0; var residualYears = 0
+        val spendingByAge = DoubleArray(width) { y -> annualRealSpending(input, y) }
         for (y in 0 until input.years) {
             checkpoint()
             val age = input.currentAge + y; val retired = age >= input.retirementAge
@@ -171,7 +177,7 @@ class RetirementEngine {
                 }
                 ratios[p] = if (bal[3] > 0) max(bal[3] - basis[p], 0.0) / bal[3] else 0.0
             }
-            val netNeed = max(dollars(input.spending) - income, 0.0)
+            val netNeed = max(spendingByAge[y] - income, 0.0)
             val subsidy = if (retired && age < 65 && input.acaPremium.cents > 0) {
                 val sorted = ratios.copyOf().also { it.sort() }
                 val median = (sorted[(paths - 1) / 2] + sorted[paths / 2]) / 2
@@ -212,11 +218,26 @@ class RetirementEngine {
         }
         checkpoint()
         val warnings = input.warnings + listOf("Reference two-pass tax funding and cross-path ACA estimate are approximations.",
-            "Mortgage balances/payments use the reference fixed-dollar approximation; no separate inflation deflation.",
+            "Lifestyle spending, benefits, and results use today's dollars; saved mortgage payments are deflated and stop at payoff.",
             "Age 60 withdrawal access and age 73–120 RMD table are annual approximations.") +
             if (residualYears > 0) listOf("Tax funding has a measured residual; modeled success does not certify fully funded taxes.") else emptyList()
         return ForecastResult(input.generation, input.planRevision, input.currentAge, input.endAge, paths,
-            if (stochastic) seed else null, stochastic, series, failures, forecastMoney(maxResidual), residualYears, warnings.distinct())
+            if (stochastic) seed else null, stochastic, series, failures, forecastMoney(maxResidual), residualYears,
+            warnings.distinct(), spendingByAge)
+    }
+
+    /** Plan spending is entered as today's all-in household spending, including any saved mortgage payment. */
+    private fun annualRealSpending(input: ForecastInput, year: Int): Double {
+        fun scheduledMortgage(y: Int, stopAtSale: Boolean = true): Double = input.properties.sumOf { property ->
+            if (stopAtSale && input.sellHome && input.currentAge + y >= input.retirementAge) return@sumOf 0.0
+            val months = (property.months - y * 12).coerceIn(0, 12)
+            dollars(property.payment) * months * property.ownershipBps / 10000.0 /
+                (1 + input.inflationBps / 10000.0).pow(y)
+        }
+        val base = dollars(input.spending)
+        if (!input.spendingIncludesMortgage) return base
+        val nonMortgage = max(base - scheduledMortgage(0, stopAtSale = false), 0.0)
+        return checkedAmount(nonMortgage + scheduledMortgage(year))
     }
 
     private fun projectProperties(input: ForecastInput, paths: Int, stochastic: Boolean, rng: Random, out: DoubleArray, noise: ForecastNoiseTape?, check: () -> Unit) {

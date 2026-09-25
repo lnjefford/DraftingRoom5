@@ -42,7 +42,8 @@ private fun screenshotResult(successPaths: Int = 16): ForecastResult {
             if (index % 2 == 0) FailureCause.ASSETS_EXHAUSTED else FailureCause.ACCESS_OR_RULE_LIMIT)
     }
     return ForecastResult(7, 3, currentAge, endAge, paths, 75, true, series, failures, Money(18_400), 37,
-        listOf("Tax funding has a measured residual; modeled success does not certify fully funded taxes."))
+        listOf("Tax funding has a measured residual; modeled success does not certify fully funded taxes."),
+        DoubleArray(width) { 54_000.0 })
 }
 
 @PreviewTest

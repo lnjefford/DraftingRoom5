@@ -61,6 +61,7 @@ class ForecastInput(
     val filing: FilingStatus = FilingStatus.SINGLE, val stateCode: String = "WI",
     val acaHousehold: Int = 1, val acaPremium: Money = Money(0), val acaExtended: Boolean = false,
     val sellHome: Boolean = true, rules: List<WithdrawalRule> = WithdrawalPolicy.defaultRules(),
+    val spendingIncludesMortgage: Boolean = false,
     warnings: List<String> = emptyList(), val policyId: String = ReferenceTaxPolicy.ID,
 ) {
     val accounts = frozen(accounts)
@@ -145,7 +146,8 @@ object ForecastInputs {
                 }) }, properties, epic, (book?.historicalVolatilityPct?.toDouble() ?: 0.0) / 100,
                 plan.inflationBps, plan.expectedReturnBps - 650, plan.volatilityScaleBps, plan.filingStatus,
                 plan.stateCode, plan.acaHouseholdSize, plan.acaAnnualPremium, plan.acaRegime == "EXTENDED",
-                plan.homeDisposition == HomeDisposition.SELL_AT_RETIREMENT, WithdrawalPolicy.defaultRules(plan.annualMedicalSpending), notes.distinct()))
+                plan.homeDisposition == HomeDisposition.SELL_AT_RETIREMENT, WithdrawalPolicy.defaultRules(plan.annualMedicalSpending),
+                spendingIncludesMortgage = true, warnings = notes.distinct()))
         } catch (_: IllegalArgumentException) { ForecastCapture.NeedsData(MissingForecastData.INVALID_INPUT) }
     }
 }

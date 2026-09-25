@@ -115,4 +115,23 @@ class ForecastParityTest {
         val home = RetirementEngine().compute(input(44,45,46,0,properties=listOf(ForecastProperty(Money(200000),Money(100000),0,Money(0),0,5000))),1,0,false)
         assertEquals(50250L,home.value(ForecastChannel.TAXABLE,0,46).cents)
     }
+
+    @Test fun allInSpendingUsesSavedMortgageScheduleAndStopsAtPayoff() {
+        val home = ForecastProperty(
+            value = Money(50_000_000), mortgage = Money(20_000_000), rateBps = 0,
+            payment = Money(100_000), months = 18, ownershipBps = 10_000,
+        )
+        val input = ForecastInput(
+            generation = 1, planRevision = 1, referenceDate = LocalDate.of(2026, 1, 1),
+            currentAge = 60, retirementAge = 60, endAge = 63,
+            spending = Money(6_000_000),
+            accounts = listOf(ForecastAccount(Bucket.TAXABLE, Money(100_000_000), Money(100_000_000), Allocation(cash = 1.0))),
+            properties = listOf(home), inflationBps = 1_000, sellHome = false, spendingIncludesMortgage = true,
+        )
+        val result = RetirementEngine().compute(input, 1, 0, false)
+
+        assertEquals(Money(6_000_000), result.annualSpending(60))
+        assertEquals(Money(5_345_455), result.annualSpending(61))
+        assertEquals(Money(4_800_000), result.annualSpending(62))
+    }
 }

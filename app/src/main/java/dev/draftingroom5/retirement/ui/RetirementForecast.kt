@@ -248,7 +248,7 @@ private fun ForecastResultContent(result: ForecastResult, plan: PlanSettings, st
     }
     when (section) {
         ProjectionSection.BALANCE -> BalanceProjection(result, plan, retirementAge)
-        ProjectionSection.CASH_FLOW -> CashFlowProjection(result, plan, retirementAge)
+        ProjectionSection.CASH_FLOW -> CashFlowProjection(result, retirementAge)
         ProjectionSection.RISK -> RiskProjection(result)
     }
 }
@@ -289,17 +289,17 @@ private fun BalanceProjection(result: ForecastResult, plan: PlanSettings, retire
         ProjectionValueRow("Median", middle.editorialFormat())
         ProjectionValueRow("90th percentile", high.editorialFormat())
         RiskOutlook(result)
-        Text("${String.format(java.util.Locale.US, "%,d", result.paths)} modeled paths · real dollars", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+        Text("${String.format(java.util.Locale.US, "%,d", result.paths)} modeled paths · today's dollars", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
     }
 }
 
 @Composable
-private fun CashFlowProjection(result: ForecastResult, plan: PlanSettings, retirementAge: Int) {
+private fun CashFlowProjection(result: ForecastResult, retirementAge: Int) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Available at retirement", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
         availableAtRetirement(result, retirementAge).forEach { ProjectionValueRow(it.label, it.amount.editorialFormat()) }
-        ProjectionValueRow("Annual lifestyle spending", plan.annualSpending.editorialFormat())
-        Text("Values are modeled in today's dollars.", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
+        ProjectionValueRow("Annual spending at retirement", result.annualSpending(retirementAge).editorialFormat())
+        Text("Saved mortgage payments are included until their payoff date. All values are in today's dollars.", color = RetirementTextSecondary, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -582,9 +582,9 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
             IntegerStepper("Plan through age", draft.endAge, 18, 130, 1, plan.endAge) { draft = draft.copy(endAge = it) }
         }
         SettingsSection("Lifestyle and market") {
-            MoneySetting("Annual lifestyle spending", draft.annualSpending) { draft = draft.copy(annualSpending = it) }
+            MoneySetting("Annual lifestyle spending (today's dollars)", draft.annualSpending) { draft = draft.copy(annualSpending = it) }
             PercentStepper("Inflation", draft.inflationPercent, -10.0, 100.0, .25) { draft = draft.copy(inflationPercent = it) }
-            PercentStepper("Expected equity return", draft.expectedReturnPercent, -100.0, 300.0, .25) { draft = draft.copy(expectedReturnPercent = it) }
+            PercentStepper("Expected real equity return", draft.expectedReturnPercent, -100.0, 300.0, .25) { draft = draft.copy(expectedReturnPercent = it) }
             PercentStepper("Market volatility scale", draft.volatilityPercent, 0.0, 300.0, 5.0) { draft = draft.copy(volatilityPercent = it) }
         }
         SettingsSection("Tax and health coverage") {
@@ -605,7 +605,7 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
         SettingsSection("Social Security and pension income") {
             incomePlan.incomeStreams.forEach { stream ->
                 Text(stream.taxKind.name.lowercase().replace('_',' ').replaceFirstChar { it.uppercase() }, fontWeight = FontWeight.SemiBold)
-                MoneySetting("Annual amount", draft.incomeAmounts[stream.id].orEmpty()) {
+                MoneySetting("Annual amount (today's dollars)", draft.incomeAmounts[stream.id].orEmpty()) {
                     draft = draft.copy(incomeAmounts = draft.incomeAmounts + (stream.id to it))
                 }
                 IntegerStepper("Start age", draft.incomeStartAges[stream.id].orEmpty(), 0, 130, 1) {
@@ -615,11 +615,12 @@ internal fun ForecastSettingsPage(plan: PlanSettings, message: String?, newPlan:
                     draft = draft.copy(incomeEndAges = draft.incomeEndAges + (stream.id to it))
                 }
             }
-            Text("Income type remains fixed; amount and modeled timing are local plan assumptions.", color = RetirementTextSecondary)
+            Text("Social Security is held constant in today's dollars, which models annual cost-of-living adjustments.", color = RetirementTextSecondary)
         }
         SettingsSection("Home") {
             PercentStepper("Real home appreciation", draft.homeAppreciationPercent, -50.0, 100.0, .25) { draft = draft.copy(homeAppreciationPercent = it) }
             EnumSelector("At retirement", draft.homeDisposition, HomeDisposition.entries) { draft = draft.copy(homeDisposition = it) }
+            Text("Mortgage payments and payoff timing come from the saved home details.", color = RetirementTextSecondary)
             Text("Epic position, growth, tax, sale, and projection values are workbook-owned and cannot be edited here.", color = RetirementTextSecondary)
         }
         (error ?: message)?.let { Text(it, color = MaterialTheme.colorScheme.error) }
