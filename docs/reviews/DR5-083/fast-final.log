@@ -1,0 +1,24 @@
+
+[Whitespace] git diff --check
+warning: in the working copy of 'GuidedSession.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'RoutineEditor.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'TODO.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'TechnicalDesign.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/androidTest/java/dev/draftingroom5/ProgressionNativeAudit.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/AppDocument.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/CustomProgressionEditor.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/GuidedRoutineEditor.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/GuidedSessionScreen.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/ScheduleData.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/screenshotTest/kotlin/dev/draftingroom5/CoreShellScreenshots.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/test/java/dev/draftingroom5/ExerciseProgressionTest.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/test/java/dev/draftingroom5/GuidedRoutineEditorTest.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/test/java/dev/draftingroom5/GuidedSessionStateTest.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/test/java/dev/draftingroom5/GuidedSessionUiTest.kt', LF will be replaced by CRLF the next time Git touches it
+
+[Focused unit tests] ./gradlew.ps1 testDebugUnitTest --tests dev.draftingroom5.StructuredTargetAuditTest --tests dev.draftingroom5.GuidedSessionUiTest --tests dev.draftingroom5.ProgressionApplicationTest --tests dev.draftingroom5.ExerciseProgressionTest --tests dev.draftingroom5.GuidedRoutineEditorTest --tests dev.draftingroom5.ProgressionAuditTest
+DraftingRoom5 Gradle: Java 17 from C:\Users\lnjef\.jdks\temurin-17.0.20.1
+DraftingRoom5 Gradle: isolated state at C:\Users\lnjef\AppData\Local\DraftingRoom5\repositories\cf5b26b6651a
+
+Verification tier 'Fast' passed in 244.6 seconds.

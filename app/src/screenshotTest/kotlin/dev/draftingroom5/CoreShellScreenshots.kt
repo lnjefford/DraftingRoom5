@@ -376,31 +376,27 @@ fun RiceBagArtworkScreenshots(@PreviewParameter(RiceBagArtworkCases::class) scre
 @Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
 @Preview(name = "Landscape", widthDp = 800, heightDp = 360)
 @Composable
-fun AutomaticProgressionEditorScreenshots() {
-    val exercise = Exercise(
-        id = "progression-preview",
-        name = "Loaded farmer hold",
-        notes = "Keep shoulders down and walk smoothly",
-        setCount = 3,
-        target = "Heavy timed hold",
-        timerSeconds = 30,
-        artworkId = "farmers_walk",
-        measurements = ExerciseMeasurements(weightPounds = 35.0, durationSeconds = 30),
-        progression = AutomaticExerciseProgression(
-            weightPounds = AutomaticPoundsProgression(increment = 2.5, minimum = 20.0, maximum = 50.0),
-            durationSeconds = AutomaticSecondsProgression(increment = 5, minimum = 20, maximum = 45),
-        ),
+fun CustomProgressionEditorScreenshots() {
+    val added = Exercise(
+        id = "future-three-finger", name = "Three-finger drag", notes = "Open hand", setCount = 3,
+        reps = 10, durationSeconds = 15, artworkId = "hangboard", weightPounds = 45,
     )
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
-    val initialScrollPx = with(density) {
-        when {
-            density.fontScale > 1.3f -> 720.dp.roundToPx()
-            configuration.screenHeightDp <= 400 -> 430.dp.roundToPx()
-            else -> 400.dp.roundToPx()
-        }
+    val source = Exercise(
+        id = "fingerboard-source", name = "25 mm edge", notes = "Half crimp · shoulders engaged", setCount = 3,
+        reps = 8, durationSeconds = 20, artworkId = "hangboard", weightPounds = 35,
+        progression = CustomExerciseProgression(listOf(
+            CustomProgressionStep(
+                ExercisePrescription("20 mm edge", "Half crimp", 3, 9, 20, "hangboard", 40),
+                listOf(added),
+            ),
+            CustomProgressionStep(
+                ExercisePrescription("15 mm edge", "Controlled grip", 4, 10, 15, "hangboard", 45),
+            ),
+        )),
+    )
+    DraftingRoom5Theme {
+        CustomProgressionEditorScreen(source, source.progression as CustomExerciseProgression, {}, {})
     }
-    DraftingRoom5Theme { ExerciseEditorScreen(exercise, {}, {}, initialScrollPx) }
 }
 
 @PreviewTest
@@ -409,29 +405,16 @@ fun AutomaticProgressionEditorScreenshots() {
 @Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
 @Preview(name = "Landscape", widthDp = 800, heightDp = 360)
 @Composable
-fun CustomProgressionEditorScreenshots() {
-    val added = Exercise(
-        id = "future-three-finger", name = "Three-finger drag", notes = "Open hand", setCount = 3,
-        target = "15 sec", timerSeconds = 15, artworkId = "hangboard",
-        measurements = ExerciseMeasurements(durationSeconds = 15),
-        progression = AutomaticExerciseProgression(durationSeconds = AutomaticSecondsProgression(5, maximum = 30)),
-    )
-    val source = Exercise(
-        id = "fingerboard-source", name = "25 mm edge", notes = "Half crimp · shoulders engaged", setCount = 3,
-        target = "20 sec", timerSeconds = 20, artworkId = "hangboard", measurements = ExerciseMeasurements(durationSeconds = 20),
+fun StructuredExerciseEditorScreenshots() {
+    val exercise = Exercise(
+        id = "structured-carry", name = "Dumbbell farmer's walk", notes = "Tall posture · controlled pace",
+        setCount = 3, reps = 10, durationSeconds = 30, artworkId = "farmers_walk", weightPounds = 35,
         progression = CustomExerciseProgression(listOf(
-            CustomProgressionStep(
-                ExercisePrescription("20 mm edge", "Half crimp", 3, "20 sec", 20, "hangboard", ExerciseMeasurements(durationSeconds = 20)),
-                listOf(added),
-            ),
-            CustomProgressionStep(
-                ExercisePrescription("15 mm edge", "Controlled grip", 4, "15 sec", 15, "hangboard", ExerciseMeasurements(weightPounds = 5.0, durationSeconds = 15)),
-            ),
+            CustomProgressionStep(ExercisePrescription("Dumbbell farmer's walk", "Tall posture · controlled pace", 3, 10, 30, "farmers_walk", 40)),
+            CustomProgressionStep(ExercisePrescription("Dumbbell farmer's walk", "Tall posture · controlled pace", 4, 10, 35, "farmers_walk", 45)),
         )),
     )
-    DraftingRoom5Theme {
-        CustomProgressionEditorScreen(source, source.progression as CustomExerciseProgression, {}, {})
-    }
+    DraftingRoom5Theme { ExerciseEditorScreen(exercise, {}, {}) }
 }
 
 class ProgressionDecisionCases : PreviewParameterProvider<Boolean> {
@@ -455,15 +438,69 @@ fun ProgressionDecisionScreenshots(@PreviewParameter(ProgressionDecisionCases::c
 @Preview(name = "Landscape", widthDp = 800, heightDp = 360)
 @Composable
 fun CustomProgressionDecisionScreenshots() {
-    val source = Exercise("source", "25 mm edge", "Half crimp", 3, "Controlled hold", 20, "hangboard",
-        ExerciseMeasurements(5.0, 20))
-    val next = source.copy(name = "20 mm edge", measurements = ExerciseMeasurements(7.5, 15), timerSeconds = 15)
+    val source = Exercise("source", "25 mm edge", "Half crimp", 3, null, 20, "hangboard",
+        35)
+    val next = source.copy(name = "20 mm edge", weightPounds = 40, durationSeconds = 15)
     val option = ProgressionOption(ProgressionChoice.CUSTOM, next,
         listOf(source.copy(id = "addition", name = "Three-finger drag")))
     DraftingRoom5Theme {
         androidx.compose.material3.Surface {
-            ProgressionDecisionSheetContent(source, listOf(option), false, ProgressionChoice.CUSTOM,
-                false, {}, {}, {}, {}, {})
+            ProgressionDecisionSheetContent(
+                exercise = source,
+                options = listOf(option),
+                mode = "manual",
+                busy = false,
+                onContinue = {},
+                onAdjust = {},
+                onManual = {},
+                onApplyPlanned = {},
+                onApplyManual = {},
+                onBack = {},
+            )
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun CustomStepEditorScreenshots(@PreviewParameter(ProgressionDecisionCases::class) bottom: Boolean) {
+    val source = Exercise("step-source", "Loaded carry", "Tall posture", 3, 8, 30, "farmers_walk", 35)
+    val before = source.prescription().copy(weightPounds = 40, reps = 10)
+    val step = CustomProgressionStep(before.copy(weightPounds = 45, setCount = 4),
+        listOf(source.copy(id = "added-carry", name = "Suitcase carry")))
+    DraftingRoom5Theme {
+        CustomStepEditorScreen(source, before, step, {}, {}, initialScrollPx = if (bottom) 10000 else 0)
+    }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun StructuredEditorBottomScreenshots() {
+    val source = Exercise("bottom-source", "Loaded carry", "Tall posture", 3, 8, 30, "farmers_walk", 35)
+    DraftingRoom5Theme { ExerciseEditorScreen(source, {}, {}, initialScrollPx = 10000) }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun StructuredTargetBoundaryScreenshots() {
+    DraftingRoom5Theme {
+        androidx.compose.material3.Surface {
+            androidx.compose.foundation.layout.Column(Modifier.fillMaxSize().padding(20.dp)
+                .verticalScroll(rememberScrollState())) {
+                StructuredTargetControls("2147483645", {}, true, {}, "2147483647", {}, "2147483647", {}, "2147483647", {})
+            }
         }
     }
 }

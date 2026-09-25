@@ -321,9 +321,9 @@ class GuidedSessionStateTest {
 private val occurrence = OccurrenceKey("schedule-test", LocalDate.of(2026, 9, 12))
 
 private fun testRoutine() = Routine("routine-test", 1, "Test", "generic", RoutineExecution.GUIDED, listOf(
-    Exercise("A", "A", "", 2, "target", 20, "generic"),
-    Exercise("B", "B", "", 1, "target", null, "generic"),
-    Exercise("C", "C", "", 1, "target", 1, "generic"),
+    Exercise("A", "A", "", 2, null, 20, "generic"),
+    Exercise("B", "B", "", 1, 10, null, "generic"),
+    Exercise("C", "C", "", 1, null, 1, "generic"),
 ), null)
 
 private fun fixture(): GuidedSession {

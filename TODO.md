@@ -19,8 +19,8 @@ This is the shared queue for the Astra and Sol scheduled tasks. The approved req
 
 - `minimum_completion_interval_minutes`: `60`
 - `max_concurrency`: `1`
-- `last_completion_at`: `2026-09-22T08:18:51.7976983-05:00`
-- `next_eligible_dispatch_at`: `2026-09-22T09:18:51.7976983-05:00`
+- `last_completion_at`: `2026-09-25T13:41:01.322801-05:00`
+- `next_eligible_dispatch_at`: `2026-09-25T14:41:01.322801-05:00`
 - `processor_lease`: empty
 - For active queued work, dispatch only a task whose `Status` is `ready`, and never dispatch while another task is `running` or before `next_eligible_dispatch_at`.
 - When claiming an active task, set its `Status` to `running` and fill `Executor thread ID` and `Started at`; the checkbox claim marker remains `[~]` for compatibility with the worker protocol above.
@@ -584,72 +584,84 @@ Approved direction: incorporate the validated retirement-planning behavior from 
 
 Approved direction: every exercise has first-class structured target fields for weight, duration, sets, and reps without requiring progression. Weight is optional but, when present, is whole pounds in **5 lb increments only**; every weight control in the exercise editor, manual post-exercise adjustment, and custom-progression step editor changes by exactly 5 lb. Immediately after each exercise is completed, the filled primary action is **Next exercise**, which keeps the current targets. The secondary **Adjust exercise** action reveals controls only on request and can change multiple fields together. Custom progression remains an optional ordered queue of full future prescriptions and is offered only inside that adjustment path. Remove automatic progression, the exercise editor's Rest between sets row, and the explanatory After each exercise card. Preserve custom-step ordering and inserted-exercise behavior. The approved visual direction is the dark Material 3 editor and bottom-sheet flow reviewed in the originating task; build native Compose UI rather than shipping mockup images.
 
-- [ ] **DR5-080 — Replace progression storage with structured exercise targets**
+- [x] **DR5-080 — Replace progression storage with structured exercise targets**
   - Outcome: exercise prescriptions and custom steps represent weight, duration, sets, and reps directly, with no dependency on automatic progression.
   - Scope: exercise/prescription/progression domain types, validation, document codec/current schema, repository application and undo behavior, fixtures, and focused unit tests only; no final Compose UI.
   - Model: `gpt-6-astra`
   - Model reason: the clean-slate persistence rewrite and progression invariants affect stored routines, active-session snapshots, custom-step consumption, and undo atomically.
   - Depends on: DR5-079
-  - Status: `ready`
+  - Status: `complete`
   - Acceptance: every exercise and custom replacement prescription has structured slots for weight, duration, sets, and reps; optional fields remain representable without free-form target parsing; sets are positive and every present target is valid; weight is stored as whole pounds and accepts only positive multiples of 5; the old automatic-progression types, options, codec fields, and tests are deleted rather than retained behind compatibility paths; applying a custom step atomically replaces the complete structured prescription, consumes exactly one ordered step, preserves remaining steps and inserted exercises, and remains undoable; keeping current or applying a manual adjustment does not consume a custom step; current-schema encode/decode, invalid-value rejection, repository concurrency/revision checks, undo, active-session snapshots, and focused tests pass.
-  - Executor thread ID:
-  - Started at:
-  - Completed at:
+  - Executor thread ID: `01a0d942-27c9-7d73-a10b-0afac8a096d7`
+  - Started at: `2026-09-25T10:50:35.1646853-05:00`
+  - Completed at: `2026-09-25T11:15:53.9166288-05:00`
   - Push: `NO`
   - Notes: this repository is clean-slate: do not add migrations, compatibility readers, legacy target parsing, aliases, or version branches. Use an exact integer representation for pounds so the 5 lb invariant is not floating-point-dependent.
+  - Claimed: 2026-09-25T10:50:35.1646853-05:00 by gpt-6-astra; explicit task dispatch, Push NO.
+  - Completed: Structured integer pounds/duration/sets/reps, strict current-only codec, complete ordered custom replacement, manual multi-target requests preserving queued steps, atomic receipts/undo, snapshot and revision safety, and current fixtures are implemented. Fast passed 121 tests in 9 suites; the single Commit gate passed all 444 tests in 61 suites, lint (0 errors, 46 warnings), and debug APK assembly. Instrumentation and screenshot fixtures compile; no screenshot comparison or device execution was claimed. See `docs/DR5-080.md` for schema/API handoff and exact validation. Preserved actual checkout baseline v0.27.30 / 27032 (newer than the dispatch reference); no commit, push, version bump, tag, or release.
 
-- [ ] **DR5-081 — Rebuild the exercise and custom-progression editors**
+- [x] **DR5-081 — Rebuild the exercise and custom-progression editors**
   - Outcome: users can edit the four base targets on every exercise and optionally maintain an ordered queue of complete future prescriptions.
   - Scope: native Compose exercise editor, target controls, timed-exercise linkage, custom-progression summary and editor, step editing/reordering, state restoration, validation, accessibility, previews/screenshots, and focused tests.
   - Model: `gpt-5.6-sol`
   - Model reason: bounded Compose form and ordered-list work on the domain contract established by DR5-080.
   - Depends on: DR5-080
-  - Status: `blocked`
+  - Status: `complete`
   - Acceptance: the full editor retains exercise name, artwork, and notes, then presents Weight, Duration, Sets, and Reps as first-class base targets independent of progression; weight minus/plus controls move exactly 5 lb and cannot create a non-multiple-of-5 value; duration, sets, and reps have appropriate independent controls; Timed exercise uses the structured duration; Rest between sets and the After each exercise information card are absent; automatic progression is absent; Planned progression is visually subordinate, can be disabled, summarizes its next full prescription, and opens an ordered future-step editor; every custom step edits complete structured targets, exposes exact before/after changes, supports reorder/edit/add/delete, and retains supported name/notes/artwork and inserted-exercise behavior; unsaved changes, validation, keyboard/TalkBack behavior, state restoration, and compact/tall/landscape/large-text screenshots pass.
-  - Executor thread ID:
-  - Started at:
-  - Completed at:
+  - Executor thread ID: `01a0d96d-0134-74a0-834d-0f53b3a8ecfa`
+  - Started at: `2026-09-25T11:37:04.2797058-05:00`
+  - Completed at: `2026-09-25T12:10:01.4876298-05:00`
   - Push: `NO`
   - Notes: follow the approved mockups' quiet hierarchy. Weight examples must use 35, 40, 45, and similar 5 lb multiples; do not reproduce the obsolete 37.5 lb examples.
+  - Claimed: 2026-09-25T11:37:04.2797058-05:00 by gpt-5.6-sol; user explicitly requested immediate execution, overriding the queue cooldown. Preserving accumulated DR5-080 changes and the actual 0.27.30 / 27032 checkout.
+  - Completed: Rebuilt the exercise and future-step editors around independent Weight/Duration/Sets/Reps controls; weight moves only in exact 5 lb steps, duration directly owns the timer, and optional Planned progression summarizes and edits ordered complete prescriptions with exact predecessor deltas and retained inserted-exercise behavior. Added focused state/stepper/change-summary tests, native accessibility audit coverage, and inspected compact/tall/landscape/large-text references for both editors. Fast passed 20 focused tests; Commit passed 446 tests in 61 suites, lint with 0 errors/46 warnings, and debug APK assembly; targeted Release updated and validated exactly 8 intentional editor references. Android-test/screenshot sources compile, but no attached device was available to execute the native audit. See `docs/DR5-081.md`. No commit, push, version bump, tag, release, or publication.
 
-- [ ] **DR5-082 — Add optional multi-target adjustment after each exercise**
+- [x] **DR5-082 — Add optional multi-target adjustment after each exercise**
   - Outcome: completing an exercise normally advances immediately, while an explicit secondary path can update several targets or apply one planned custom step for next time.
   - Scope: guided-session completion state and bottom sheets, manual target adjustment, custom-step preview/application, persistence/undo, race and lifecycle handling, accessibility, screenshots, and focused tests.
   - Model: `gpt-5.6-sol`
   - Model reason: cohesive session-state and Compose interaction work after the target/editor contracts are stable.
   - Depends on: DR5-081
-  - Status: `blocked`
+  - Status: `complete`
   - Acceptance: after each exercise reaches all sets complete, the sheet emphasizes a filled Next exercise action that keeps all targets and consumes no custom step; Adjust exercise is secondary and no adjustment controls are initially visible; selecting it shows the current prescription and, when present, the exact next planned step before manual controls; applying a planned step consumes exactly one step and advances; choosing Adjust manually exposes independent weight, duration, sets, and reps controls and can save multiple simultaneous changes; weight changes only in 5 lb increments and never persists an invalid value; manual adjustment leaves queued custom steps intact and previews the exact resulting prescription; back/cancel and process recreation never apply or consume changes; stale routine/session revisions cannot overwrite newer edits; completion feedback, next-exercise focus, undo, compact/tall/landscape/large-text screenshots, TalkBack order/labels, and focused tests pass.
-  - Executor thread ID:
-  - Started at:
-  - Completed at:
+  - Executor thread ID: `01a09848-5d39-7670-8013-394782400976`
+  - Started at: `2026-09-25T12:19:41.8567641-05:00`
+  - Completed at: `2026-09-25T12:42:35.0248804-05:00`
   - Push: `NO`
   - Notes: this flow is exercise-by-exercise, never deferred until routine completion. The common path must stay faster and visually stronger than either adjustment path.
+  - Claimed: 2026-09-25T12:19:41.8567641-05:00 by gpt-5.6-sol; user explicitly requested immediate execution, overriding the queue cooldown. Preserving accumulated DR5-080/081 work and the actual 0.27.30 / 27032 checkout.
+  - Completed: Added the per-exercise completion sheet with filled Next exercise and secondary Adjust exercise, exact current/planned review, atomic one-step planned application, independent four-target manual save, strict 5 lb controls, queue preservation, Undo, saveable cancel/back state, and stale-revision/race protection. Fast passed 42 focused tests; Commit passed 449 JVM tests in 61 suites plus lint and debug APK assembly; targeted Release passed 12 inspected compact/tall/landscape/large-text comparisons. Android-test sources compile, but no device was attached for native TalkBack execution. See `docs/DR5-082.md`. Preserved 0.27.30 / 27032; no commit, push, version bump, tag, release, or publication.
 
-- [ ] **DR5-083 — Audit structured targets and exercise completion independently**
+- [x] **DR5-083 — Audit structured targets and exercise completion independently**
   - Outcome: an independent review verifies the replacement model, 5 lb invariant, custom-step semantics, optional adjustment flow, accessibility, and Fitness regressions before release.
   - Scope: complete Phase 10 diff, domain/codec/repository invariants, editor and guided-session behavior, lifecycle/concurrency/undo checks, native visual inspection, documentation, and full regression gate; fixes remain within approved Phase 10 scope.
   - Model: `gpt-6-astra`
   - Model reason: independent review of a storage rewrite plus session-state transitions benefits from the strongest reasoning model.
   - Depends on: DR5-082
-  - Status: `blocked`
+  - Status: `complete`
   - Acceptance: the audit proves no automatic-progression or free-form-target behavior remains; every entry point enforces whole 5 lb weight steps and rejects malformed stored/request values; base targets work without custom progression; keeping current, manual multi-field adjustment, planned-step application, inserted exercises, step exhaustion, undo, stale revisions, session restart, and process recreation behave exactly as specified; editor and completion screens match the approved hierarchy on compact/tall/landscape/large-text layouts with accessible touch targets and TalkBack order; Retirement behavior is unchanged; product and technical documentation are updated; all unit and screenshot tests, lint, assemble, native checks available in the environment, privacy/backup review, and `git diff --check` pass with evidence under `docs/reviews/`.
-  - Executor thread ID:
-  - Started at:
-  - Completed at:
+  - Executor thread ID: `01a0d9ad-fe65-7c81-aa5d-62b92222d312`
+  - Started at: `2026-09-25T12:48:18.8200474-05:00`
+  - Completed at: `2026-09-25T13:41:01.322801-05:00`
   - Push: `NO`
   - Notes: record limitations honestly and do not weaken existing progression or session-resilience coverage to make the new model pass.
 
-- [ ] **DR5-084 — Release the structured exercise-target milestone**
+  - Claimed: 2026-09-25T12:48:18.8200474-05:00 by gpt-6-astra; immediate execution authorized, overriding cooldown. Independent audit; Push NO; preserve 0.27.30 / 27032.
+
+  - Completed: Independent review and fixes documented in `docs/reviews/DR5-083/README.md`; 453 unit tests, 471 screenshots, lint (0 errors / 46 existing warnings), both APK assemblies, offline Retirement checks, APK privacy/backup review, and whitespace checks passed. Back/dismissal recovery, full replacement review, predecessor defaults, numeric layout, and focus recovery corrected. No connected Android device: runtime TalkBack/keyboard/process-death checks remain disclosed limitations. Push NO; defaults remain 0.27.30 / 27032. DR5-084 ready.
+
+- [x] **DR5-084 — Release the structured exercise-target milestone**
   - Outcome: the audited structured-target and post-exercise adjustment redesign ships as one coherent tagged release with a verified published APK.
   - Scope: Phase 10 findings, final documentation/version defaults, complete verification gate, Git commit/push/tag, release workflow, and published APK verification.
   - Model: `gpt-5.6-sol`
   - Model reason: established deterministic delivery procedure after independent audit.
   - Depends on: DR5-083
-  - Status: `blocked`
+  - Status: `complete`
   - Acceptance: DR5-080–083 are complete and the audit has no unresolved blockers; documentation matches the shipped structured-target, 5 lb weight-step, custom-progression, and exercise-completion behavior; version name/code advance consistently from the Retirement release; full unit, screenshot, integration, lint, assemble, native checks available in the environment, and whitespace checks pass; the coherent Phase 10 work is committed and pushed once; the next increasing version tag is pushed; the tag-triggered release workflow completes; and the signed APK is published and verified.
-  - Executor thread ID:
-  - Started at:
-  - Completed at:
+  - Executor thread ID: `01a09848-5d39-7670-8013-394782400976`
+  - Started at: `2026-09-25T13:42:59.0532782-05:00`
+  - Completed at: `2026-09-25T14:07:54.1430306-05:00`
   - Push: `YES`
   - Notes: never commit credentials, signing material, generated build files, `.gradle-user-home`, or `.tooling`; do not release intermediate Phase 10 tasks separately.
+  - Claimed: 2026-09-25T13:42:59.0532782-05:00 by gpt-6-sol; user explicitly requested immediate execution, overriding the queue cooldown. Preserving the complete accumulated DR5-080–083 work and the actual v0.27.30 / 27032 checkout.
+  - Completed: Reconciled and documented the coherent structured Weight/Duration/Sets/Reps milestone, exact 5 lb invariant, optional ordered complete prescriptions, fast Next exercise path, optional multi-field adjustment, Undo/lifecycle behavior, and retained device limitations. Defaults advance to v0.27.31 / 27033, the next increasing local and remote version. The single canonical Release gate passed in 850.8 seconds: 453 JVM tests in 62 suites, 471 screenshots, lint with 0 errors / 46 existing warnings, debug assembly, and whitespace. Instrumentation APK assembly passed; no Android device was attached, so runtime TalkBack/keyboard/process-death/timer checks remain unclaimed. The 84,279,376-byte local APK has SHA-256 `1aea4d43108445765085ccbb0b25b17e848cfedf31781530f14d19b83876f3c8`, identity `dev.draftingroom5` 0.27.31 / 27033, one valid v2 debug signer, passing 16 KiB alignment, Fitness-only backup rules, zero prohibited archive types, and zero matches for eight privacy canaries. The coherent commit, pushed tag, successful workflow, and independently verified signed release attachment are linked in `docs/reviews/DR5-084/README.md` and the final task report.

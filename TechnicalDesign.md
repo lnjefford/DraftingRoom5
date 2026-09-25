@@ -2,13 +2,13 @@
 
 The next release supports Android 17+ only (`minSdk`, `targetSdk`, and `compileSdk` 37), as requested on 2026-09-21. Earlier API 28/35 audit records below remain historical evidence, not the current support contract.
 
-Status: implemented and audited through the DR5-079 Phase 9 release, with provider-tolerant Android document selection for strictly validated Epic `.xlsm` imports in v0.27.15; the Finance Overview's shorter success-rate-by-age card shipped in v0.27.14; direct retirement-age settings navigation and the tighter non-redundant hierarchy shipped in v0.27.13; actual forecast-engine output and the approved dotted-guide treatment shipped together in v0.27.12; the actual percentile range and median result first shipped in v0.27.11; its approved value-first hierarchy in v0.27.10; the broader Finance workspace editorial refinement in v0.27.9; and its initial predictive Overview, Forecast, and Assets system in v0.27.8. The prior editorial hierarchy and reference-only resource library shipped in v0.27.7, direct Epic import and removed HSA inputs in v0.27.6, and focused RentCast property search in v0.27.5. The current-schema app ships with the Finance workspace, the Fitness workspace, a shared workspace drawer, the matching in-app/launcher brand mark, and the one-cell tap-to-open living-icon widget. Finance's Android 17 runtime and live Plaid Link/token-exchange coverage are accepted release exceptions rather than passed checks; exact evidence and remaining device/provider limits are recorded in `docs/reviews/DR5-078/` and `docs/reviews/DR5-079/`.
+Status: implemented and audited through the DR5-084 Phase 10 release. v0.27.31 ships structured Weight, Duration, Sets, and Reps, exact 5 lb weight controls, optional ordered complete planned prescriptions, and the Next exercise / optional multi-field adjustment flow with durable Undo. The current-schema app also ships with the Finance workspace, shared workspace drawer, matching in-app/launcher brand mark, and one-cell tap-to-open living-icon widget. Phase 10's unavailable device-runtime checks and Finance's accepted Android 17/live Plaid exceptions are limitations rather than passing evidence; exact records are in `docs/reviews/DR5-083/`, `docs/reviews/DR5-084/`, `docs/reviews/DR5-078/`, and `docs/reviews/DR5-079/`.
 
 ## Authority and implementation boundaries
 
 The requirements are [DesignReview.md](DesignReview.md), [Dashboard.md](Dashboard.md), [MetricDetails.md](MetricDetails.md), [Settings.md](Settings.md), [DashboardCustomization.md](DashboardCustomization.md), [SchedulesAndRoutines.md](SchedulesAndRoutines.md), [RoutineEditor.md](RoutineEditor.md), and [GuidedSession.md](GuidedSession.md). Their referenced PNGs remain visual references under `docs/design`; none becomes a screen or a cropped production asset.
 
-Use the existing single Android app module, Kotlin, native Compose/Material 3, coroutines, Health Connect, and WorkManager. Keep application ID `dev.draftingroom5`, minimum SDK 28, and the existing SDK/build configuration until a separate justified change. Add lifecycle ViewModel/SavedStateHandle and Compose lifecycle/test dependencies at the already selected lifecycle/Compose versions when needed. Do not introduce Hilt, Room, a backend, accounts, or another navigation framework for this app.
+Use the existing single Android app module, Kotlin, native Compose/Material 3, coroutines, Health Connect, and WorkManager. Keep application ID `dev.draftingroom5`, minimum/target/compile SDK 37, and the existing build configuration until a separate justified change. Add lifecycle ViewModel/SavedStateHandle and Compose lifecycle/test dependencies at the already selected lifecycle/Compose versions when needed. Do not introduce Hilt, Room, a backend, accounts, or another navigation framework for this app.
 
 This is a clean replacement. No old-store reads, converters, aliases, missing-old-field defaults, or schema-version dispatch are permitted. Current-data validation and intentional artwork/layout normalization are defined below. The earlier handoffs' references to existing stores mean preserving their behavior and capabilities; the later clean-slate decision governs persistence. In particular, customization preserves the user's current-format order and visibility, without reading the retired layout key.
 
@@ -48,7 +48,7 @@ Names here are concrete implementation names. IDs are opaque nonblank strings of
 | `TrainingPlan` | Ordered `routines: List<Routine>`, ordered `schedule: List<ScheduleEntry>`. Array positions are authoritative ordering; do not also store an integer rank. |
 | `RoutineExecution` | Exactly `GUIDED`, `LINKED_APP`. Type chosen at creation; existing type cannot be changed by the approved editor. |
 | `Routine` | `id`, `revision: Long >= 1`, trimmed nonblank `name`, required `artworkId`, `execution`, `exercises: List<Exercise>`, `appLink: AppLink?`. Every successful substantive edit increments revision once; no-op edits do not. |
-| `Exercise` | `id`, trimmed nonblank `name`, `notes` (may be empty), `setCount: Int > 0`, trimmed nonblank `target`, `timerSeconds: Int?` (null or positive), required `artworkId`. Names/targets are display content, never parsed into tracking fields. |
+| `Exercise` | `id`, trimmed nonblank `name`, `notes` (may be empty), `setCount: Int > 0`, optional positive `reps: Int?`, `durationSeconds: Int?`, and `weightPounds: Int?`, required `artworkId`, optional `CustomExerciseProgression`. Pounds must be divisible by five; duration also owns the timer. No text target is stored or parsed. |
 | `AppLink` | Nonblank `packageName`, nullable `deepLink`. No persisted app label/icon, activity component, authorization state, or store URL. New app selection uses a package and null deep link. |
 | `ScheduleEntry` | `id`, nonblank `routineId` referencing a live routine, nonempty `days: Set<DayOfWeek>`. No title, subtitle, artwork, type, app, single-day anchor, enabled switch, dates or repeat enum. |
 | `OccurrenceKey` | Immutable `scheduleEntryId`, `scheduledDate: LocalDate`. It identifies an instance of a recurring rule, not its completion timestamp. Its schedule ID is historical origin, not a foreign key that must survive deletion. |
@@ -59,7 +59,7 @@ Names here are concrete implementation names. IDs are opaque nonblank strings of
 
 Guided routines require at least one valid exercise and `appLink = null`. Linked routines require a valid app link and an empty exercise list. New guided drafts may be empty in UI, but are not saved or schedulable until an exercise is saved into the draft. Deleting the last exercise from a saved guided routine is rejected with an explanation; offer Delete routine for removing the routine. Routine/exercise names may coincide; identity must not.
 
-Validation bounds for user content: name at most 200 characters, target at most 500, notes at most 4,000, package at most 255, deep link at most 2,048. Set count and timer input must fit a positive Kotlin Int; reject overflow rather than truncate. Compute total sets and milliseconds with Long. Reject nonfinite numeric preference/health values. Empty text is allowed only where explicitly stated. URI security validation is in the launch section. Unknown nonblank artwork IDs remain valid and resolve to generic artwork; missing required artwork fields are invalid current data.
+Validation bounds for user content: name at most 200 characters, notes at most 4,000, package at most 255, deep link at most 2,048. Set count and timer input must fit a positive Kotlin Int; reject overflow rather than truncate. Compute total sets and milliseconds with Long. Reject nonfinite numeric preference/health values. Empty text is allowed only where explicitly stated. URI security validation is in the launch section. Unknown nonblank artwork IDs remain valid and resolve to generic artwork; missing required artwork fields are invalid current data.
 
 `AppPreferences` owns `DashboardLayout`, `HealthDateRange`, `hapticsEnabled`, `VoiceAnnouncementSettings`, and `automaticBackupsEnabled`. Preserve `DashboardCard` identifiers `TODAY`, `WEIGHT`, `BODY_FAT`, `DISTANCE`, `LEAN_MASS`, `WORKOUTS`, and range identifiers `DAY`, `WEEK`, `MONTH`, `THREE_MONTHS`, `YEAR`. A layout contains each known card once, with at least one visible.
 
@@ -71,21 +71,22 @@ Default routine/schedule IDs are new stable constants, not imports of developmen
 | --- | --- | --- |
 | `routine-strength` | Fitbod workout / LINKED_APP / `dumbbell` | `com.fitbod.fitbod`, no deep link |
 | `routine-running` | JustRun run / LINKED_APP / `running_shoe` | `com.jupli.run`, no deep link |
-| `routine-forearm` | Forearm & Grip Conditioning / GUIDED / `grip_trainer` | Seven exercises below |
+| `routine-forearm` | Forearm & Grip Conditioning / GUIDED / `grip_trainer` | Eight exercises below |
 
 All default revisions are 1. Ordered schedule: `schedule-strength` references strength on MONDAY/TUESDAY/THURSDAY; `schedule-running` references running on MONDAY/WEDNESDAY/FRIDAY; `schedule-forearm` references forearm on SATURDAY. Thus there are three recurring entries and seven weekly occurrences; Monday has two, Sunday zero. Settings reports **3 recurring entries**, not seven entities. Do not invent named Leg/Push/Pull days from artwork examples.
 
-| Exercise ID | Name | Sets | Target | Timer seconds | Artwork ID / notes |
+| Exercise ID | Name | Sets | Reps | Duration seconds | Artwork ID / notes |
 | --- | --- | --- | --- | --- | --- |
-| `exercise-dead-hang` | Thick-Bar Dead Hangs | 3 | 20 sec | 20 | `dead_hang`; Pull-up bar + thick adapter |
-| `exercise-farmers-walk` | Dumbbell Farmer's Walks | 3 | 30 sec | 30 | `farmers_walk`; Start 15-20 lb/hand |
-| `exercise-grip-hold` | Grip Holds | 4 | 20 sec | 20 | `grip_hold`; Pinch & crush |
-| `exercise-wrist-curl` | Seated Dumbbell Wrist Curls | 3 | 12-15 reps | null | `wrist_curl`; Palms up, start 5-10 lb |
-| `exercise-reverse-wrist-curl` | Seated Dumbbell Reverse Wrist Curls | 3 | 12-15 reps | null | `reverse_wrist_curl`; Palms down, start 5-10 lb |
-| `exercise-finger-extension` | Finger Extensor Band Extensions | 3 | 15-20 reps | null | `finger_extension`; empty notes |
-| `exercise-wrist-rotation` | Wrist Rotations | 2 | 10-12 / side | null | `wrist_rotation`; Pronation / supination |
+| `exercise-hangboard` | Hangboard Holds | 3 | null | 20 | `hangboard`; Controlled edge hold |
+| `exercise-dead-hang` | Thick-Bar Dead Hangs | 3 | null | 20 | `dead_hang`; Pull-up bar + thick adapter |
+| `exercise-farmers-walk` | Dumbbell Farmer's Walks | 3 | null | 30 | `farmers_walk`; Start 15-20 lb/hand |
+| `exercise-grip-hold` | Grip Holds | 4 | null | 20 | `grip_hold`; Pinch & crush |
+| `exercise-wrist-curl` | Seated Dumbbell Wrist Curls | 3 | 12 | null | `wrist_curl`; Palms up, start 5-10 lb |
+| `exercise-reverse-wrist-curl` | Seated Dumbbell Reverse Wrist Curls | 3 | 12 | null | `reverse_wrist_curl`; Palms down, start 5-10 lb |
+| `exercise-finger-extension` | Finger Extensor Band Extensions | 3 | 15 | null | `finger_extension`; empty notes |
+| `exercise-wrist-rotation` | Wrist Rotations | 2 | 10 | null | `wrist_rotation`; Pronation / supination |
 
-The former `2-3 sets` default becomes explicitly 3; no parser survives. The generic grip name avoids implying branded production artwork. Preserve owned instructional targets/notes, without claiming exercise prescriptions were newly validated by this design.
+All default weights and progression queues are null. Notes remain instructional text and are never parsed into targets. These are deterministic app defaults, not a newly validated training prescription.
 
 Default dashboard: TODAY, WEIGHT, BODY_FAT, DISTANCE, LEAN_MASS visible; WORKOUTS hidden. This is the default constructor's order; saved current-format layouts always win. Range MONTH; haptics on; voice on at 1.0 (finite rate clamped to existing 0.75–1.5); automatic backups on. Plan reset affects routines/schedules/partials/history, while dashboard reset affects only layout. Neither resets health permissions or other preferences.
 
@@ -129,8 +130,8 @@ One UTF-8 file: `filesDir/training-current/document.json`, managed with Android 
       "artworkId": "grip_trainer", "execution": "GUIDED", "appLink": null,
       "exercises": [{
         "id": "exercise-example", "name": "Grip hold", "notes": "",
-        "setCount": 3, "target": "20 sec", "timerSeconds": 20,
-        "artworkId": "grip_hold"
+        "setCount": 3, "reps": null, "durationSeconds": 20, "weightPounds": null,
+        "artworkId": "grip_hold", "progression": null
       }]
     }],
     "schedule": [{
@@ -151,7 +152,8 @@ One UTF-8 file: `filesDir/training-current/document.json`, managed with Android 
   },
   "partialSessions": [],
   "history": [],
-  "occurrenceExceptions": []
+  "occurrenceExceptions": [],
+  "progressionReceipts": []
 }
 ```
 
@@ -371,21 +373,17 @@ Use fixture F: occurrence (`schedule-test`, 2026-09-12), guided snapshot exercis
 In addition to these examples, enumerate every typed reducer event across ACTIVE/READY_TO_FINISH and all valid timer phases, COMPLETE/missing/stale identities, invalid payloads, and failed writes. Assert the default rejection rules above for every uncovered combination. Property checks should preserve bounds, snapshot/occurrence identity, unique partial/history ownership and the rule that only explicit CompleteSet changes a count upward. Device-only checks remain process kill/reboot/boot-counter availability, AtomicFile recovery, TalkBack focus, lifecycle/window transitions and actual TTS/haptic gating; host fake clocks cannot establish those platform behaviors.
 
 
-## Exercise progression contract
+## Structured targets and optional progression
 
-`Exercise` stores optional structured `ExerciseMeasurements` alongside readable target text and an optional sealed progression rule. Automatic rules independently own positive pounds/seconds increments and optional bounds. A custom rule is an ordered, nonempty list of complete source-replacement prescriptions plus zero or more recursively valid exercises to insert after the source. Pounds are the only weight unit. The codec always writes measurements and progression, including explicit empty/null values; it never derives them from target text.
+Every exercise and replacement prescription directly stores required positive `setCount: Int` and independently nullable positive `reps`, `durationSeconds`, and `weightPounds` integers. Pounds must be divisible by five; the maximum is 2,147,483,645. Duration is also the timer duration. No automatic rules, measurement wrapper, free-form target field, migration, or compatibility reader remains. The codec rejects missing/extra slots, coerced strings/booleans, fractional numbers, overflow, invalid values, and malformed nested prescriptions throughout live routines, snapshots, insertions, and receipts. JSON slots are explicit even when null.
 
-Before persistence, encoding checks the strict JSON reader's 32-container nesting limit with one reserved level for the backup envelope. Recursive custom insertion trees that exceed this limit are rejected without replacing the last good document. Current measurements survive disabled/final progression and ordinary edits. Custom draft savers retain the working rule, ordered steps and inserted exercises through Android saved-state restoration.
+`CustomExerciseProgression` owns a nonempty ordered `steps` list. Each step has a complete `replacement` and ordered `insertedExercises`. `progressionOptions()` exposes only the first step, replacing name, notes, artwork and all four targets while preserving source identity, consuming that step, and inserting its additions immediately after the source. The exhausted queue becomes null. Manual requests carry a complete validated prescription and preserve the queue and existing inserted exercises.
 
-All live exercise roots and every unconsumed custom insertion, including nested insertions, occupy one routine-wide ID namespace. Validation walks that graph and rejects duplicate IDs, invalid measurements/rules, empty custom sequences, and any exercise on a linked-app routine. The editor repeats the identity check before persistence. Moving a live root does not flatten or detach its future graph; deleting it removes that unconsumed graph. Once a step is applied, its additions become independent live roots and the consumed step is removed from the source. Consequently later source reorder/delete cannot silently move or remove an already inserted exercise.
+Under the process lock, `applyProgression` requires a valid session lease, completed unchanged snapshot/source, expected session/routine revisions, and valid choice. It writes the live routine revision and durable receipt in one atomic document mutation. An identical receipt retry is a no-write success; a competing manual/custom decision conflicts. A failed write publishes nothing. Undo restores the exact prior source and removes only that receipt's insertions, provided no later routine revision has expired it. Session/preference writes do not expire Undo. Receipts survive process restart and backup/restore; restore revokes old leases and clears live timers. Active/history snapshots remain unchanged. Explicit session restart adopts the latest live routine.
 
-`progressionOptions` is the only calculation path used by editor preview, workout preview, commit validation, receipt validation, and Undo. Single-measure options preserve the unselected measure. A dual rule may expose weight-only, duration-only, and heavier/shorter; it never synthesizes increase-both. Bounds clamp a final partial increment and remove a choice once no strictly different finite positive result exists. Custom apply preserves the source ID, replaces its complete prescription, consumes exactly one step, and inserts that step's additions in declared order immediately after the source.
+The completion sheet initially exposes filled Next exercise (keep current) and secondary Adjust exercise. Review shows current and next complete prescriptions, including notes/artwork and additions. Manual adjustment exposes all four independent controls, validates one combined result, and consumes no step. Back from manual returns to review, then completion; drafts remain saveable UI state and never commit on navigation. Material sheet dismissal re-shows a still-pending decision, including after failed keep-current writes. Busy writes prevent dismissal. The sheet skips partial expansion so Back has one consistent logical level.
 
-`ProgressionRequest` carries session/exercise identity plus expected session and routine revisions. Under the repository process lock, apply re-derives the offer from committed state, requires a completed snapshot exercise that still exactly equals the live source, checks the choice/revisions, creates one durable receipt, updates one live routine revision, and performs one atomic document write. Existing receipts make retries idempotent. A handled completion, linked/missing routine, unavailable option, changed source, stale parallel workout, or write failure cannot advance. Undo succeeds only while the routine remains at the receipt's applied revision and the exact progressed source/additions remain present; it restores the source and removes only additions created by that transition. Later edits/progression expire Undo. Routine deletion prunes unusable receipts; completed history remains.
-
-`GuidedSession.snapshot`, counts, focus, timer, and handled-progression IDs remain independent of the live routine. Continue adds the completed exercise ID to the session set; undoing its last set removes that marker. Applying progression does not rewrite the partial or history snapshot. New sessions and explicit restart copy the latest live routine. Backup/export/import uses the complete current document, so live rules/current values, snapshot rules/current values, handled markers, receipts, partials, and history round-trip together; restore only clears active timers and revokes leases.
-
-The workout sheet is rendered inside the existing guided-session route and has 54 dp actions, heading/result semantics, scrollable compact/large-text content, and keyboard/TalkBack-selectable exact choices. Routine/custom editors retain 48 dp controls, focus after reorder/delete, accessible move actions, and scroll at compact, tall, landscape, and large-text sizes. There is no progression dashboard, background progression worker, linked-app prompt, or parsing of display text. Option calculation is linear in the selected rule; routine validation is linear in the live/future exercise graph.
+Exercise and future-step editors use the same 48 dp target actions and 5 lb weight stepper. Optional fields clear independently. Ordered future steps compare against the immediate predecessor; new steps start from that prescription. Draft savers retain ordered insertions, while canonical validation remains at repository/codec boundaries. The 32-container nesting cap reserves one level for the backup envelope and rejects unreadable recursive insertion trees before replacing last-good data. Retirement persistence, credentials, drafts and backup exclusions are unchanged. Audit evidence and native limitations: `docs/reviews/DR5-083/README.md`.
 
 ## Current-schema backup, restore and updates
 

@@ -56,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -128,7 +129,7 @@ internal fun guidedSessionPresentation(session: GuidedSession, elapsedMillis: Lo
     val completedExercises = session.snapshot.exercises.count {
         session.completedSets.getValue(it.id) == it.setCount
     }
-    val timer = focused.timerSeconds?.takeIf { completedSets < focused.setCount }?.let { configured ->
+    val timer = focused.durationSeconds?.takeIf { completedSets < focused.setCount }?.let { configured ->
         val seconds = timerDisplaySeconds(session.timer, elapsedMillis, configured)
         when (session.timer.phase) {
             TimerPhase.IDLE -> SessionTimerPresentation(
@@ -185,18 +186,17 @@ internal fun formatSessionTimer(seconds: Int): String = "%02d:%02d".format(secon
 internal fun progressionPrescription(exercise: Exercise): String = buildList {
     add(exercise.name)
     add("${exercise.setCount} ${if (exercise.setCount == 1) "set" else "sets"}")
-    add(exercise.target)
-    exercise.measurements.weightPounds?.let { add("${formatProgressionPounds(it)} lb") }
-    exercise.measurements.durationSeconds?.let { add("$it seconds") }
+    exercise.reps?.let { add("$it reps") }
+    exercise.weightPounds?.let { add("${formatProgressionPounds(it)} lb") }
+    exercise.durationSeconds?.let { add("$it seconds") }
 }.joinToString(", ")
 
-private fun formatProgressionPounds(value: Double): String =
-    java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
+private fun formatProgressionPounds(value: Int): String = value.toString()
 
 internal fun progressionResult(option: ProgressionOption): String = buildList {
     add(progressionPrescription(option.source))
     if (option.source.notes.isNotBlank()) add(option.source.notes)
-    option.source.timerSeconds?.let { add("Timer: $it seconds") }
+    option.source.durationSeconds?.let { add("Timer: $it seconds") }
     option.additions.forEach { add("Add: ${progressionPrescription(it)}") }
 }.joinToString("\n")
 
@@ -206,6 +206,37 @@ internal fun progressionOfferForSession(document: AppDocument, session: GuidedSe
             session.completedSets.getValue(exercise.id) != exercise.setCount) null
         else document.progressionOffer(session.id, exercise.id)
     }
+
+internal fun completePrescriptionSummary(prescription: ExercisePrescription): String = buildList {
+    add("Weight ${prescription.weightPounds?.let { "$it lb" } ?: "not set"}")
+    add("Duration ${prescription.durationSeconds?.let { "$it seconds" } ?: "not timed"}")
+    add("Sets ${prescription.setCount}")
+    add("Reps ${prescription.reps?.toString() ?: "not set"}")
+}.joinToString(" · ")
+
+internal fun completionSheetParent(mode: String): String = if (mode == "manual") "adjust" else "complete"
+
+internal fun manualAdjustmentPrescription(
+    source: Exercise,
+    weight: String,
+    durationEnabled: Boolean,
+    duration: String,
+    sets: String,
+    reps: String,
+): ExercisePrescription? {
+    val candidate = source.prescription().copy(
+        weightPounds = if (weight.isBlank()) null else weight.toIntOrNull() ?: return null,
+        durationSeconds = if (durationEnabled) duration.toIntOrNull() ?: return null else null,
+        setCount = sets.toIntOrNull() ?: return null,
+        reps = if (reps.isBlank()) null else reps.toIntOrNull() ?: return null,
+    )
+    return try {
+        validatePrescription(candidate)
+        candidate
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+}
 
 internal data class SessionFeedbackOwner(
     val sessionId: String,
@@ -255,7 +286,7 @@ internal class SessionFeedbackController(private val capacity: Int = 96) {
                         1, 2, 3 -> voice(VoiceCue.CountdownTick(4 - output.ordinal))
                         4 -> {
                             haptic(HapticCue.COUNTDOWN_COMPLETE)
-                            voice(VoiceCue.TimerStarted(exercise.name, requireNotNull(exercise.timerSeconds)))
+                            voice(VoiceCue.TimerStarted(exercise.name, requireNotNull(exercise.durationSeconds)))
                         }
                         5 -> {
                             haptic(HapticCue.TIMER_COMPLETE)
@@ -396,7 +427,7 @@ internal fun GuidedSessionDestination(
         }
     }
 
-    fun applyProgression(offer: ProgressionOffer, choice: ProgressionChoice) {
+    fun applyProgression(offer: ProgressionOffer, request: ProgressionRequest) {
         val currentLease = lease ?: return
         if (saving) return
         val committed = (repository.state.value as? LoadState.Ready)?.value ?: return
@@ -405,7 +436,7 @@ internal fun GuidedSessionDestination(
         saving = true
         scope.launch {
             val result = try {
-                withContext(Dispatchers.IO) { repository.applyProgression(currentLease, offer.request(choice)) }
+                withContext(Dispatchers.IO) { repository.applyProgression(currentLease, request) }
             } finally {
                 saving = false
             }
@@ -590,7 +621,8 @@ internal fun GuidedSessionDestination(
             busy = saving,
             error = error,
             onContinue = { apply(SessionEvent.ContinueWorkout(offer.exerciseId), requestBackup = true) },
-            onApply = { applyProgression(offer, it) },
+            onApplyPlanned = { applyProgression(offer, offer.request(ProgressionChoice.CUSTOM)) },
+            onApplyManual = { applyProgression(offer, offer.manualRequest(it)) },
         )
     }
     if (exitRequested) AppConfirmationDialog(
@@ -719,33 +751,57 @@ private fun ProgressionDecisionSheet(
     busy: Boolean,
     error: String?,
     onContinue: () -> Unit,
-    onApply: (ProgressionChoice) -> Unit,
+    onApplyPlanned: () -> Unit,
+    onApplyManual: (ExercisePrescription) -> Unit,
 ) {
-    var choosing by rememberSaveable(exercise.id) { mutableStateOf(false) }
-    var selectedName by rememberSaveable(exercise.id) { mutableStateOf<String?>(null) }
-    val selected = options.firstOrNull { it.choice.name == selectedName } ?: options.firstOrNull()
+    var mode by rememberSaveable(exercise.id, options.hashCode()) { mutableStateOf("complete") }
+    var weight by rememberSaveable(exercise.id, options.hashCode()) { mutableStateOf(exercise.weightPounds?.toString().orEmpty()) }
+    var durationEnabled by rememberSaveable(exercise.id, options.hashCode()) { mutableStateOf(exercise.durationSeconds != null) }
+    var duration by rememberSaveable(exercise.id, options.hashCode()) { mutableStateOf(exercise.durationSeconds?.toString() ?: "20") }
+    var sets by rememberSaveable(exercise.id, options.hashCode()) { mutableStateOf(exercise.setCount.toString()) }
+    var reps by rememberSaveable(exercise.id, options.hashCode()) { mutableStateOf(exercise.reps?.toString().orEmpty()) }
+    val manual = manualAdjustmentPrescription(exercise, weight, durationEnabled, duration, sets, reps)
+    val scope = rememberCoroutineScope()
+    val currentBusy by rememberUpdatedState(busy)
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != androidx.compose.material3.SheetValue.Hidden || !currentBusy },
+    )
     ModalBottomSheet(
-        onDismissRequest = { if (!busy) { if (choosing) choosing = false else onContinue() } },
+        onDismissRequest = {
+            if (!busy) {
+                if (mode == "complete") onContinue() else mode = completionSheetParent(mode)
+            }
+            // Material hides before this callback. Keep the pending decision visible,
+            // including when a keep-current write fails; only committed state removes it.
+            scope.launch { sheetState.show() }
+        },
+        sheetState = sheetState,
         containerColor = AppSurface,
     ) {
         ProgressionDecisionSheetContent(
             exercise = exercise,
             options = options,
-            choosing = choosing,
-            selected = selected?.choice,
+            mode = mode,
             busy = busy,
             error = error,
-            onReady = {
-                if (options.size == 1) onApply(options.single().choice)
-                else {
-                    selectedName = selected?.choice?.name
-                    choosing = true
-                }
-            },
             onContinue = onContinue,
-            onSelect = { selectedName = it.name },
-            onApply = { selected?.choice?.let(onApply) },
-            onBack = { choosing = false },
+            onAdjust = { mode = "adjust" },
+            onManual = { mode = "manual" },
+            onApplyPlanned = onApplyPlanned,
+            onApplyManual = { manual?.let(onApplyManual) },
+            onBack = { mode = completionSheetParent(mode) },
+            weight = weight,
+            onWeightChange = { weight = it },
+            durationEnabled = durationEnabled,
+            onDurationEnabledChange = { durationEnabled = it },
+            duration = duration,
+            onDurationChange = { duration = it },
+            sets = sets,
+            onSetsChange = { sets = it },
+            reps = reps,
+            onRepsChange = { reps = it },
+            manualPrescription = manual,
         )
     }
 }
@@ -754,112 +810,130 @@ private fun ProgressionDecisionSheet(
 internal fun ProgressionDecisionSheetContent(
     exercise: Exercise,
     options: List<ProgressionOption>,
-    choosing: Boolean,
-    selected: ProgressionChoice?,
+    mode: String,
     busy: Boolean,
-    onReady: () -> Unit,
     onContinue: () -> Unit,
-    onSelect: (ProgressionChoice) -> Unit,
-    onApply: () -> Unit,
+    onAdjust: () -> Unit,
+    onManual: () -> Unit,
+    onApplyPlanned: () -> Unit,
+    onApplyManual: () -> Unit,
     onBack: () -> Unit,
+    weight: String = exercise.weightPounds?.toString().orEmpty(),
+    onWeightChange: (String) -> Unit = {},
+    durationEnabled: Boolean = exercise.durationSeconds != null,
+    onDurationEnabledChange: (Boolean) -> Unit = {},
+    duration: String = exercise.durationSeconds?.toString() ?: "20",
+    onDurationChange: (String) -> Unit = {},
+    sets: String = exercise.setCount.toString(),
+    onSetsChange: (String) -> Unit = {},
+    reps: String = exercise.reps?.toString().orEmpty(),
+    onRepsChange: (String) -> Unit = {},
+    manualPrescription: ExercisePrescription? = exercise.prescription(),
     error: String? = null,
 ) {
+    val scroll = androidx.compose.runtime.key(mode) { rememberScrollState() }
     Column(
-        Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        Modifier.fillMaxWidth().verticalScroll(scroll)
             .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         error?.let { Text(it, color = MaterialTheme.colorScheme.error,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
-        if (!choosing) {
+        if (mode == "complete") {
             Text(
                 "${exercise.name} complete",
                 modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            OutlinedButton(
-                onClick = onReady,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).semantics {
-                    contentDescription = if (options.size == 1) {
-                        "Ready for more. Apply ${progressionResult(options.single())}"
-                    } else "Ready for more. Choose the exact future prescription."
-                },
-                border = BorderStroke(1.dp, AppBlue),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(if (options.size == 1) 16.dp else 28.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = AppBlue),
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Ready for more")
-                    if (options.size == 1) Text(progressionResult(options.single()),
-                        style = MaterialTheme.typography.bodySmall)
-                }
-            }
             Button(
                 onClick = onContinue,
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
-            ) { Text("Continue workout") }
-        } else {
+            ) { Text("Next exercise") }
+            OutlinedButton(
+                onClick = onAdjust,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+            ) { Text("Adjust exercise") }
+        } else if (mode == "adjust") {
             Text(
-                "Choose the exact next prescription",
+                "Adjust ${exercise.name}",
                 modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            options.forEach { option ->
-                val isSelected = option.choice == selected
-                AppSurfaceCard(
-                    Modifier.fillMaxWidth().heightIn(min = 88.dp)
-                        .clickable(enabled = !busy, role = Role.RadioButton) { onSelect(option.choice) }
-                        .semantics {
-                            this.selected = isSelected
-                            contentDescription = "${progressionChoiceLabel(option.choice)}. ${progressionPrescription(option.source)}"
-                        },
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        RadioButton(selected = isSelected, onClick = null, enabled = !busy)
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(progressionChoiceLabel(option.choice), fontWeight = FontWeight.Bold)
-                            Text(
-                                progressionPrescription(option.source),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-                }
+            PrescriptionSummaryCard("CURRENT PRESCRIPTION", exercise.prescription())
+            options.firstOrNull()?.let { option ->
+                PrescriptionSummaryCard("NEXT PLANNED STEP", option.source.prescription(), option.additions)
+                Button(
+                    onClick = onApplyPlanned,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).semantics {
+                        contentDescription = "Apply planned step and go to next exercise. ${completePrescriptionSummary(option.source.prescription())}"
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
+                ) { Text("Apply planned step") }
             }
             OutlinedButton(
-                onClick = onBack,
+                onClick = onManual,
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            ) { Text("Back") }
-            Button(
-                onClick = onApply,
-                enabled = !busy && selected != null,
+            ) { Text("Adjust manually") }
+            TextButton(onClick = onBack, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Back") }
+        } else {
+            Text("Manual adjustment", modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+            Text("Changes apply together for the next workout. Planned steps stay queued.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            StructuredTargetControls(weight, onWeightChange, durationEnabled, onDurationEnabledChange,
+                duration, onDurationChange, sets, onSetsChange, reps, onRepsChange)
+            manualPrescription?.let { PrescriptionSummaryCard("RESULTING PRESCRIPTION", it) }
+            OutlinedButton(onClick = onBack, enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Back") }
+            Button(onClick = onApplyManual, enabled = !busy && manualPrescription != null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).semantics {
-                    options.firstOrNull { it.choice == selected }?.let {
-                        contentDescription = "Apply ${progressionPrescription(it.source)}"
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
-            ) { Text("Apply progression") }
+                    manualPrescription?.let { contentDescription = "Save adjustment and go to next exercise. ${completePrescriptionSummary(it)}" }
+                }, colors = ButtonDefaults.buttonColors(containerColor = AppBlue)) {
+                Text("Save adjustment & next")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrescriptionSummaryCard(
+    label: String,
+    prescription: ExercisePrescription,
+    additions: List<Exercise> = emptyList(),
+) {
+    val artworkName = stringResource(ExerciseArtworkCatalog.resolve(prescription.artworkId).displayNameRes)
+    AppSurfaceCard(Modifier.fillMaxWidth().semantics {
+        contentDescription = "$label. ${prescription.name}. ${completePrescriptionSummary(prescription)}. " +
+            "Notes: ${prescription.notes.ifBlank { "none" }}. Artwork: $artworkName" +
+            additions.joinToString(prefix = if (additions.isEmpty()) "" else ". Adds ") { progressionPrescription(it) }
+    }) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, color = AppGold, style = MaterialTheme.typography.labelSmall)
+            Text(prescription.name, fontWeight = FontWeight.Bold)
+            Text(completePrescriptionSummary(prescription), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium)
+            Text("Notes: ${prescription.notes.ifBlank { "none" }}", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall)
+            Text("Artwork: $artworkName", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall)
+            additions.forEach { Text("Adds ${progressionPrescription(it)}", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
 
 internal fun progressionChoiceLabel(choice: ProgressionChoice): String = when (choice) {
-    ProgressionChoice.WEIGHT -> "More weight"
-    ProgressionChoice.DURATION -> "More time"
-    ProgressionChoice.HEAVIER_SHORTER -> "Heavier, shorter"
     ProgressionChoice.CUSTOM -> "Next custom step"
+    ProgressionChoice.MANUAL -> "Adjust manually"
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.sessionExerciseSection(
@@ -1141,8 +1215,8 @@ internal fun GuidedSessionReviewPreview(state: String, controlsOnly: Boolean = f
     val routine = when (state) {
         "Session many sets" -> original.copy(exercises = original.exercises.map { it.copy(setCount = Int.MAX_VALUE) })
         "Session six sets" -> original.copy(exercises = original.exercises.map { it.copy(setCount = 6) })
-        "Session longest timer" -> original.copy(exercises = original.exercises.map { it.copy(timerSeconds = Int.MAX_VALUE) })
-        "Session no timer" -> original.copy(exercises = original.exercises.map { it.copy(timerSeconds = null) })
+        "Session longest timer" -> original.copy(exercises = original.exercises.map { it.copy(durationSeconds = Int.MAX_VALUE) })
+        "Session no timer" -> original.copy(exercises = original.exercises.map { it.copy(durationSeconds = null) })
         else -> original
     }
     val elapsed = 100_000L
@@ -1213,8 +1287,8 @@ internal fun GuidedSessionArtworkReviewPreview(artworkId: String) {
             else -> "Pull-up bar + thick adapter"
         },
         setCount = 3,
-        target = "20 sec",
-        timerSeconds = 20,
+        reps = null,
+        durationSeconds = 20,
         artworkId = if (longName) "dead_hang" else artworkId,
     )
     DraftingRoom5Theme {
@@ -1231,28 +1305,24 @@ internal fun ProgressionDecisionReviewPreview(choosing: Boolean) {
         name = "Loaded farmer hold",
         notes = "Keep shoulders down",
         setCount = 3,
-        target = "Heavy timed hold",
-        timerSeconds = 30,
+        reps = null,
+        durationSeconds = 30,
         artworkId = "farmers_walk",
-        measurements = ExerciseMeasurements(30.0, 30),
-        progression = AutomaticExerciseProgression(
-            AutomaticPoundsProgression(2.5),
-            AutomaticSecondsProgression(5, minimum = 20),
-        ),
+        weightPounds = 30,
     )
-    val options = source.progressionOptions()
+    val options = listOf(ProgressionOption(ProgressionChoice.CUSTOM, source.copy(weightPounds = 35, durationSeconds = 35)))
     DraftingRoom5Theme {
         Box(Modifier.fillMaxSize().appScreenBackground(), contentAlignment = Alignment.BottomCenter) {
             ProgressionDecisionSheetContent(
                 exercise = source,
                 options = options,
-                choosing = choosing,
-                selected = ProgressionChoice.HEAVIER_SHORTER,
+                mode = if (choosing) "adjust" else "complete",
                 busy = false,
-                onReady = {},
                 onContinue = {},
-                onSelect = {},
-                onApply = {},
+                onAdjust = {},
+                onManual = {},
+                onApplyPlanned = {},
+                onApplyManual = {},
                 onBack = {},
             )
         }

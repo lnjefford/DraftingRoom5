@@ -1,0 +1,22 @@
+{
+  "unit": {
+    "suites": 62,
+    "tests": 453,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "screenshots": {
+    "suites": 1,
+    "tests": 471,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "Fatal": 0,
+    "Error": 0,
+    "Warning": 46,
+    "Information": 0
+  }
+}

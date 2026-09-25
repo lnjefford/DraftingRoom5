@@ -1,0 +1,427 @@
+DraftingRoom5 Gradle: Java 17 from C:\Users\lnjef\.jdks\temurin-17.0.20.1
+DraftingRoom5 Gradle: isolated state at C:\Users\lnjef\AppData\Local\DraftingRoom5\repositories\cf5b26b6651a
+Reusing configuration cache.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:preDebugScreenshotTestBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebugScreenshotTest UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:packageDebugScreenshotTestForScreenshotTest UP-TO-DATE
+> Task :app:compileDebugKotlin
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/ExerciseArtwork.kt:10:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
+- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/ExerciseArtwork.kt:11:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
+- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/ExerciseArtwork.kt:12:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
+- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/GuidedSessionScreen.kt:1025:53 'fun announceForAccessibility(p0: CharSequence!): Unit' is deprecated. Deprecated in Java.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/HapticFeedback.kt:71:25 'static field HAPTIC_FEEDBACK_ENABLED: String' is deprecated. Deprecated in Java.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/RoutineArtwork.kt:10:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
+- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/RoutineArtwork.kt:11:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
+- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/RoutineArtwork.kt:12:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
+- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/RoutineArtwork.kt:13:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to field.
+- To opt in to applying to both value parameter and field, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/retirement/ui/RetirementForecast.kt:170:9 Check for instance is always 'true'.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/retirement/ui/RetirementForecast.kt:171:9 Check for instance is always 'false'.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/retirement/ui/RetirementForecast.kt:172:9 Check for instance is always 'false'.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/retirement/ui/RetirementForecast.kt:173:9 Check for instance is always 'false'.
+w: file:///C:/Users/lnjef/OneDrive/Documents/GitHub/DraftingRoom5/app/src/main/java/dev/draftingroom5/retirement/ui/RetirementForecast.kt:174:9 Check for instance is always 'false'.
+
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:compileDebugScreenshotTestKotlin
+> Task :app:compileDebugScreenshotTestJavaWithJavac NO-SOURCE
+> Task :app:validateDebugScreenshotTest
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_0 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_3 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_4 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_5 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_6 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_7 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_8 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionArtworkCases}]_10 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_0 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_3 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_4 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_5 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_6 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_7 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_8 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionArtworkCases}]_10 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_0 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_3 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_4 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_5 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_6 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_7 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_8 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionArtworkCases}]_10 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_0 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_3 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_4 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_5 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_6 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_7 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_8 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionArtworkScreenshots > SessionArtworkScreenshots > SessionArtworkScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.SessionArtworkCases}]_10 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots_Compact_{heightDp=800, widthDp=320} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots_Tall_{heightDp=1100, widthDp=412} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots > CustomProgressionDecisionScreenshots_Landscape_{heightDp=360, widthDp=800} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > ProgressionDecisionScreenshots > ProgressionDecisionScreenshots > ProgressionDecisionScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > ProgressionDecisionScreenshots > ProgressionDecisionScreenshots > ProgressionDecisionScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > ProgressionDecisionScreenshots > ProgressionDecisionScreenshots > ProgressionDecisionScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > ProgressionDecisionScreenshots > ProgressionDecisionScreenshots > ProgressionDecisionScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.RiceBagArtworkCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.RiceBagArtworkCases}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.RiceBagArtworkCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.RiceBagArtworkCases}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.RiceBagArtworkCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots > RiceBagArtworkScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.RiceBagArtworkCases}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredEditorBottomScreenshots > StructuredEditorBottomScreenshots > StructuredEditorBottomScreenshots_Compact_{heightDp=800, widthDp=320} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredEditorBottomScreenshots > StructuredEditorBottomScreenshots > StructuredEditorBottomScreenshots_Tall_{heightDp=1100, widthDp=412} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredEditorBottomScreenshots > StructuredEditorBottomScreenshots > StructuredEditorBottomScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredEditorBottomScreenshots > StructuredEditorBottomScreenshots > StructuredEditorBottomScreenshots_Landscape_{heightDp=360, widthDp=800} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredTargetBoundaryScreenshots > StructuredTargetBoundaryScreenshots > StructuredTargetBoundaryScreenshots_Compact_{heightDp=800, widthDp=320} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredTargetBoundaryScreenshots > StructuredTargetBoundaryScreenshots > StructuredTargetBoundaryScreenshots_Tall_{heightDp=1100, widthDp=412} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredTargetBoundaryScreenshots > StructuredTargetBoundaryScreenshots > StructuredTargetBoundaryScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredTargetBoundaryScreenshots > StructuredTargetBoundaryScreenshots > StructuredTargetBoundaryScreenshots_Landscape_{heightDp=360, widthDp=800} FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.CoreShellScreens}]_6 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.CoreShellScreens}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.CoreShellScreens}]_10 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.CoreShellScreens}]_11 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.CoreShellScreens}]_12 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.CoreShellScreens}]_13 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.CoreShellScreens}]_17 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.CoreShellScreens}]_6 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.CoreShellScreens}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.CoreShellScreens}]_10 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.CoreShellScreens}]_11 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.CoreShellScreens}]_12 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.CoreShellScreens}]_13 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.CoreShellScreens}]_17 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.CoreShellScreens}]_6 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.CoreShellScreens}]_9 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.CoreShellScreens}]_10 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.CoreShellScreens}]_11 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.CoreShellScreens}]_12 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.CoreShellScreens}]_13 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CoreShellScreenshots > CoreShellScreenshots > CoreShellScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.CoreShellScreens}]_17 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredExerciseEditorScreenshots > StructuredExerciseEditorScreenshots > StructuredExerciseEditorScreenshots_Compact_{heightDp=800, widthDp=320} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredExerciseEditorScreenshots > StructuredExerciseEditorScreenshots > StructuredExerciseEditorScreenshots_Tall_{heightDp=1100, widthDp=412} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredExerciseEditorScreenshots > StructuredExerciseEditorScreenshots > StructuredExerciseEditorScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > StructuredExerciseEditorScreenshots > StructuredExerciseEditorScreenshots > StructuredExerciseEditorScreenshots_Landscape_{heightDp=360, widthDp=800} FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionSectionStates}]_0 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionSectionStates}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.SessionSectionStates}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionSectionStates}]_0 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionSectionStates}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.SessionSectionStates}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionSectionStates}]_0 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionSectionStates}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > SessionSectionScreenshots > SessionSectionScreenshots > SessionSectionScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.SessionSectionStates}]_2 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > HangboardRoutineScreenshots > HangboardRoutineScreenshots > HangboardRoutineScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.HangboardRoutineCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > HangboardRoutineScreenshots > HangboardRoutineScreenshots > HangboardRoutineScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.HangboardRoutineCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > HangboardRoutineScreenshots > HangboardRoutineScreenshots > HangboardRoutineScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.HangboardRoutineCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ImageComparisonAssertionError
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomStepEditorScreenshots > CustomStepEditorScreenshots > CustomStepEditorScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_0 FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomStepEditorScreenshots > CustomStepEditorScreenshots > CustomStepEditorScreenshots_Compact_{heightDp=800, widthDp=320}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomStepEditorScreenshots > CustomStepEditorScreenshots > CustomStepEditorScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_0 FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomStepEditorScreenshots > CustomStepEditorScreenshots > CustomStepEditorScreenshots_Tall_{heightDp=1100, widthDp=412}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomStepEditorScreenshots > CustomStepEditorScreenshots > CustomStepEditorScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_0 FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomStepEditorScreenshots > CustomStepEditorScreenshots > CustomStepEditorScreenshots_Large text_{fontScale=2.0, heightDp=1100, widthDp=360}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomStepEditorScreenshots > CustomStepEditorScreenshots > CustomStepEditorScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_0 FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+dev.draftingroom5.CoreShellScreenshotsKt > CustomStepEditorScreenshots > CustomStepEditorScreenshots > CustomStepEditorScreenshots_Landscape_{heightDp=360, widthDp=800}_[{provider=dev.draftingroom5.ProgressionDecisionCases}]_1 FAILED
+    com.android.tools.screenshot.differ.ScreenshotImageNotFoundException
+
+471 tests completed, 111 failed
+
+> Task :app:validateDebugScreenshotTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:validateDebugScreenshotTest'.
+> There were failing tests. See the report at: file:///C:/Users/lnjef/AppData/Local/DraftingRoom5/repositories/cf5b26b6651a/build/app/reports/screenshotTest/preview/debug/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 14m 11s
+26 actionable tasks: 5 executed, 21 up-to-date
+Configuration cache entry reused.

@@ -12,125 +12,42 @@ class GuidedRoutineEditorTest {
     private val guided = defaultTrainingPlan().routines.first { it.execution == RoutineExecution.GUIDED }
 
     @Test
-    fun exerciseDraftRequiresNamePositiveSetsTargetAndPositiveTimedDuration() {
-        val base = ExerciseDraft("exercise-new", name = "Carry", sets = "3", target = "30 sec")
+    fun exerciseDraftRequiresNamePositiveSetsAndPositiveOptionalTargets() {
+        val base = ExerciseDraft("exercise-new", name = "Carry", sets = "3", reps = "")
         assertEquals("generic", base.savedExercise()?.artworkId)
         assertNull(base.copy(name = " ").savedExercise())
         assertNull(base.copy(sets = "0").savedExercise())
         assertNull(base.copy(sets = "nope").savedExercise())
-        assertNull(base.copy(target = " ").savedExercise())
-        assertNull(base.copy(timed = true, timerSeconds = "0").savedExercise())
-        assertEquals(45, base.copy(timed = true, timerSeconds = "45").savedExercise()?.timerSeconds)
-        assertNull(base.copy(timed = false, timerSeconds = "45").savedExercise()?.timerSeconds)
+        assertNull(base.copy(reps = "0").savedExercise())
+        assertNull(base.copy(timed = true, durationSeconds = "0").savedExercise())
+        assertEquals(45, base.copy(timed = true, durationSeconds = "45").savedExercise()?.durationSeconds)
+        assertNull(base.copy(timed = false, durationSeconds = "45").savedExercise()?.durationSeconds)
     }
 
     @Test
-    fun automaticWeightProgressionSavesRestoresAndPreviewsExactPounds() {
-        val draft = ExerciseDraft(
-            id = "weighted-carry",
-            name = "Farmer carry",
-            sets = "3",
-            target = "Heavy carry",
-            automaticProgression = true,
-            weightProgression = true,
-            currentPounds = "35",
-            poundsIncrement = "2.5",
-            minimumPounds = "25",
-            maximumPounds = "40",
+    fun targetSteppersKeepWeightOnFivePoundBoundariesAndOtherTargetsPositive() {
+        assertEquals("35", steppedWeight("", 1))
+        assertEquals("40", steppedWeight("35", 1))
+        assertEquals("35", steppedWeight("40", -1))
+        assertEquals("", steppedWeight("5", -1))
+        assertEquals("37", steppedWeight("37", 1))
+        assertEquals("2147483645", steppedWeight("2147483645", 1))
+        assertEquals("3", steppedPositive("", 1, 3))
+        assertEquals("", steppedPositive("1", -1, 3))
+        assertEquals("25", steppedPositive("20", 1, 20, 5))
+        assertEquals("15", steppedPositive("20", -1, 20, 5))
+    }
+
+    @Test
+    fun futureStepChangeSummaryNamesEveryChangedStructuredAndPresentationField() {
+        val before = ExercisePrescription("Carry", "Slow", 3, 8, 20, "generic", 35)
+        val after = ExercisePrescription("Suitcase carry", "Tall posture", 4, 10, 25, "farmers_walk", 40)
+        assertEquals(
+            "Name Carry → Suitcase carry · Weight 35 lb → 40 lb · Duration 20 sec → 25 sec · " +
+                "Sets 3 → 4 · Reps 8 → 10 · Notes Slow → Tall posture · Artwork generic → farmers_walk",
+            prescriptionChanges(before, after),
         )
-        val saved = draft.savedExercise()!!
-        assertEquals(ExerciseMeasurements(weightPounds = 35.0), saved.measurements)
-        assertEquals(AutomaticPoundsProgression(2.5, 25.0, 40.0), (saved.progression as AutomaticExerciseProgression).weightPounds)
-        assertEquals("More weight: 37.5 lb", draft.nextAutomaticPrescriptionPreview())
-        assertEquals(saved, saved.exerciseDraft().savedExercise())
-    }
-
-    @Test
-    fun automaticDurationProgressionSynchronizesStructuredDurationAndTimer() {
-        val draft = ExerciseDraft(
-            id = "timed-hold",
-            name = "Timed hold",
-            sets = "4",
-            target = "Controlled hold",
-            timed = false,
-            timerSeconds = "999",
-            automaticProgression = true,
-            durationProgression = true,
-            currentDurationSeconds = "20",
-            secondsIncrement = "5",
-            minimumSeconds = "10",
-            maximumSeconds = "30",
-        )
-        val saved = draft.savedExercise()!!
-        assertEquals(20, saved.timerSeconds)
-        assertEquals(20, saved.measurements.durationSeconds)
-        assertEquals("More time: 25 seconds", draft.nextAutomaticPrescriptionPreview())
-        assertEquals(saved, saved.exerciseDraft().savedExercise())
-    }
-
-    @Test
-    fun automaticDualMeasureProgressionPersistsAndClampsExactPreviewToBounds() {
-        val saved = ExerciseDraft(
-            id = "loaded-hold",
-            name = "Loaded hold",
-            sets = "3",
-            target = "Heavy timed hold",
-            automaticProgression = true,
-            weightProgression = true,
-            currentPounds = "39",
-            poundsIncrement = "2.5",
-            maximumPounds = "40",
-            durationProgression = true,
-            currentDurationSeconds = "28",
-            secondsIncrement = "5",
-            maximumSeconds = "30",
-        )
-        assertEquals("More weight: 40 lb · 28 seconds\nMore time: 39 lb · 30 seconds\nHeavier, shorter: 40 lb · 23 seconds", saved.nextAutomaticPrescriptionPreview())
-        val exercise = saved.savedExercise()!!
-        assertEquals(39.0, exercise.measurements.weightPounds!!, 0.0)
-        assertEquals(28, exercise.measurements.durationSeconds)
-        assertEquals(28, exercise.timerSeconds)
-    }
-
-    @Test
-    fun automaticProgressionRejectsIncompleteInvalidAndContradictoryRules() {
-        val base = ExerciseDraft(
-            id = "invalid-progression",
-            name = "Hold",
-            sets = "3",
-            target = "Hold",
-            automaticProgression = true,
-        )
-        assertNull(base.savedExercise())
-        val weight = base.copy(weightProgression = true, currentPounds = "20", poundsIncrement = "5")
-        assertTrue(weight.savedExercise() != null)
-        assertNull(weight.copy(currentPounds = "").savedExercise())
-        assertNull(weight.copy(poundsIncrement = "0").savedExercise())
-        assertNull(weight.copy(minimumPounds = "25").savedExercise())
-        assertNull(weight.copy(minimumPounds = "20", maximumPounds = "15").savedExercise())
-        val duration = base.copy(durationProgression = true, currentDurationSeconds = "20", secondsIncrement = "5")
-        assertTrue(duration.savedExercise() != null)
-        assertNull(duration.copy(currentDurationSeconds = "0").savedExercise())
-        assertNull(duration.copy(secondsIncrement = "").savedExercise())
-        assertNull(duration.copy(maximumSeconds = "15").savedExercise())
-    }
-
-    @Test
-    fun disablingProgressionRestoresNoProgressionWorkflow() {
-        val ordinary = ExerciseDraft(
-            id = "ordinary",
-            name = "Repetitions",
-            sets = "3",
-            target = "12 reps",
-            automaticProgression = false,
-            weightProgression = true,
-            currentPounds = "20",
-            poundsIncrement = "5",
-        ).savedExercise()!!
-        assertNull(ordinary.progression)
-        assertEquals(ExerciseMeasurements(weightPounds = 20.0), ordinary.measurements)
-        assertNull(ordinary.timerSeconds)
-        assertNull(ordinary.exerciseDraft().copy(timed = true, timerSeconds = "", durationProgression = true).savedExercise())
+        assertEquals("No target or exercise-detail changes", prescriptionChanges(before, before))
     }
 
     @Test
@@ -140,56 +57,53 @@ class GuidedRoutineEditorTest {
             name = "Three-finger drag",
             notes = "Open hand",
             sets = "3",
-            target = "15 sec",
+            reps = "",
             timed = true,
-            timerSeconds = "15",
-            automaticProgression = true,
-            durationProgression = true,
-            currentDurationSeconds = "15",
-            secondsIncrement = "5",
+            durationSeconds = "15",
         ).savedExercise()!!
         val steps = CustomExerciseProgression(listOf(
             CustomProgressionStep(
-                ExercisePrescription("20 mm edge", "Half crimp", 3, "20 sec", 20, "hangboard", ExerciseMeasurements(durationSeconds = 20)),
+                ExercisePrescription("20 mm edge", "Half crimp", 3, null, 20, "hangboard", null),
                 listOf(inserted),
             ),
             CustomProgressionStep(
-                ExercisePrescription("15 mm edge", "Controlled grip", 4, "15 sec", 15, "hangboard", ExerciseMeasurements(weightPounds = 5.0, durationSeconds = 15)),
+                ExercisePrescription("15 mm edge", "Controlled grip", 4, null, 15, "hangboard", 45),
             ),
         ))
         val saved = ExerciseDraft(
-            id = "fingerboard-source", name = "25 mm edge", notes = "Open hand", sets = "3", target = "20 sec",
-            timed = true, timerSeconds = "20", artworkId = "hangboard", currentPounds = "2.5", currentDurationSeconds = "20",
+            id = "fingerboard-source", name = "25 mm edge", notes = "Open hand", sets = "3", reps = "",
+            timed = true, durationSeconds = "20", artworkId = "hangboard", currentPounds = "35",
             customProgressionEnabled = true, customProgression = steps,
         ).savedExercise()!!
 
-        assertEquals(ExerciseMeasurements(2.5, 20), saved.measurements)
+        assertEquals(35, saved.weightPounds)
+        assertEquals(20, saved.durationSeconds)
         assertEquals(steps, saved.progression)
         assertEquals(listOf("20 mm edge", "15 mm edge"), (saved.progression as CustomExerciseProgression).steps.map { it.replacement.name })
         assertEquals("future-three-finger", steps.steps.first().insertedExercises.single().id)
-        assertTrue(inserted.progression is AutomaticExerciseProgression)
+        assertNull(inserted.progression)
         assertEquals(saved, saved.exerciseDraft().savedExercise())
     }
 
     @Test
     fun customProgressionRejectsEmptyInvalidOrDuplicateFutureExercises() {
-        val base = ExerciseDraft("source", "Hang", "", "3", "20 sec", customProgressionEnabled = true)
+        val base = ExerciseDraft("source", "Hang", "", "3", "", customProgressionEnabled = true)
         assertNull(base.copy(customProgression = CustomExerciseProgression(emptyList())).savedExercise())
-        val prescription = ExercisePrescription("Smaller edge", "", 3, "20 sec", 20, "hangboard")
-        val duplicate = Exercise("same-id", "Added grip", "", 2, "10 sec", 10, "hangboard")
+        val prescription = ExercisePrescription("Smaller edge", "", 3, null, 20, "hangboard")
+        val duplicate = Exercise("same-id", "Added grip", "", 2, null, 10, "hangboard")
         val invalid = CustomExerciseProgression(listOf(
             CustomProgressionStep(prescription, listOf(duplicate)),
             CustomProgressionStep(prescription.copy(name = "Smallest edge"), listOf(duplicate)),
         ))
         assertFalse(invalid.isEditorValid())
         assertNull(base.copy(customProgression = invalid).savedExercise())
-        assertNull(base.copy(customProgression = CustomExerciseProgression(listOf(CustomProgressionStep(prescription.copy(target = " "))))).savedExercise())
+        assertNull(base.copy(customProgression = CustomExerciseProgression(listOf(CustomProgressionStep(prescription.copy(reps = 0))))).savedExercise())
     }
 
     @Test
     fun customStepsAndAddedExercisesReorderEditAndDeleteWithoutChangingIdentity() {
-        val a = Exercise("future-a", "Sloper", "", 3, "15 sec", 15, "hangboard")
-        val b = Exercise("future-b", "Pinch", "", 3, "15 sec", 15, "grip_hold")
+        val a = Exercise("future-a", "Sloper", "", 3, null, 15, "hangboard")
+        val b = Exercise("future-b", "Pinch", "", 3, null, 15, "grip_hold")
         val first = CustomProgressionStep(a.prescription(), listOf(a, b))
         val second = CustomProgressionStep(b.prescription())
         val progression = CustomExerciseProgression(listOf(first, second))
@@ -210,7 +124,7 @@ class GuidedRoutineEditorTest {
             id = "exercise-new",
             name = "Carry",
             sets = "3",
-            target = "30 sec",
+            reps = "",
             artworkId = "missing-artwork",
         ).savedExercise()
         assertEquals(ExerciseArtworkCatalog.FALLBACK_ID, saved?.artworkId)
@@ -223,7 +137,7 @@ class GuidedRoutineEditorTest {
     fun riceBagArtworkSelectionPreservesExercisePrescriptionAndNotes() {
         val original = ExerciseDraft(
             id = "rice-grip", name = "Rice bag grip work", notes = "Own pace",
-            sets = "4", target = "45 sec", timed = true, timerSeconds = "45",
+            sets = "4", reps = "", timed = true, durationSeconds = "45",
         ).savedExercise()!!
         val selected = original.exerciseDraft().copy(artworkId = "rice_bag").savedExercise()!!
         assertEquals("rice_bag", selected.artworkId)
@@ -231,18 +145,18 @@ class GuidedRoutineEditorTest {
         val edited = selected.exerciseDraft().copy(notes = "Keep wrist neutral").savedExercise()!!
         assertEquals("rice_bag", edited.artworkId)
         assertEquals(4, edited.setCount)
-        assertEquals("45 sec", edited.target)
-        assertEquals(45, edited.timerSeconds)
+        assertNull(edited.reps)
+        assertEquals(45, edited.durationSeconds)
     }
 
     @Test
     fun addEditReorderAndDeletePreserveStableExerciseIdentity() {
-        val added = ExerciseDraft("exercise-new", "Carry", "Slow", "3", "30 sec").savedExercise()!!
+        val added = ExerciseDraft("exercise-new", "Carry", "Slow", "3", "").savedExercise()!!
         val withAdded = guided.withExercise(added)!!
         assertEquals(guided.exercises.size + 1, withAdded.exercises.size)
         assertEquals("exercise-new", withAdded.exercises.last().id)
 
-        val edited = added.copy(name = "Suitcase carry", timerSeconds = 30)
+        val edited = added.copy(name = "Suitcase carry", durationSeconds = 30)
         val withEdit = withAdded.withExercise(edited)!!
         assertEquals("Suitcase carry", withEdit.exercises.last().name)
         assertEquals("exercise-new", withEdit.exercises.last().id)
@@ -316,7 +230,7 @@ class GuidedRoutineEditorTest {
         val storage = MemoryDocumentStorage()
         val repository = AppRepository(storage)
         val initial = (repository.load() as LoadState.Ready).value
-        val exercise = ExerciseDraft("hangboard-only", "Hangboard Holds", "Controlled edge hold", "3", "20 sec", true, "20", "hangboard").savedExercise()!!
+        val exercise = ExerciseDraft("hangboard-only", "Hangboard Holds", "Controlled edge hold", "3", "", true, "20", "hangboard").savedExercise()!!
         val newRoutine = Routine("routine-hangboard", 1, "Hangboard session", "hangboard", RoutineExecution.GUIDED, listOf(exercise), null)
         assertTrue(newRoutine.isSaveableGuidedRoutine())
         val recurrence = ScheduleEntry("schedule-hangboard", newRoutine.id, setOf(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY))

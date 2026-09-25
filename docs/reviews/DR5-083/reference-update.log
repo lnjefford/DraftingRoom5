@@ -1,0 +1,43 @@
+DraftingRoom5 Gradle: Java 17 from C:\Users\lnjef\.jdks\temurin-17.0.20.1
+DraftingRoom5 Gradle: isolated state at C:\Users\lnjef\AppData\Local\DraftingRoom5\repositories\cf5b26b6651a
+Calculating task graph as no cached configuration is available for tasks: updateDebugScreenshotTest --tests dev.draftingroom5.CoreShellScreenshotsKt.CoreShellScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.CustomProgressionDecisionScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.CustomStepEditorScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.HangboardRoutineScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.ProgressionDecisionScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.RiceBagArtworkScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.SessionArtworkScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.SessionSectionScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.StructuredEditorBottomScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.StructuredExerciseEditorScreenshots* --tests dev.draftingroom5.CoreShellScreenshotsKt.StructuredTargetBoundaryScreenshots*
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableScreenshotTest=true' is experimental.
+The current default is 'false'.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:preDebugScreenshotTestBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:javaPreCompileDebugScreenshotTest UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:packageDebugScreenshotTestForScreenshotTest UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:compileDebugScreenshotTestKotlin
+> Task :app:compileDebugScreenshotTestJavaWithJavac NO-SOURCE
+> Task :app:updateDebugScreenshotTest
+
+BUILD SUCCESSFUL in 4m 49s
+26 actionable tasks: 2 executed, 24 up-to-date
+Configuration cache entry stored.

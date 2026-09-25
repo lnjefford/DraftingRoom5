@@ -285,6 +285,9 @@ internal class AppRepository(
         val current = readyForSession(lease)
             ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Refresh the workout before progressing."))
         current.progressionReceipts.firstOrNull { it.sessionId == request.sessionId && it.before.id == request.exerciseId }?.let {
+            if (it.choice != request.choice || it.manualPrescription != request.manualPrescription) {
+                return@synchronized RepositoryResult.Conflict(current.generation)
+            }
             return@synchronized RepositoryResult.Success(it)
         }
         val offer = current.progressionOffer(request.sessionId, request.exerciseId)
@@ -292,12 +295,18 @@ internal class AppRepository(
         if (offer.sessionRevision != request.expectedSessionRevision || offer.routineRevision != request.expectedRoutineRevision) {
             return@synchronized RepositoryResult.Conflict(current.generation)
         }
-        val option = offer.options.firstOrNull { it.choice == request.choice }
+        val option = when (request.choice) {
+            ProgressionChoice.CUSTOM -> if (request.manualPrescription == null) offer.options.firstOrNull() else null
+            ProgressionChoice.MANUAL -> request.manualPrescription?.let { prescription ->
+                val source = current.partialSessions.single { it.id == request.sessionId }.snapshot.exercises.single { it.id == request.exerciseId }
+                ProgressionOption(ProgressionChoice.MANUAL, source.withPrescription(prescription))
+            }
+        }
             ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("This progression choice is unavailable."))
         val session = current.partialSessions.single { it.id == request.sessionId }
         val routine = current.plan.routines.single { it.id == session.routineId }
         val index = routine.exercises.indexOfFirst { it.id == request.exerciseId }
-        val receipt = ProgressionReceipt(session.id, routine.id, routine.exercises[index], request.choice, routine.revision + 1)
+        val receipt = ProgressionReceipt(session.id, routine.id, routine.exercises[index], request.choice, routine.revision + 1, manualPrescription = request.manualPrescription)
         val progressed = routine.copy(revision = receipt.appliedRevision, exercises =
             routine.exercises.take(index) + option.source + option.additions + routine.exercises.drop(index + 1))
         when (val result = update(current.generation) { it.copy(

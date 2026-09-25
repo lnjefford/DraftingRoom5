@@ -145,7 +145,7 @@ class BackupSupportTest {
 
         assertEquals(document, restored)
         val live = restored.plan.routines.single { it.id == "routine-forearm" }
-        assertTrue(live.exercises.any { it.progression is AutomaticExerciseProgression })
+        assertTrue(live.exercises.any { it.weightPounds != null })
         assertTrue(live.exercises.any { it.progression is CustomExerciseProgression })
         assertEquals(document.partialSessions.single().handledProgressionExerciseIds,
             restored.partialSessions.single().handledProgressionExerciseIds)

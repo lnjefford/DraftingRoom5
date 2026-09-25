@@ -1,6 +1,6 @@
 # Routine editor redesign specification
 
-Status: implemented and audited through DR5-030 for guided routines, linked-app routines, installed-app selection, exercises, and curated artwork.
+Status: implemented and audited through the DR5-084 Phase 10 release, including structured exercise targets and optional ordered planned prescriptions.
 
 ## Selected references
 
@@ -54,8 +54,8 @@ Each row contains:
 
 - Leading six-dot drag handle.
 - Exercise name.
-- Sets and target, for example `3 sets · 12–15 reps`.
-- A blue timer indicator only when `timerSeconds` is non-null.
+- Sets and structured targets, for example `3 sets · 12 reps · 35 lb`.
+- A blue timer indicator only when `durationSeconds` is non-null.
 - Trailing overflow menu with Edit and Delete.
 
 Behavior:
@@ -72,25 +72,25 @@ Behavior:
 Use these fields and validation:
 
 - Exercise name
-- Sets as a required positive integer
-- Target
 - Notes
-- Timed exercise switch
-- Timer seconds when timed
+- Weight: optional positive whole pounds in exact 5 lb increments
+- Duration: optional positive seconds, also the timer duration
+- Sets: required positive integer
+- Reps: optional positive integer
 - Curated paired artwork selection
 - Save and Cancel
 
-Prefer a modal bottom sheet or dedicated editor on compact phones over a crowded alert dialog. Keep numeric input appropriate for timer seconds and require a positive value when timed.
+Use the dedicated scrollable editor. Weight controls move by 5 lb, duration by 5 seconds, and sets/reps by one. Optional targets can be cleared independently; enabling weight starts at 35 lb and duration at 20 seconds. No free-form target, automatic progression, Rest between sets row, or After each exercise card remains.
 
 The approved builder uses a dedicated scrollable screen with one artwork row. `Change` opens the exercise-artwork picker described in [GuidedSession.md](GuidedSession.md). The picker shows a curated grid and a paired preview labeled `LIST` and `HEADER`; users make one selection and never manage the two exports separately. A new exercise is not persisted until `Save exercise` succeeds. Editing an existing exercise may retain the current autosave model only if Cancel still restores the original value predictably.
 
 ### Exercise progression
 
-Progression belongs to a guided exercise, never to the routine or to a separate dashboard. The exercise editor supports disabled progression, bounded automatic pounds and/or seconds rules, and an ordered custom sequence. Pounds are the only weight unit. A selected structured duration and the exercise timer stay synchronized; arbitrary target text remains available and is never parsed to recover a number.
+The four base targets work independently of progression. The subordinate Planned progression section optionally holds an ordered queue of complete future prescriptions. Pounds are the only weight unit; duration is the timer, with no second stored value to synchronize.
 
-Automatic progression requires the matching current value and a positive increment; optional minimum and maximum values must contain the current value. The editor previews the exact bounded next result. When both measures exist, workout application deliberately offers weight-only, duration-only, and heavier/shorter results instead of an implicit increase-both choice.
+Each step shows its complete result and changes from its immediate predecessor, recalculated after reordering. New steps start from that predecessor. Name, notes, artwork, all four targets, and ordered inserted exercises belong to the full replacement. Applying a step consumes exactly one queue item; exhaustion leaves the last prescription intact.
 
-Editor previews use the same decimal calculation and available alternatives as workout application, including an explicit message at the configured limits. Disabling progression or editing after a final custom step preserves current structured measurements; retained values remain editable without re-enabling progression. Unsaved custom steps and inserted exercises participate in Android saved-state restoration.
+Disabling progression preserves base targets and retains the unsaved queue until the editor closes. Cancel and system Back protect unsaved exercise, step, and queue changes. Saved-state restoration retains primitive drafts, ordered steps, and inserted exercises without committing them. See [GuidedSession.md](GuidedSession.md) for Next exercise, optional manual adjustment, planned-step application, and Undo.
 
 Custom progression shows the current prescription separately from future steps. Each ordered step replaces the source prescription and may insert zero or more complete exercises immediately after it. Future insertions reserve stable IDs across the whole routine, including nested progression, so a live or future exercise cannot reuse one. Step and insertion editing uses the same menus, 48 dp actions, drag/keyboard/TalkBack reorder semantics, discard confirmation, and automatic-save language as the routine editor.
 

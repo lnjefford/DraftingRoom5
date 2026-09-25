@@ -25,14 +25,43 @@ internal class ProgressionNativeAudit(private val instrumentation: Instrumentati
         try {
             activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-            mount(custom = true)
+            mountEditor()
+            reveal("Increase weight by 5 pounds")
+            check(node("Decrease weight by 5 pounds") != null)
+            click("Increase weight by 5 pounds")
+            await { node("Weight value 40") != null }
+            listOf("Increase duration by 5 seconds", "Increase sets by 1", "Increase reps by 1", "Planned progression").forEach { reveal(it) }
+            check(node("Rest between sets") == null)
+            check(node("Automatic progression") == null)
+            check(node("After each exercise", prefix = true) == null)
+            capture("structured-editor")
+            report.appendLine("PASS: native editor exposes ordered target controls, exact 35 to 40 lb step, planned progression, and no removed progression/rest copy")
+
+            mount()
             await { node("25 mm edge complete") != null }
             capture("custom-before")
-            check(node("Ready for more", prefix = true)?.contentDescription.toString().contains("Add: Three-finger drag"))
-            click("Continue workout")
+            check(node("Next exercise") != null)
+            check(node("Adjust exercise") != null)
+            check(node("Increase weight by 5 pounds") == null)
+            click("Adjust exercise")
+            await { node("CURRENT PRESCRIPTION", prefix = true) != null }
+            check(node("NEXT PLANNED STEP", prefix = true)?.contentDescription.toString().contains("Weight 40 lb"))
+            check(node("NEXT PLANNED STEP", prefix = true)?.contentDescription.toString().contains("Three-finger drag"))
+            check(node("Increase weight by 5 pounds") == null)
+            click("Adjust manually")
+            await { node("Increase weight by 5 pounds") != null }
+            check(node("Save adjustment and go to next exercise", prefix = true) != null)
+            instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+            await { node("Apply planned step") != null }
+            check(document().progressionReceipts.isEmpty())
+            check(document().plan.routines.single() == routine)
+            instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+            await { node("Next exercise") != null }
+            check(document().progressionReceipts.isEmpty())
+            click("Next exercise")
             await { document().partialSessions.single().handledProgressionExerciseIds.contains("source") }
             check(document().plan.routines.single() == routine)
-            report.appendLine("PASS: native Continue persists handled completion and leaves live prescription unchanged")
+            report.appendLine("PASS: native sheet orders filled Next before secondary Adjust; controls remain hidden until manual choice; Back applies nothing; Next persists handled completion and leaves the queue unchanged")
             click("Start timer")
             await { document().partialSessions.single().timer.phase == TimerPhase.READY }
             val run = document().partialSessions.single().timer
@@ -51,9 +80,11 @@ internal class ProgressionNativeAudit(private val instrumentation: Instrumentati
             capture("timer-resumed")
             report.appendLine("PASS: native timer starts after Continue, retains run/deadline across background/foreground, and does not replay start voice/haptic callbacks")
 
-            mount(custom = true)
+            mount()
             await { node("25 mm edge complete") != null }
-            click("Ready for more", prefix = true)
+            click("Adjust exercise")
+            await { node("Apply planned step") != null }
+            click("Apply planned step")
             await { document().progressionReceipts.size == 1 }
             check(document().plan.routines.single().exercises.map { it.id } == listOf("source", "added", "next"))
             check(document().partialSessions.single().snapshot == routine)
@@ -63,18 +94,28 @@ internal class ProgressionNativeAudit(private val instrumentation: Instrumentati
             check(document().plan.routines.single().exercises == routine.exercises)
             report.appendLine("PASS: native custom apply inserts once; snackbar Undo restores source and removes addition")
 
-            mount(custom = false)
+            mount()
             await { node("25 mm edge complete") != null }
-            click("Ready for more", prefix = true)
-            await { node("Choose the exact next prescription") != null }
-            capture("dual-chooser")
-            click("Heavier, shorter.", prefix = true)
-            click("Apply", prefix = true)
+            click("Adjust exercise")
+            click("Adjust manually")
+            click("Increase weight by 5 pounds")
+            click("Decrease duration by 5 seconds")
+            click("Increase sets by 1")
+            click("Increase reps by 1")
+            await { node("Save adjustment and go to next exercise", prefix = true)?.contentDescription.toString()
+                .contains("Weight 40 lb · Duration 25 seconds · Sets 2 · Reps 10") }
+            click("Save adjustment and go to next exercise", prefix = true)
             await { document().progressionReceipts.size == 1 }
-            check(document().plan.routines.single().exercises.first().measurements == ExerciseMeasurements(32.5, 25))
-            check(document().partialSessions.single().snapshot == routine)
-            report.appendLine("PASS: native exact heavier/shorter selection applies 32.5 lb and 25 seconds without changing snapshot")
-            capture("dual-applied")
+            val adjusted = document().plan.routines.single().exercises.first()
+            check(adjusted.prescription() == routine.exercises.first().prescription().copy(
+                weightPounds = 40, durationSeconds = 25, setCount = 2, reps = 10))
+            check(adjusted.progression == routine.exercises.first().progression)
+            capture("manual-applied")
+            click("Undo")
+            await { document().progressionReceipts.single().undone }
+            check(document().plan.routines.single().exercises == routine.exercises)
+            report.appendLine("PASS: native manual save applies four targets together, preserves the queued planned step, advances focus, and remains undoable")
+
             report.appendLine("PASS: Android API ${android.os.Build.VERSION.SDK_INT}; production Compose destination and accessibility actions")
             File(output, "results.txt").writeText(report.toString())
             instrumentation.finish(Activity.RESULT_OK, Bundle().apply { putString("stream", report.toString()) })
@@ -85,14 +126,28 @@ internal class ProgressionNativeAudit(private val instrumentation: Instrumentati
         }
     }
 
-    private fun mount(custom: Boolean) {
+    private fun mountEditor() {
+        val exercise = Exercise(
+            "editor-source", "Dumbbell farmer's walk", "Tall posture", 3, 10, 30, "farmers_walk", 35,
+            CustomExerciseProgression(listOf(CustomProgressionStep(
+                ExercisePrescription("Dumbbell farmer's walk", "Tall posture", 3, 10, 30, "farmers_walk", 40),
+            ))),
+        )
+        instrumentation.runOnMainSync {
+            activity.setContent {
+                DraftingRoom5Theme { ExerciseEditorScreen(exercise, {}, {}) }
+            }
+        }
+        instrumentation.waitForIdleSync()
+    }
+
+    private fun mount() {
         feedback.clear()
-        val source = Exercise("source", "25 mm edge", "Half crimp", 1, "Controlled hold", 30, "hangboard",
-            ExerciseMeasurements(30.0, 30))
-        val added = source.copy(id = "added", name = "Three-finger drag", progression = AutomaticExerciseProgression(weightPounds = AutomaticPoundsProgression(2.5)))
-        val progression = if (custom) CustomExerciseProgression(listOf(CustomProgressionStep(
-            source.copy(name = "20 mm edge", timerSeconds = 25, measurements = ExerciseMeasurements(32.5, 25)).prescription(), listOf(added))))
-        else AutomaticExerciseProgression(AutomaticPoundsProgression(2.5), AutomaticSecondsProgression(5, minimum = 20))
+        val source = Exercise("source", "25 mm edge", "Half crimp", 1, null, 30, "hangboard",
+            35)
+        val added = source.copy(id = "added", name = "Three-finger drag", progression = null)
+        val progression = CustomExerciseProgression(listOf(CustomProgressionStep(
+            source.copy(name = "20 mm edge", durationSeconds = 25, weightPounds = 40).prescription(), listOf(added))))
         routine = Routine("audit", 1, "Progression audit", "hangboard", RoutineExecution.GUIDED,
             listOf(source.copy(progression = progression), source.copy(id = "next", name = "Next hold")), null)
         val session = GuidedSession("audit-session", OccurrenceKey("audit-schedule", date), routine.id, routine,
@@ -134,7 +189,7 @@ internal class ProgressionNativeAudit(private val instrumentation: Instrumentati
         }
         return instrumentation.uiAutomation.rootInActiveWindow?.let(::find)
     }
-    private fun click(label: String, prefix: Boolean = false) {
+    private fun reveal(label: String, prefix: Boolean = false): AccessibilityNodeInfo {
         fun scroll(node: AccessibilityNodeInfo): Boolean {
             if (node.isScrollable && node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) return true
             for (i in 0 until node.childCount) node.getChild(i)?.let { if (scroll(it)) return true }
@@ -165,7 +220,10 @@ internal class ProgressionNativeAudit(private val instrumentation: Instrumentati
                 false
             }
         }
-        var target = node(label, prefix)!!
+        return checkNotNull(node(label, prefix))
+    }
+    private fun click(label: String, prefix: Boolean = false) {
+        var target = reveal(label, prefix)
         while (!target.isClickable) target = checkNotNull(target.parent) { "No clickable parent for $label" }
         target.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.id)
         check(target.performAction(AccessibilityNodeInfo.ACTION_CLICK))

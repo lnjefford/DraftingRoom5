@@ -1,0 +1,50 @@
+{
+  "id": "loaded-hold",
+  "name": "Loaded hold",
+  "notes": "Controlled",
+  "setCount": 3,
+  "reps": 8,
+  "durationSeconds": 30,
+  "artworkId": "grip_hold",
+  "weightPounds": 35,
+  "progression": {
+    "steps": [
+      {
+        "replacement": {
+          "name": "Loaded hold",
+          "notes": "Longer hold",
+          "setCount": 4,
+          "reps": null,
+          "durationSeconds": 45,
+          "artworkId": "grip_hold",
+          "weightPounds": 40
+        },
+        "insertedExercises": [
+          {
+            "id": "added-curl",
+            "name": "Wrist curl",
+            "notes": "",
+            "setCount": 2,
+            "reps": 12,
+            "durationSeconds": null,
+            "artworkId": "wrist_curl",
+            "weightPounds": 5,
+            "progression": null
+          }
+        ]
+      },
+      {
+        "replacement": {
+          "name": "Loaded hold",
+          "notes": "Shorter hold",
+          "setCount": 3,
+          "reps": null,
+          "durationSeconds": 20,
+          "artworkId": "grip_hold",
+          "weightPounds": 45
+        },
+        "insertedExercises": []
+      }
+    ]
+  }
+}

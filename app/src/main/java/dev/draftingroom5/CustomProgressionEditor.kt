@@ -2,7 +2,6 @@ package dev.draftingroom5
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -28,7 +27,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -43,6 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +70,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -82,10 +80,6 @@ internal fun CustomExerciseProgression.isEditorValid(): Boolean {
         if (!ids.add(exercise.id) || !exercise.prescription().isEditorValid()) return false
         return when (val nested = exercise.progression) {
             null -> true
-            is AutomaticExerciseProgression ->
-                (nested.weightPounds != null || nested.durationSeconds != null) &&
-                    (nested.weightPounds == null || exercise.measurements.weightPounds != null) &&
-                    (nested.durationSeconds == null || exercise.measurements.durationSeconds != null)
             is CustomExerciseProgression -> nested.steps.isNotEmpty() && nested.steps.all { step ->
                 step.replacement.isEditorValid() && step.insertedExercises.all(::validExercise)
             }
@@ -95,11 +89,7 @@ internal fun CustomExerciseProgression.isEditorValid(): Boolean {
 }
 
 private fun ExercisePrescription.isEditorValid(): Boolean =
-    name.trim().isNotEmpty() && name.length <= 200 && notes.length <= 4_000 && setCount > 0 &&
-        target.trim().isNotEmpty() && target.length <= 500 &&
-        (timerSeconds == null || timerSeconds > 0) &&
-        (measurements.weightPounds == null || measurements.weightPounds.isFinite() && measurements.weightPounds > 0.0) &&
-        (measurements.durationSeconds == null || measurements.durationSeconds > 0)
+    try { validatePrescription(this); true } catch (_: IllegalArgumentException) { false }
 
 internal fun CustomExerciseProgression.moveStep(index: Int, offset: Int): CustomExerciseProgression {
     val moved = move(steps, index, offset)
@@ -123,48 +113,51 @@ private data class PrescriptionDraft(
     val name: String,
     val notes: String,
     val sets: String,
-    val target: String,
+    val reps: String,
     val timed: Boolean,
-    val timerSeconds: String,
+    val durationSeconds: String,
     val artworkId: String,
     val weightPounds: String,
-    val durationSeconds: String,
 )
 
 private fun ExercisePrescription.draft() = PrescriptionDraft(
-    name, notes, setCount.toString(), target, timerSeconds != null, timerSeconds?.toString() ?: "20",
-    artworkId, measurements.weightPounds?.let(::formatCustomPounds).orEmpty(), measurements.durationSeconds?.toString().orEmpty(),
+    name, notes, setCount.toString(), reps?.toString().orEmpty(), durationSeconds != null, durationSeconds?.toString() ?: "20",
+    artworkId, weightPounds?.toString().orEmpty(),
 )
 
 private fun PrescriptionDraft.saved(): ExercisePrescription? {
-    val count = sets.toIntOrNull()?.takeIf { it > 0 } ?: return null
-    val timer = if (timed) timerSeconds.toIntOrNull()?.takeIf { it > 0 } ?: return null else null
-    val weight = if (weightPounds.isBlank()) null else weightPounds.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 } ?: return null
-    val duration = if (durationSeconds.isBlank()) null else durationSeconds.toIntOrNull()?.takeIf { it > 0 } ?: return null
-    return ExercisePrescription(
-        name.trim(), notes.trim(), count, target.trim(), timer,
-        ExerciseArtworkCatalog.resolve(artworkId).storageId, ExerciseMeasurements(weight, duration),
-    ).takeIf { it.isEditorValid() }
+    val count = sets.toIntOrNull() ?: return null
+    val duration = if (timed) durationSeconds.toIntOrNull() ?: return null else null
+    val weight = if (weightPounds.isBlank()) null else weightPounds.toIntOrNull() ?: return null
+    val repetitions = if (reps.isBlank()) null else reps.toIntOrNull() ?: return null
+    return ExercisePrescription(name.trim(), notes.trim(), count, repetitions, duration,
+        ExerciseArtworkCatalog.resolve(artworkId).storageId, weight).takeIf { it.isEditorValid() }
 }
 
-private fun formatCustomPounds(value: Double): String =
-    java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
-
 private fun ExercisePrescription.detail(): String = buildList {
-    add("$setCount sets · $target")
-    timerSeconds?.let { add("${it}s timer") }
-    measurements.weightPounds?.let { add("${formatCustomPounds(it)} lb") }
-    measurements.durationSeconds?.let { add("$it sec structured") }
+    add("$setCount sets")
+    reps?.let { add("$it reps") }
+    weightPounds?.let { add("$it lb") }
+    durationSeconds?.let { add("$it seconds") }
 }.joinToString(" · ")
+
+internal fun prescriptionChanges(before: ExercisePrescription, after: ExercisePrescription): String = buildList {
+    fun addChange(label: String, old: String, new: String) {
+        if (old != new) add("$label $old → $new")
+    }
+    addChange("Name", before.name, after.name)
+    addChange("Weight", before.weightPounds?.let { "$it lb" } ?: "none", after.weightPounds?.let { "$it lb" } ?: "none")
+    addChange("Duration", before.durationSeconds?.let { "$it sec" } ?: "none", after.durationSeconds?.let { "$it sec" } ?: "none")
+    addChange("Sets", before.setCount.toString(), after.setCount.toString())
+    addChange("Reps", before.reps?.toString() ?: "none", after.reps?.toString() ?: "none")
+    addChange("Notes", before.notes.ifBlank { "none" }, after.notes.ifBlank { "none" })
+    addChange("Artwork", before.artworkId, after.artworkId)
+}.joinToString(" · ").ifBlank { "No target or exercise-detail changes" }
 
 @Composable
 internal fun CustomProgressionControl(
     enabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
-    currentPounds: String,
-    onCurrentPoundsChange: (String) -> Unit,
-    currentDurationSeconds: String,
-    onCurrentDurationSecondsChange: (String) -> Unit,
     progression: CustomExerciseProgression?,
     onConfigure: () -> Unit,
     canConfigure: Boolean,
@@ -173,31 +166,30 @@ internal fun CustomProgressionControl(
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Custom progression", fontWeight = FontWeight.Bold)
-                    Text("Ordered grip or prescription changes", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text("Planned progression", fontWeight = FontWeight.SemiBold)
+                    Text("Optional ordered future prescriptions", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(checked = enabled, onCheckedChange = onEnabledChange, modifier = Modifier.semantics {
+                    contentDescription = "Planned progression"
                     stateDescription = if (enabled) "Enabled" else "Disabled"
                 })
             }
             if (!enabled) {
-                Text("Off · use this for changes that are not a fixed numeric increment.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Off · this exercise keeps its current targets.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 return@Column
             }
-            Text("CURRENT STRUCTURED MEASURES", color = AppGold, style = MaterialTheme.typography.labelSmall)
-            Text("Optional; the readable target and timer remain authoritative display fields.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            OutlinedTextField(currentPounds, onCurrentPoundsChange, Modifier.fillMaxWidth(), label = { Text("Current pounds (optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-            OutlinedTextField(currentDurationSeconds, onCurrentDurationSecondsChange, Modifier.fillMaxWidth(), label = { Text("Current seconds (optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
             AppSurfaceCard(Modifier.fillMaxWidth().semantics {
-                contentDescription = progression?.let { "${it.steps.size} ordered future progression steps" } ?: "No future progression steps"
+                contentDescription = progression?.steps?.firstOrNull()?.let { "Next planned prescription, ${it.replacement.detail()}; ${progression.steps.size} total steps" }
+                    ?: "No planned progression steps"
             }) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("FUTURE PRESCRIPTIONS", color = AppGold, style = MaterialTheme.typography.labelSmall)
+                    Text("NEXT", color = AppGold, style = MaterialTheme.typography.labelSmall)
                     Text(
-                        progression?.let { "${it.steps.size} ordered ${if (it.steps.size == 1) "step" else "steps"} · ${it.steps.sumOf { step -> step.insertedExercises.size }} added exercises" }
-                            ?: "Add at least one valid future step",
+                        progression?.steps?.firstOrNull()?.replacement?.let { "${it.name} · ${it.detail()}" }
+                            ?: "Add the first complete future prescription",
                         color = if (progression == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     )
+                    progression?.let { Text("${it.steps.size} ordered ${if (it.steps.size == 1) "step" else "steps"}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                 }
             }
             OutlinedButton(onClick = onConfigure, enabled = canConfigure, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -222,6 +214,16 @@ internal fun CustomProgressionEditorScreen(
     var deleteIndex by rememberSaveable(source.id) { mutableStateOf<Int?>(null) }
     var discard by rememberSaveable(source.id) { mutableStateOf(false) }
     var message by rememberSaveable(source.id) { mutableStateOf<String?>(null) }
+    var pendingFocus by remember { mutableStateOf<String?>(null) }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val addFocus = remember { FocusRequester() }
+    LaunchedEffect(pendingFocus) {
+        pendingFocus?.let { id ->
+            val index = stepKeys.indexOf(id)
+            listState.scrollToItem(if (index >= 0) index + 2 else working.steps.size.coerceAtLeast(1) + 2)
+            if (id == "add") { addFocus.requestFocus(); pendingFocus = null }
+        }
+    }
     val changed = working != original
     val requestBack = { if (changed) discard = true else onDismiss() }
     BackHandler(onBack = requestBack)
@@ -232,6 +234,7 @@ internal fun CustomProgressionEditorScreen(
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
@@ -251,8 +254,14 @@ internal fun CustomProgressionEditorScreen(
             }
             items(working.steps.size, key = { stepKeys[it] }) { index ->
                 val stepKey = stepKeys[index]
+                val focus = remember(stepKey) { FocusRequester() }
+                LaunchedEffect(pendingFocus, index) {
+                    if (pendingFocus == stepKey) { focus.requestFocus(); pendingFocus = null }
+                }
                 CustomStepCard(
-                    step = working.steps[index], position = index, total = working.steps.size,
+                    focusRequester = focus,
+                    step = working.steps[index], before = if (index == 0) source.prescription() else working.steps[index - 1].replacement,
+                    position = index, total = working.steps.size,
                     onEdit = { editingIndex = index }, onDelete = { deleteIndex = index },
                     onMove = { offset ->
                         val currentIndex = stepKeys.indexOf(stepKey)
@@ -260,6 +269,7 @@ internal fun CustomProgressionEditorScreen(
                         if (moved != working) {
                             working = moved
                             stepKeys = move(stepKeys, currentIndex, offset)
+                            pendingFocus = stepKey
                             message = "Step order updated · save progression to apply"
                             true
                         } else false
@@ -267,7 +277,7 @@ internal fun CustomProgressionEditorScreen(
                 )
             }
             item {
-                Button(onClick = { adding = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Button(onClick = { adding = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(addFocus)) {
                     Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Add future step")
                 }
                 Text("Changes apply when you save the exercise", color = AppMint, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
@@ -285,6 +295,8 @@ internal fun CustomProgressionEditorScreen(
     val edit = editingIndex?.let { working.steps.getOrNull(it) }
     if (adding || edit != null) CustomStepEditorScreen(
         source = source,
+        before = editingIndex?.let { index -> if (index == 0) source.prescription() else working.steps[index - 1].replacement }
+            ?: working.steps.lastOrNull()?.replacement ?: source.prescription(),
         original = edit,
         onDismiss = { adding = false; editingIndex = null },
         onSave = { step ->
@@ -304,6 +316,7 @@ internal fun CustomProgressionEditorScreen(
             onConfirm = {
                 working = working.copy(steps = working.steps.filterIndexed { i, _ -> i != index })
                 stepKeys = stepKeys.filterIndexed { i, _ -> i != index }
+                pendingFocus = stepKeys.getOrNull(index) ?: stepKeys.lastOrNull() ?: "add"
                 deleteIndex = null; message = "Future step deleted · save progression to apply"
             },
             onDismiss = { deleteIndex = null },
@@ -319,7 +332,7 @@ internal fun CustomProgressionEditorScreen(
 }
 
 @Composable
-private fun CustomStepCard(step: CustomProgressionStep, position: Int, total: Int, onEdit: () -> Unit, onDelete: () -> Unit, onMove: (Int) -> Boolean) {
+private fun CustomStepCard(step: CustomProgressionStep, before: ExercisePrescription, position: Int, total: Int, focusRequester: FocusRequester, onEdit: () -> Unit, onDelete: () -> Unit, onMove: (Int) -> Boolean) {
     var menu by remember { mutableStateOf(false) }
     val threshold = with(LocalDensity.current) { 54.dp.toPx() }
     var distance by remember { mutableStateOf(0f) }
@@ -327,7 +340,7 @@ private fun CustomStepCard(step: CustomProgressionStep, position: Int, total: In
         if (it.type != KeyEventType.KeyDown || !it.isCtrlPressed) false else when (it.key) {
             Key.DirectionUp -> onMove(-1); Key.DirectionDown -> onMove(1); else -> false
         }
-    }.focusable().semantics {
+    }.focusRequester(focusRequester).focusable().semantics {
         stateDescription = "Future step ${position + 1} of $total, ${step.replacement.name}, ${step.insertedExercises.size} added exercises"
         customActions = buildList {
             if (position > 0) add(CustomAccessibilityAction("Move step up") { onMove(-1) })
@@ -350,6 +363,7 @@ private fun CustomStepCard(step: CustomProgressionStep, position: Int, total: In
                 Text("STEP ${position + 1}", color = AppGold, style = MaterialTheme.typography.labelSmall)
                 Text(step.replacement.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(step.replacement.detail(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(prescriptionChanges(before, step.replacement), color = AppMint, style = MaterialTheme.typography.bodySmall)
                 if (step.insertedExercises.isNotEmpty()) Text("Adds ${step.insertedExercises.joinToString { it.name }}", color = AppMint, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Box {
@@ -379,41 +393,41 @@ private fun PrescriptionCard(prescription: ExercisePrescription, subtitle: Strin
 }
 
 @Composable
-private fun CustomStepEditorScreen(source: Exercise, original: CustomProgressionStep?, onDismiss: () -> Unit, onSave: (CustomProgressionStep) -> Unit) {
-    val initial = remember(source.id, original) { (original?.replacement ?: source.prescription()).draft() }
+internal fun CustomStepEditorScreen(source: Exercise, before: ExercisePrescription, original: CustomProgressionStep?, onDismiss: () -> Unit, onSave: (CustomProgressionStep) -> Unit, initialScrollPx: Int = 0) {
+    val initial = remember(source.id, original) { (original?.replacement ?: before).draft() }
     var name by rememberSaveable { mutableStateOf(initial.name) }
     var notes by rememberSaveable { mutableStateOf(initial.notes) }
     var sets by rememberSaveable { mutableStateOf(initial.sets) }
-    var target by rememberSaveable { mutableStateOf(initial.target) }
+    var reps by rememberSaveable { mutableStateOf(initial.reps) }
     var timed by rememberSaveable { mutableStateOf(initial.timed) }
-    var timerSeconds by rememberSaveable { mutableStateOf(initial.timerSeconds) }
+    var durationSeconds by rememberSaveable { mutableStateOf(initial.durationSeconds) }
     var artworkId by rememberSaveable { mutableStateOf(initial.artworkId) }
     var weightPounds by rememberSaveable { mutableStateOf(initial.weightPounds) }
-    var durationSeconds by rememberSaveable { mutableStateOf(initial.durationSeconds) }
     var inserted by rememberSaveable(source.id, original, stateSaver = InsertedExerciseStateSaver) { mutableStateOf(original?.insertedExercises.orEmpty()) }
     var addingExercise by rememberSaveable { mutableStateOf(false) }
     var editingExerciseId by rememberSaveable { mutableStateOf<String?>(null) }
     var deletingExerciseId by rememberSaveable { mutableStateOf<String?>(null) }
+    var insertedFocus by remember { mutableStateOf<String?>(null) }
+    val addExerciseFocus = remember { FocusRequester() }
+    LaunchedEffect(insertedFocus) {
+        if (insertedFocus == "add") { addExerciseFocus.requestFocus(); insertedFocus = null }
+    }
     var artworkPicker by rememberSaveable { mutableStateOf(false) }
     var discard by rememberSaveable { mutableStateOf(false) }
-    val draft = PrescriptionDraft(name, notes, sets, target, timed, timerSeconds, artworkId, weightPounds, durationSeconds)
+    val draft = PrescriptionDraft(name, notes, sets, reps, timed, durationSeconds, artworkId, weightPounds)
     val candidate = draft.saved()?.let { CustomProgressionStep(it, inserted) }
     val changed = draft != initial || inserted != original?.insertedExercises.orEmpty()
     val requestBack = { if (changed) discard = true else onDismiss() }
     BackHandler(onBack = requestBack)
     Scaffold(Modifier.fillMaxSize().appScreenBackground(), topBar = { SecondaryTopBar(if (original == null) "Add future step" else "Edit future step", requestBack) }, containerColor = Color.Transparent) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("SOURCE REPLACEMENT", color = AppGold, style = MaterialTheme.typography.labelMedium)
-            Text("This complete prescription replaces ${source.name} when this step is applied.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp).verticalScroll(rememberScrollState(initialScrollPx)), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("BEFORE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+            PrescriptionCard(before)
+            Text("AFTER", color = AppGold, style = MaterialTheme.typography.labelMedium)
             OutlinedTextField(name, { if (it.length <= 200) name = it }, Modifier.fillMaxWidth(), label = { Text("Exercise name or grip") }, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences))
-            OutlinedTextField(sets, { sets = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Sets") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-            OutlinedTextField(target, { if (it.length <= 500) target = it }, Modifier.fillMaxWidth(), label = { Text("Target") }, singleLine = true)
             OutlinedTextField(notes, { if (it.length <= 4_000) notes = it }, Modifier.fillMaxWidth(), label = { Text("Notes or grip description") }, minLines = 2)
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) { Text("Timed exercise", Modifier.weight(1f)); Switch(timed, { timed = it }) }
-            if (timed) OutlinedTextField(timerSeconds, { timerSeconds = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Timer seconds") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-            Text("STRUCTURED MEASURES", color = AppGold, style = MaterialTheme.typography.labelSmall)
-            OutlinedTextField(weightPounds, { weightPounds = it.decimalProgressionInput() }, Modifier.fillMaxWidth(), label = { Text("Pounds (optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-            OutlinedTextField(durationSeconds, { durationSeconds = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Seconds (optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
+            StructuredTargetControls(weightPounds, { weightPounds = it }, timed, { timed = it }, durationSeconds, { durationSeconds = it }, sets, { sets = it }, reps, { reps = it })
+            candidate?.let { Text("Changes: ${prescriptionChanges(before, it.replacement)}", color = AppMint, style = MaterialTheme.typography.bodySmall) }
             AppSurfaceCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Image(painterResource(ExerciseArtworkCatalog.resolve(artworkId).resource(ExerciseArtworkCrop.LIST)), null, Modifier.size(58.dp), contentScale = ContentScale.Fit)
@@ -425,13 +439,17 @@ private fun CustomStepEditorScreen(source: Exercise, original: CustomProgression
             ProgressionListHeader("ADDED EXERCISES", "Inserted immediately after the source · drag to reorder")
             inserted.forEachIndexed { index, exercise ->
                 androidx.compose.runtime.key(exercise.id) {
-                InsertedExerciseRow(exercise, index, inserted.size, onEdit = { editingExerciseId = exercise.id }, onDelete = { deletingExerciseId = exercise.id }, onMove = { offset ->
+                val focus = remember(exercise.id) { FocusRequester() }
+                LaunchedEffect(insertedFocus, index) {
+                    if (insertedFocus == exercise.id) { focus.requestFocus(); insertedFocus = null }
+                }
+                InsertedExerciseRow(exercise, index, inserted.size, focus, onEdit = { editingExerciseId = exercise.id }, onDelete = { deletingExerciseId = exercise.id }, onMove = { offset ->
                     val moved = move(inserted, inserted.indexOfFirst { it.id == exercise.id }, offset)
-                    if (moved != inserted) { inserted = moved; true } else false
+                    if (moved != inserted) { inserted = moved; insertedFocus = exercise.id; true } else false
                 })
                 }
             }
-            OutlinedButton(onClick = { addingExercise = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Add exercise after source") }
+            OutlinedButton(onClick = { addingExercise = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(addExerciseFocus)) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Add exercise after source") }
             Text("Added exercises are independent and can have their own progression.", color = AppMint, style = MaterialTheme.typography.bodySmall)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = requestBack, Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }
@@ -447,14 +465,19 @@ private fun CustomStepEditorScreen(source: Exercise, original: CustomProgression
     })
     deletingExerciseId?.let { id -> inserted.firstOrNull { it.id == id }?.let { exercise -> AppConfirmationDialog(
         title = "Delete ${exercise.name}?", message = "This removes the added exercise from this future step.", confirmLabel = "Delete exercise",
-        onConfirm = { inserted = inserted.filterNot { it.id == id }; deletingExerciseId = null }, onDismiss = { deletingExerciseId = null },
+        onConfirm = {
+            val index = inserted.indexOfFirst { it.id == id }
+            inserted = inserted.filterNot { it.id == id }
+            insertedFocus = inserted.getOrNull(index)?.id ?: inserted.lastOrNull()?.id ?: "add"
+            deletingExerciseId = null
+        }, onDismiss = { deletingExerciseId = null },
     ) } }
     if (artworkPicker) ExerciseArtworkPickerSheet(artworkId, { artworkPicker = false }, { artworkId = it; artworkPicker = false })
     if (discard) AppConfirmationDialog("Discard step changes?", "This future prescription and its added exercises have not been saved.", "Discard changes", onDismiss, { discard = false })
 }
 
 @Composable
-private fun InsertedExerciseRow(exercise: Exercise, position: Int, total: Int, onEdit: () -> Unit, onDelete: () -> Unit, onMove: (Int) -> Boolean) {
+private fun InsertedExerciseRow(exercise: Exercise, position: Int, total: Int, focusRequester: FocusRequester, onEdit: () -> Unit, onDelete: () -> Unit, onMove: (Int) -> Boolean) {
     var menu by remember { mutableStateOf(false) }
     val threshold = with(LocalDensity.current) { 54.dp.toPx() }
     var distance by remember { mutableStateOf(0f) }
@@ -462,7 +485,7 @@ private fun InsertedExerciseRow(exercise: Exercise, position: Int, total: Int, o
         if (it.type != KeyEventType.KeyDown || !it.isCtrlPressed) false else when (it.key) {
             Key.DirectionUp -> onMove(-1); Key.DirectionDown -> onMove(1); else -> false
         }
-    }.focusable().semantics {
+    }.focusRequester(focusRequester).focusable().semantics {
         stateDescription = "${exercise.name}, added exercise ${position + 1} of $total"
         customActions = buildList {
             if (position > 0) add(CustomAccessibilityAction("Move ${exercise.name} up") { onMove(-1) })
@@ -480,7 +503,7 @@ private fun InsertedExerciseRow(exercise: Exercise, position: Int, total: Int, o
             Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
                 Text(exercise.name, fontWeight = FontWeight.Bold)
                 Text("${exercise.setCount} sets · ${exercise.targetSummary()}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                Text(when (exercise.progression) { is AutomaticExerciseProgression -> "Independent automatic progression"; is CustomExerciseProgression -> "Independent custom progression"; null -> "No progression" }, color = AppMint, style = MaterialTheme.typography.labelSmall)
+                Text(when (exercise.progression) { is CustomExerciseProgression -> "Independent custom progression"; null -> "No progression" }, color = AppMint, style = MaterialTheme.typography.labelSmall)
             }
             Box { IconButton({ menu = true }, Modifier.size(48.dp)) { Icon(Icons.Default.MoreVert, "More options for ${exercise.name}") }; DropdownMenu(menu, { menu = false }) {
                 DropdownMenuItem(text = { Text("Edit") }, leadingIcon = { Icon(Icons.Default.Edit, null) }, onClick = { menu = false; onEdit() })
@@ -488,12 +511,6 @@ private fun InsertedExerciseRow(exercise: Exercise, position: Int, total: Int, o
             } }
         }
     }
-}
-
-private fun String.decimalProgressionInput(): String {
-    val filtered = filter { it.isDigit() || it == '.' }
-    val point = filtered.indexOf('.')
-    return if (point < 0) filtered else filtered.take(point + 1) + filtered.drop(point + 1).replace(".", "")
 }
 
 @Composable

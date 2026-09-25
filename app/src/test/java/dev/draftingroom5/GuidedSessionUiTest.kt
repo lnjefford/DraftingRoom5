@@ -8,6 +8,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GuidedSessionUiTest {
+    @Test fun backFromManualReturnsToReviewBeforeCompletionWithoutChangingDraft() {
+        assertEquals("adjust", completionSheetParent("manual"))
+        assertEquals("complete", completionSheetParent("adjust"))
+        assertEquals("complete", completionSheetParent("complete"))
+    }
     @Test fun continueDecisionIsDurableIdempotentAndUndoingTheSetMakesItEligibleAgain() {
         val clock = SessionClockSample(100_000, 200_000, 7)
         val complete = fixture().copy(completedSets = mapOf("A" to 2, "B" to 0, "C" to 0))
@@ -43,20 +48,59 @@ class GuidedSessionUiTest {
 
     @Test fun exactPrescriptionAndChoiceLabelsExposeAllResultingMeasures() {
         val option = Exercise(
-            "result", "Loaded hold", "", 3, "Heavy hold", 25, "farmers_walk",
-            ExerciseMeasurements(32.5, 25),
+            "result", "Loaded hold", "", 3, 12, 25, "farmers_walk",
+            35,
         )
-        assertEquals("Loaded hold, 3 sets, Heavy hold, 32.5 lb, 25 seconds", progressionPrescription(option))
-        assertEquals("More weight", progressionChoiceLabel(ProgressionChoice.WEIGHT))
-        assertEquals("More time", progressionChoiceLabel(ProgressionChoice.DURATION))
-        assertEquals("Heavier, shorter", progressionChoiceLabel(ProgressionChoice.HEAVIER_SHORTER))
+        assertEquals("Loaded hold, 3 sets, 12 reps, 35 lb, 25 seconds", progressionPrescription(option))
         assertEquals("Next custom step", progressionChoiceLabel(ProgressionChoice.CUSTOM))
+    }
+
+    @Test fun completePrescriptionSummaryAlwaysNamesAllFourStructuredTargets() {
+        val prescription = ExercisePrescription("Hold", "", 3, null, null, "generic", null)
+        assertEquals(
+            "Weight not set · Duration not timed · Sets 3 · Reps not set",
+            completePrescriptionSummary(prescription),
+        )
+        assertEquals(
+            "Weight 40 lb · Duration 25 seconds · Sets 4 · Reps 12",
+            completePrescriptionSummary(prescription.copy(setCount = 4, reps = 12, durationSeconds = 25, weightPounds = 40)),
+        )
+    }
+
+    @Test fun manualDraftChangesSeveralTargetsTogetherAndRejectsEveryInvalidWeight() {
+        val source = Exercise("A", "Loaded hold", "Tall", 3, 8, 20, "farmers_walk", 35)
+        assertEquals(
+            source.prescription().copy(setCount = 4, reps = 10, durationSeconds = 25, weightPounds = 40),
+            manualAdjustmentPrescription(source, "40", true, "25", "4", "10"),
+        )
+        assertNull(manualAdjustmentPrescription(source, "37", true, "25", "4", "10"))
+        assertNull(manualAdjustmentPrescription(source, "0", true, "25", "4", "10"))
+        assertNull(manualAdjustmentPrescription(source, "-5", true, "25", "4", "10"))
+        assertNull(manualAdjustmentPrescription(source, "five", true, "25", "4", "10"))
+    }
+
+    @Test fun completedExerciseWithoutPlannedStepsStillOffersManualAdjustmentAfterRecreation() {
+        val original = fixture().copy(completedSets = mapOf("A" to 2, "B" to 0, "C" to 0))
+        val routine = original.snapshot
+        val document = defaultAppDocument().copy(
+            plan = TrainingPlan(
+                routines = listOf(routine),
+                schedule = listOf(ScheduleEntry("schedule-test", routine.id, setOf(original.occurrence.scheduledDate.dayOfWeek))),
+            ),
+            partialSessions = listOf(original),
+            progressionReceipts = emptyList(),
+        )
+        val restored = decodeAppDocument(encodeAppDocument(document))
+        val session = restored.partialSessions.single()
+        val offer = progressionOfferForSession(restored, session)
+        assertEquals("A", offer?.exerciseId)
+        assertTrue(requireNotNull(offer).options.isEmpty())
     }
 
     @Test fun longestSupportedTimerKeepsEveryDigitWithoutChangingTheDuration() {
         val base = fixture()
         val longest = base.copy(snapshot = base.snapshot.copy(exercises = base.snapshot.exercises.map {
-            it.copy(timerSeconds = Int.MAX_VALUE)
+            it.copy(durationSeconds = Int.MAX_VALUE)
         }))
         assertEquals("35791394:07", guidedSessionPresentation(longest, 100_000).timer!!.display)
         assertEquals("Start timer", guidedSessionPresentation(longest, 100_000).timer!!.primaryLabel)
@@ -277,9 +321,9 @@ private fun fixture(): GuidedSession {
         artworkId = RoutineArtworkCatalog.FALLBACK_ID,
         execution = RoutineExecution.GUIDED,
         exercises = listOf(
-            Exercise("A", "A", "Timed", 2, "20 sec", 20, "dead_hang"),
-            Exercise("B", "B", "Untimed", 1, "10 reps", null, "wrist_curl"),
-            Exercise("C", "C", "Short", 1, "1 sec", 1, "grip_hold"),
+            Exercise("A", "A", "Timed", 2, null, 20, "dead_hang"),
+            Exercise("B", "B", "Untimed", 1, 10, null, "wrist_curl"),
+            Exercise("C", "C", "Short", 1, null, 1, "grip_hold"),
         ),
         appLink = null,
     )

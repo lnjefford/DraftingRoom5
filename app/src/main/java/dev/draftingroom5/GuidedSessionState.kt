@@ -144,7 +144,7 @@ internal fun reduceGuidedSession(
         }
         is SessionEvent.StartTimer -> {
             val exercise = effective.snapshot.exercises.first { it.id == effective.focusedExerciseId }
-            if (exercise.timerSeconds == null || effective.completedSets.getValue(exercise.id) >= exercise.setCount ||
+            if (exercise.durationSeconds == null || effective.completedSets.getValue(exercise.id) >= exercise.setCount ||
                 effective.timer.phase == TimerPhase.READY || effective.timer.phase == TimerPhase.RUNNING) {
                 return SessionReduction.Rejected("Timer cannot start for the focused exercise.", committed)
             }
@@ -156,7 +156,7 @@ internal fun reduceGuidedSession(
                 return SessionReduction.Rejected("Timer identity or deadline is invalid.", committed)
             }
             val ready = clock.elapsedMillis + 10_000L
-            val duration = exercise.timerSeconds.toLong() * 1_000L
+            val duration = exercise.durationSeconds.toLong() * 1_000L
             if (ready > Long.MAX_VALUE - duration) return SessionReduction.Rejected("Timer deadline overflows.", committed)
             effective.copy(timer = SessionTimer(
                 phase = TimerPhase.READY,

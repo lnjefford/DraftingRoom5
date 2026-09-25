@@ -56,73 +56,148 @@ private class ProgressionHarness(val initial: AppDocument = completedExerciseDoc
 }
 
 class ProgressionApplicationTest {
-    private fun automatic() = completedExerciseDocument().partialSessions.single().snapshot.exercises[1]
+    @Test fun manualAdjustmentReplacesAllTargetsWithoutConsumingStepsAndUndoRestoresEverything() {
+        val h = ProgressionHarness()
+        val before = h.document()
+        val source = h.live().exercises.first()
+        val prescription = source.prescription().copy(weightPounds = 35, durationSeconds = 45, setCount = 5, reps = 12)
+        val request = h.offer().manualRequest(prescription)
+        val receipt = (h.repository.applyProgression(h.lease(), request) as RepositoryResult.Success).value
+        assertEquals(prescription, h.live().exercises.first().prescription())
+        assertEquals(source.progression, h.live().exercises.first().progression)
+        assertEquals(before.plan.routines.last().exercises.drop(1), h.live().exercises.drop(1))
+        assertEquals(before.partialSessions, h.document().partialSessions)
+        assertEquals(before.history, h.document().history)
+        assertEquals(2L, h.live().revision)
+        assertEquals(1, h.storage.writes)
+        h.restartProcess()
+        assertEquals(receipt, (h.repository.applyProgression(h.lease(), request) as RepositoryResult.Success).value)
+        assertEquals(1, h.storage.writes)
+        assertTrue(h.undo(receipt) is RepositoryResult.Success)
+        assertEquals(before.plan.routines.last().copy(revision = 3), h.live())
+        assertEquals(before.partialSessions, h.document().partialSessions)
+        assertEquals(before.history, h.document().history)
+        h.nextWorkout()
+        assertEquals(source.progression!!.steps.first().replacement, h.apply().option().source.prescription())
+    }
 
-    @Test fun dualChoicesChangeOnlySelectedMeasurementsAndSynchronizeOnlyChangedDuration() {
-        val source = automatic()
-        val options = source.progressionOptions().associateBy { it.choice }
-        assertEquals(setOf(ProgressionChoice.WEIGHT, ProgressionChoice.DURATION, ProgressionChoice.HEAVIER_SHORTER), options.keys)
-        val expected = mapOf(
-            ProgressionChoice.WEIGHT to ExerciseMeasurements(30.0, 20),
-            ProgressionChoice.DURATION to ExerciseMeasurements(25.0, 25),
-            ProgressionChoice.HEAVIER_SHORTER to ExerciseMeasurements(30.0, 15),
-        )
-        options.forEach { (choice, option) ->
-            assertEquals(expected[choice], option.source.measurements)
-            assertEquals(if (choice == ProgressionChoice.WEIGHT) source.timerSeconds else expected[choice]!!.durationSeconds, option.source.timerSeconds)
-            assertEquals(source, option.source.copy(measurements = source.measurements, timerSeconds = source.timerSeconds))
-            assertTrue(option.additions.isEmpty())
+    @Test fun manualAdjustmentCanClearAllOptionalTargetsWithoutProgression() {
+        val h = ProgressionHarness()
+        val source = h.live().exercises[1]
+        assertNull(source.progression)
+        val cleared = source.prescription().copy(weightPounds = null, durationSeconds = null, reps = null, setCount = 1)
+        val request = h.offer(source.id).manualRequest(cleared)
+        val receipt = (h.repository.applyProgression(h.lease(), request) as RepositoryResult.Success).value
+        assertEquals(cleared, h.live().exercises[1].prescription())
+        h.restartProcess()
+        assertEquals(cleared, h.live().exercises[1].prescription())
+        assertTrue(h.undo(receipt) is RepositoryResult.Success)
+        assertEquals(source, h.live().exercises[1])
+    }
+
+    @Test fun manualAdjustmentAfterInsertionPreservesIndependentChildrenAndRemainingStepOrder() {
+        val h = ProgressionHarness()
+        val first = h.apply()
+        h.nextWorkout()
+        val source = h.live().exercises.first()
+        val additions = h.live().exercises.drop(1)
+        val prescription = source.prescription().copy(weightPounds = null, durationSeconds = null, setCount = 2, reps = 6)
+        val receipt = (h.repository.applyProgression(h.lease(), h.offer().manualRequest(prescription)) as RepositoryResult.Success).value
+        assertEquals(source.progression, h.live().exercises.first().progression)
+        assertEquals(additions, h.live().exercises.drop(1))
+        h.nextWorkout()
+        val last = h.apply()
+        assertEquals(source.progression!!.steps.single().replacement, last.option().source.prescription())
+        assertNull(h.live().exercises.first().progression)
+        assertEquals(first.option().additions.single(), h.live().exercises[1])
+        assertTrue(h.undo(receipt) is RepositoryResult.Conflict)
+    }
+
+    @Test fun invalidManualTargetsAndMalformedChoicesNeverWriteOrConsumeSteps() {
+        val h = ProgressionHarness()
+        val before = h.document()
+        val bytes = h.storage.value
+        val p = h.live().exercises.first().prescription()
+        val offer = h.offer()
+        val invalid = listOf(p.copy(weightPounds = 37), p.copy(weightPounds = 0), p.copy(weightPounds = -5),
+            p.copy(durationSeconds = 0), p.copy(reps = 0), p.copy(setCount = 0))
+        invalid.forEach {
+            assertTrue(h.repository.applyProgression(h.lease(), offer.manualRequest(it)) is RepositoryResult.Invalid)
         }
+        assertTrue(h.repository.applyProgression(h.lease(), offer.request(ProgressionChoice.MANUAL)) is RepositoryResult.Invalid)
+        assertTrue(h.repository.applyProgression(h.lease(), offer.request(ProgressionChoice.CUSTOM).copy(manualPrescription = p)) is RepositoryResult.Invalid)
+        assertEquals(before, h.document())
+        assertEquals(bytes, h.storage.value)
+        assertEquals(0, h.storage.writes)
     }
 
-    @Test fun singleMeasureRulesNeverChangeAnUnselectedMeasureOrFreeText() {
-        val source = automatic().copy(timerSeconds = 99, target = "8 reps per side")
-        val weight = source.copy(progression = AutomaticExerciseProgression(weightPounds = AutomaticPoundsProgression(2.5)))
-        assertEquals(weight.copy(measurements = ExerciseMeasurements(27.5, 20)), weight.progressionOptions().single().source)
-        val duration = source.copy(progression = AutomaticExerciseProgression(durationSeconds = AutomaticSecondsProgression(2)))
-        assertEquals(duration.copy(measurements = ExerciseMeasurements(25.0, 22), timerSeconds = 22), duration.progressionOptions().single().source)
+    @Test fun failedManualWriteIsAtomicAndCanRetryThenUndo() {
+        val h = ProgressionHarness()
+        val before = h.document()
+        val bytes = h.storage.value
+        val request = h.offer().manualRequest(h.live().exercises.first().prescription().copy(reps = 12, weightPounds = 40))
+        h.storage.fail = true
+        assertTrue(h.repository.applyProgression(h.lease(), request) is RepositoryResult.Failed)
+        assertEquals(before, h.document())
+        assertEquals(bytes, h.storage.value)
+        h.storage.fail = false
+        h.restartProcess()
+        val receipt = (h.repository.applyProgression(h.lease(), request) as RepositoryResult.Success).value
+        assertTrue(h.undo(receipt) is RepositoryResult.Success)
+        assertEquals(before.plan.routines.last().copy(revision = 3), h.live())
     }
 
-    @Test fun boundsClampFinalIncrementsAndRemoveUnavailableChoices() {
-        val source = automatic().copy(measurements = ExerciseMeasurements(49.0, 59))
-        val options = source.progressionOptions().associateBy { it.choice }
-        assertEquals(ExerciseMeasurements(50.0, 59), options.getValue(ProgressionChoice.WEIGHT).source.measurements)
-        assertEquals(ExerciseMeasurements(49.0, 60), options.getValue(ProgressionChoice.DURATION).source.measurements)
-        val maximum = source.copy(measurements = ExerciseMeasurements(50.0, 60))
-        assertTrue(maximum.progressionOptions().isEmpty())
-        val nearMinimum = source.copy(measurements = ExerciseMeasurements(25.0, 11))
-        assertEquals(10, nearMinimum.progressionOptions().single { it.choice == ProgressionChoice.HEAVIER_SHORTER }.source.measurements.durationSeconds)
-        assertEquals(listOf(ProgressionChoice.WEIGHT, ProgressionChoice.DURATION),
-            source.copy(measurements = ExerciseMeasurements(25.0, 10)).progressionOptions().map { it.choice })
-        assertEquals(listOf(ProgressionChoice.DURATION),
-            source.copy(measurements = ExerciseMeasurements(50.0, 20)).progressionOptions().map { it.choice })
+    @Test fun manualAdjustmentsRejectStaleSessionRoutineAndRevokedLease() {
+        val h = ProgressionHarness()
+        val request = h.offer().manualRequest(h.live().exercises.first().prescription().copy(weightPounds = 35))
+        assertTrue(h.repository.applyProgression(h.lease(), request.copy(expectedRoutineRevision = 0)) is RepositoryResult.Conflict)
+        assertTrue(h.repository.applyProgression(h.lease(), request.copy(expectedSessionRevision = 100)) is RepositoryResult.Conflict)
+        val lease = h.lease()
+        h.repository.restore(h.document())
+        assertTrue(h.repository.applyProgression(lease, request) is RepositoryResult.Invalid)
+        assertEquals(h.initial.plan, h.document().plan)
+        assertTrue(h.document().progressionReceipts.isEmpty())
     }
 
-    @Test fun unboundedNumericLimitsAndDecimalIncrementsRemainFinitePositiveAndExact() {
-        val source = automatic().copy(measurements = ExerciseMeasurements(0.1, 2),
-            progression = AutomaticExerciseProgression(AutomaticPoundsProgression(0.2), AutomaticSecondsProgression(Int.MAX_VALUE)))
-        val options = source.progressionOptions().associateBy { it.choice }
-        assertEquals(0.3, options.getValue(ProgressionChoice.WEIGHT).source.measurements.weightPounds!!, 0.0)
-        assertEquals(Int.MAX_VALUE, options.getValue(ProgressionChoice.DURATION).source.measurements.durationSeconds)
-        assertEquals(1, options.getValue(ProgressionChoice.HEAVIER_SHORTER).source.measurements.durationSeconds)
-        assertTrue(source.copy(measurements = ExerciseMeasurements(Double.MAX_VALUE, Int.MAX_VALUE),
-            progression = AutomaticExerciseProgression(AutomaticPoundsProgression(Double.MAX_VALUE), AutomaticSecondsProgression(1)))
-            .progressionOptions().isEmpty())
+    @Test fun keepCurrentConsumesNoStepAndRejectsStaleAdjustmentForHandledCompletion() {
+        val h = ProgressionHarness()
+        val before = h.document()
+        val session = before.partialSessions.single()
+        val offer = h.offer()
+        val result = h.repository.applySessionEvent(h.lease(), session.id, session.eventRevision,
+            SessionEvent.ContinueWorkout(offer.exerciseId)) as SessionRepositoryResult.Partial
+        assertEquals(before.plan, h.document().plan)
+        assertEquals(before.history, h.document().history)
+        assertTrue(h.document().progressionReceipts.isEmpty())
+        assertEquals(session.snapshot, result.session.snapshot)
+        val request = offer.manualRequest(session.snapshot.exercises.first().prescription().copy(weightPounds = 35))
+        assertTrue(h.repository.applyProgression(h.lease(), request) is RepositoryResult.Invalid)
+        h.restartProcess()
+        assertEquals(before.plan, h.document().plan)
+        h.nextWorkout()
+        assertEquals(before.plan.routines.last().exercises.first().progression!!.steps.first().replacement, h.apply().option().source.prescription())
     }
 
-    @Test fun everyAutomaticChoiceCommitsOneRevisionAndPreservesBothSnapshotKinds() {
-        automatic().progressionOptions().forEach { option ->
-            val h = ProgressionHarness()
-            val initial = h.document()
-            val offer = h.offer(automatic().id)
-            h.apply(offer, option.choice)
-            assertEquals(2L, h.live().revision)
-            assertEquals(initial.generation + 1, h.document().generation)
-            assertEquals(option.source, h.live().exercises[1])
-            assertEquals(initial.partialSessions, h.document().partialSessions)
-            assertEquals(initial.history, h.document().history)
-            assertEquals(1, h.storage.writes)
-        }
+    @Test fun concurrentManualAndCustomCommandsPublishExactlyOneWholeResult() {
+        val h = ProgressionHarness()
+        val offer = h.offer()
+        val prescription = h.live().exercises.first().prescription().copy(weightPounds = 45, reps = 10, durationSeconds = null)
+        val requests = listOf(offer.request(ProgressionChoice.CUSTOM), offer.manualRequest(prescription))
+        val start = java.util.concurrent.CountDownLatch(1)
+        val results = java.util.Collections.synchronizedList(mutableListOf<RepositoryResult<ProgressionReceipt>>())
+        val workers = requests.map { request -> Thread {
+            start.await(); results.add(h.repository.applyProgression(h.lease(), request))
+        }.also { it.start() } }
+        start.countDown()
+        workers.forEach { it.join() }
+        assertEquals(1, results.count { it is RepositoryResult.Success })
+        assertEquals(1, results.count { it is RepositoryResult.Conflict })
+        assertEquals(1, h.storage.writes)
+        val receipt = h.document().progressionReceipts.single()
+        assertEquals(receipt.option().source, h.live().exercises.first())
+        assertEquals(h.initial.partialSessions, h.document().partialSessions)
+        assertEquals(if (receipt.choice == ProgressionChoice.CUSTOM) h.initial.plan.routines.last().exercises.size + 1
+            else h.initial.plan.routines.last().exercises.size, h.live().exercises.size)
     }
 
     @Test fun customReplacementPreservesSourceIdAndInsertsOrderedStableIdsOnlyOnce() {
@@ -157,16 +232,16 @@ class ProgressionApplicationTest {
         val first = h.apply()
         val inserted = first.option().additions.single()
         h.nextWorkout()
-        val insertedReceipt = h.apply(h.offer(inserted.id), ProgressionChoice.WEIGHT)
+        val insertedReceipt = h.apply(h.offer(inserted.id), ProgressionChoice.CUSTOM)
         val advanced = h.live().exercises.single { it.id == inserted.id }
-        assertEquals(7.5, advanced.measurements.weightPounds!!, 0.0)
+        assertEquals(10, advanced.weightPounds)
         val final = h.apply(h.offer(first.before.id))
         assertNull(final.option().source.progression)
         assertEquals(advanced, h.live().exercises.single { it.id == inserted.id })
         assertEquals(4L, h.live().revision)
         assertTrue(h.undo(insertedReceipt) is RepositoryResult.Conflict)
         h.nextWorkout()
-        assertNull(h.document().progressionOffer(h.document().partialSessions.single().id, first.before.id))
+        assertTrue(h.document().progressionOffer(h.document().partialSessions.single().id, first.before.id)!!.options.isEmpty())
         assertNotNull(h.document().progressionOffer(h.document().partialSessions.single().id, inserted.id))
     }
 
@@ -196,7 +271,7 @@ class ProgressionApplicationTest {
         val h = ProgressionHarness()
         val first = h.apply()
         h.nextWorkout()
-        h.apply(h.offer(first.option().additions.single().id), ProgressionChoice.DURATION)
+        h.apply(h.offer(first.option().additions.single().id), ProgressionChoice.CUSTOM)
         val before = h.live()
         val last = h.apply(h.offer(first.before.id))
         assertTrue(h.undo(last) is RepositoryResult.Success)
@@ -255,7 +330,7 @@ class ProgressionApplicationTest {
             SessionEvent.UndoLastSet(source.id, source.setCount))
         assertTrue(complete.repository.applyProgression(complete.lease(), offer.request(ProgressionChoice.CUSTOM)) is RepositoryResult.Invalid)
         assertNull(complete.document().progressionOffer(session.id, "missing"))
-        assertNull(complete.document().progressionOffer(session.id, session.snapshot.exercises.last().id))
+        assertTrue(complete.document().progressionOffer(session.id, session.snapshot.exercises.last().id)!!.options.isEmpty())
         val changed = ProgressionHarness()
         changed.edit { it.copy(plan = it.plan.copy(routines = it.plan.routines.map { r ->
             if (r.id == changed.live().id) r.copy(revision = 2, exercises = r.exercises.map { e ->
@@ -344,7 +419,7 @@ class ProgressionApplicationTest {
             encodeAppDocument(h.document().copy(progressionReceipts = listOf(receipt, receipt)))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            encodeAppDocument(h.document().copy(progressionReceipts = listOf(receipt.copy(choice = ProgressionChoice.WEIGHT))))
+            encodeAppDocument(h.document().copy(progressionReceipts = listOf(receipt.copy(choice = ProgressionChoice.MANUAL))))
         }
         val root = JSONObject(h.storage.value)
         root.remove("progressionReceipts")
@@ -354,7 +429,7 @@ class ProgressionApplicationTest {
     @Test fun unavailableChoiceAndExpiredUndoDoNotWrite() {
         val h = ProgressionHarness()
         val offer = h.offer()
-        assertTrue(h.repository.applyProgression(h.lease(), offer.request(ProgressionChoice.HEAVIER_SHORTER)) is RepositoryResult.Invalid)
+        assertTrue(h.repository.applyProgression(h.lease(), offer.request(ProgressionChoice.MANUAL)) is RepositoryResult.Invalid)
         assertEquals(0, h.storage.writes)
         val receipt = h.apply(offer)
         h.edit { d -> d.copy(plan = d.plan.copy(routines = d.plan.routines.map { r ->

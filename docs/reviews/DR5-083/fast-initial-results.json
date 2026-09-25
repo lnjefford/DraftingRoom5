@@ -1,0 +1,44 @@
+[
+  {
+    "Suite": "dev.draftingroom5.ExerciseProgressionTest",
+    "Tests": 9,
+    "Failures": 0,
+    "Errors": 0,
+    "Skipped": 0
+  },
+  {
+    "Suite": "dev.draftingroom5.GuidedRoutineEditorTest",
+    "Tests": 15,
+    "Failures": 0,
+    "Errors": 0,
+    "Skipped": 0
+  },
+  {
+    "Suite": "dev.draftingroom5.GuidedSessionUiTest",
+    "Tests": 17,
+    "Failures": 0,
+    "Errors": 0,
+    "Skipped": 0
+  },
+  {
+    "Suite": "dev.draftingroom5.ProgressionApplicationTest",
+    "Tests": 26,
+    "Failures": 0,
+    "Errors": 0,
+    "Skipped": 0
+  },
+  {
+    "Suite": "dev.draftingroom5.ProgressionAuditTest",
+    "Tests": 5,
+    "Failures": 0,
+    "Errors": 0,
+    "Skipped": 0
+  },
+  {
+    "Suite": "dev.draftingroom5.StructuredTargetAuditTest",
+    "Tests": 3,
+    "Failures": 0,
+    "Errors": 0,
+    "Skipped": 0
+  }
+]

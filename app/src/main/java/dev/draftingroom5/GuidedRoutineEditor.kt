@@ -83,7 +83,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -92,129 +91,56 @@ internal data class ExerciseDraft(
     val name: String = "",
     val notes: String = "",
     val sets: String = "",
-    val target: String = "",
+    val reps: String = "",
     val timed: Boolean = false,
-    val timerSeconds: String = "20",
+    val durationSeconds: String = "20",
     val artworkId: String = ExerciseArtworkCatalog.FALLBACK_ID,
-    val automaticProgression: Boolean = false,
-    val weightProgression: Boolean = false,
     val currentPounds: String = "",
-    val poundsIncrement: String = "",
-    val minimumPounds: String = "",
-    val maximumPounds: String = "",
-    val durationProgression: Boolean = false,
-    val currentDurationSeconds: String = "",
-    val secondsIncrement: String = "",
-    val minimumSeconds: String = "",
-    val maximumSeconds: String = "",
     val customProgressionEnabled: Boolean = false,
     val customProgression: CustomExerciseProgression? = null,
 )
 
-internal fun Exercise.exerciseDraft(): ExerciseDraft {
-    val automatic = progression as? AutomaticExerciseProgression
-    return ExerciseDraft(
-        id = id,
-        name = name,
-        notes = notes,
-        sets = setCount.toString(),
-        target = target,
-        timed = timerSeconds != null,
-        timerSeconds = timerSeconds?.toString() ?: "20",
-        artworkId = artworkId,
-        automaticProgression = automatic != null,
-        weightProgression = automatic?.weightPounds != null,
-        currentPounds = measurements.weightPounds?.let(::formatPounds).orEmpty(),
-        poundsIncrement = automatic?.weightPounds?.increment?.let(::formatPounds).orEmpty(),
-        minimumPounds = automatic?.weightPounds?.minimum?.let(::formatPounds).orEmpty(),
-        maximumPounds = automatic?.weightPounds?.maximum?.let(::formatPounds).orEmpty(),
-        durationProgression = automatic?.durationSeconds != null,
-        currentDurationSeconds = measurements.durationSeconds?.toString().orEmpty(),
-        secondsIncrement = automatic?.durationSeconds?.increment?.toString().orEmpty(),
-        minimumSeconds = automatic?.durationSeconds?.minimum?.toString().orEmpty(),
-        maximumSeconds = automatic?.durationSeconds?.maximum?.toString().orEmpty(),
-        customProgressionEnabled = progression is CustomExerciseProgression,
-        customProgression = progression as? CustomExerciseProgression,
-    )
-}
+internal fun Exercise.exerciseDraft() = ExerciseDraft(
+    id, name, notes, setCount.toString(), reps?.toString().orEmpty(), durationSeconds != null,
+    durationSeconds?.toString() ?: "20", artworkId, weightPounds?.toString().orEmpty(),
+    progression != null, progression,
+)
 
 internal fun ExerciseDraft.savedExercise(): Exercise? {
-    val cleanName = name.trim()
-    val cleanNotes = notes.trim()
-    val cleanTarget = target.trim()
-    val setCount = sets.toIntOrNull()
-    val configuredSeconds = timerSeconds.toIntOrNull()
-    val durationRuleSelected = automaticProgression && durationProgression
-    if (id.isBlank() || cleanName.isEmpty() || cleanName.length > 200 || cleanNotes.length > 4_000) return null
-    if (setCount == null || setCount <= 0 || cleanTarget.isEmpty() || cleanTarget.length > 500) return null
-    if (timed && !durationRuleSelected && (configuredSeconds == null || configuredSeconds <= 0)) return null
-
-    val weightRule = if (automaticProgression && weightProgression) {
-        val current = currentPounds.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 } ?: return null
-        val increment = poundsIncrement.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 } ?: return null
-        val minimum = optionalPositiveDouble(minimumPounds) ?: return null
-        val maximum = optionalPositiveDouble(maximumPounds) ?: return null
-        if (minimum.value != null && current < minimum.value || maximum.value != null && current > maximum.value ||
-            minimum.value != null && maximum.value != null && minimum.value > maximum.value) return null
-        AutomaticPoundsProgression(increment, minimum.value, maximum.value)
-    } else null
-    val durationRule = if (durationRuleSelected) {
-        val current = currentDurationSeconds.toIntOrNull()?.takeIf { it > 0 } ?: return null
-        val increment = secondsIncrement.toIntOrNull()?.takeIf { it > 0 } ?: return null
-        val minimum = optionalPositiveInt(minimumSeconds) ?: return null
-        val maximum = optionalPositiveInt(maximumSeconds) ?: return null
-        if (minimum.value != null && current < minimum.value || maximum.value != null && current > maximum.value ||
-            minimum.value != null && maximum.value != null && minimum.value > maximum.value) return null
-        AutomaticSecondsProgression(increment, minimum.value, maximum.value)
-    } else null
-    if (automaticProgression && weightRule == null && durationRule == null) return null
-    val customWeight = optionalPositiveDouble(currentPounds) ?: return null
-    val customDuration = optionalPositiveInt(currentDurationSeconds) ?: return null
+    val count = sets.toIntOrNull() ?: return null
+    val repetitions = if (reps.isBlank()) null else reps.toIntOrNull() ?: return null
+    val pounds = if (currentPounds.isBlank()) null else currentPounds.toIntOrNull() ?: return null
+    val seconds = if (timed) durationSeconds.toIntOrNull() ?: return null else null
+    if (id.isBlank()) return null
+    val exercise = Exercise(id, name.trim(), notes.trim(), count, repetitions, seconds,
+        ExerciseArtworkCatalog.resolve(artworkId).storageId, pounds,
+        customProgression.takeIf { customProgressionEnabled })
     if (customProgressionEnabled && (customProgression == null || !customProgression.isEditorValid())) return null
-    val structuredDuration = if (durationRule != null) currentDurationSeconds.toInt() else customDuration.value
-    val seconds = if (durationRule != null) structuredDuration else configuredSeconds.takeIf { timed }
-    return Exercise(
-        id = id,
-        name = cleanName,
-        notes = cleanNotes,
-        setCount = setCount,
-        target = cleanTarget,
-        timerSeconds = seconds,
-        artworkId = ExerciseArtworkCatalog.resolve(artworkId).storageId,
-        measurements = ExerciseMeasurements(
-            weightPounds = if (weightRule != null) currentPounds.toDouble() else customWeight.value,
-            durationSeconds = structuredDuration,
-        ),
-        progression = when {
-            automaticProgression -> AutomaticExerciseProgression(weightRule, durationRule)
-            customProgressionEnabled -> customProgression
-            else -> null
-        },
-    )
+    return try { validatePrescription(exercise.prescription()); exercise } catch (_: IllegalArgumentException) { null }
 }
 
-private data class OptionalValue<T>(val value: T?)
-
-private fun optionalPositiveDouble(text: String): OptionalValue<Double>? {
-    if (text.isBlank()) return OptionalValue(null)
-    val value = text.toDoubleOrNull() ?: return null
-    return value.takeIf { it.isFinite() && it > 0.0 }?.let { OptionalValue(it) }
+internal fun steppedWeight(value: String, direction: Int): String {
+    val current = value.toIntOrNull()
+    if (value.isBlank()) return if (direction > 0) "35" else ""
+    if (current == null || current <= 0 || current % 5 != 0 || direction == 0) return value
+    val next = current.toLong() + direction.coerceIn(-1, 1) * 5L
+    return when {
+        next <= 0L -> ""
+        next > 2_147_483_645L -> value
+        else -> next.toString()
+    }
 }
 
-private fun optionalPositiveInt(text: String): OptionalValue<Int>? {
-    if (text.isBlank()) return OptionalValue(null)
-    return text.toIntOrNull()?.takeIf { it > 0 }?.let { OptionalValue(it) }
-}
-
-private fun formatPounds(value: Double): String =
-    java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
-
-internal fun ExerciseDraft.nextAutomaticPrescriptionPreview(): String? {
-    val exercise = savedExercise() ?: return null
-    if (exercise.progression !is AutomaticExerciseProgression) return null
-    return exercise.progressionOptions().joinToString("\n") {
-        "${progressionChoiceLabel(it.choice)}: ${it.source.measurementSummary()}"
-    }.ifEmpty { "At configured limits" }
+internal fun steppedPositive(value: String, direction: Int, defaultValue: Int, step: Int = 1): String {
+    val current = value.toIntOrNull()
+    if (value.isBlank()) return if (direction > 0) defaultValue.toString() else ""
+    if (current == null || current <= 0 || direction == 0) return value
+    val next = current.toLong() + direction.coerceIn(-1, 1) * step.toLong()
+    return when {
+        next <= 0L -> ""
+        next > Int.MAX_VALUE -> value
+        else -> next.toString()
+    }
 }
 
 internal fun Routine.withExercise(exercise: Exercise): Routine? {
@@ -546,7 +472,7 @@ private fun ManagedExerciseRow(
                 else when (it.key) { Key.DirectionUp -> onMove(-1); Key.DirectionDown -> onMove(1); else -> false }
             }
             .focusRequester(focusRequester).focusable().semantics {
-                stateDescription = "${exercise.name}, ${exercise.setCount} sets, ${exercise.targetSummary()}, ${if (exercise.timerSeconds == null) "not timed" else "${exercise.timerSeconds} second timer"}, position ${position + 1} of $total"
+                stateDescription = "${exercise.name}, ${exercise.setCount} sets, ${exercise.targetSummary()}, ${if (exercise.durationSeconds == null) "not timed" else "${exercise.durationSeconds} second timer"}, position ${position + 1} of $total"
                 customActions = buildList {
                     if (position > 0) add(CustomAccessibilityAction("Move ${exercise.name} up") { onMove(-1) })
                     if (position < total - 1) add(CustomAccessibilityAction("Move ${exercise.name} down") { onMove(1) })
@@ -583,10 +509,10 @@ private fun ManagedExerciseRow(
         Column(Modifier.weight(1f).padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(exercise.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("${exercise.setCount} sets · ${exercise.targetSummary()}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            if (exercise.timerSeconds != null) Row(verticalAlignment = Alignment.CenterVertically) {
+            if (exercise.durationSeconds != null) Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Timer, null, tint = AppBlue, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("${exercise.timerSeconds}s timer", color = AppBlue, style = MaterialTheme.typography.labelSmall)
+                Text("${exercise.durationSeconds}s timer", color = AppBlue, style = MaterialTheme.typography.labelSmall)
             }
             if (exercise.notes.isNotBlank()) Text(exercise.notes, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
         }
@@ -613,21 +539,11 @@ internal fun ExerciseEditorScreen(
     var name by rememberSaveable(initial.id) { mutableStateOf(initial.name) }
     var notes by rememberSaveable(initial.id) { mutableStateOf(initial.notes) }
     var sets by rememberSaveable(initial.id) { mutableStateOf(initial.sets) }
-    var target by rememberSaveable(initial.id) { mutableStateOf(initial.target) }
+    var reps by rememberSaveable(initial.id) { mutableStateOf(initial.reps) }
     var timed by rememberSaveable(initial.id) { mutableStateOf(initial.timed) }
-    var seconds by rememberSaveable(initial.id) { mutableStateOf(initial.timerSeconds) }
+    var seconds by rememberSaveable(initial.id) { mutableStateOf(initial.durationSeconds) }
     var artworkId by rememberSaveable(initial.id) { mutableStateOf(initial.artworkId) }
-    var automaticProgression by rememberSaveable(initial.id) { mutableStateOf(initial.automaticProgression) }
-    var weightProgression by rememberSaveable(initial.id) { mutableStateOf(initial.weightProgression) }
     var currentPounds by rememberSaveable(initial.id) { mutableStateOf(initial.currentPounds) }
-    var poundsIncrement by rememberSaveable(initial.id) { mutableStateOf(initial.poundsIncrement) }
-    var minimumPounds by rememberSaveable(initial.id) { mutableStateOf(initial.minimumPounds) }
-    var maximumPounds by rememberSaveable(initial.id) { mutableStateOf(initial.maximumPounds) }
-    var durationProgression by rememberSaveable(initial.id) { mutableStateOf(initial.durationProgression) }
-    var currentDurationSeconds by rememberSaveable(initial.id) { mutableStateOf(initial.currentDurationSeconds) }
-    var secondsIncrement by rememberSaveable(initial.id) { mutableStateOf(initial.secondsIncrement) }
-    var minimumSeconds by rememberSaveable(initial.id) { mutableStateOf(initial.minimumSeconds) }
-    var maximumSeconds by rememberSaveable(initial.id) { mutableStateOf(initial.maximumSeconds) }
     var customProgressionEnabled by rememberSaveable(initial.id) { mutableStateOf(initial.customProgressionEnabled) }
     var customProgression by rememberSaveable(initial.id, stateSaver = NullableCustomProgressionStateSaver) { mutableStateOf(initial.customProgression) }
     var editingCustomProgression by rememberSaveable(initial.id) { mutableStateOf(false) }
@@ -637,21 +553,11 @@ internal fun ExerciseEditorScreen(
         name = name,
         notes = notes,
         sets = sets,
-        target = target,
+        reps = reps,
         timed = timed,
-        timerSeconds = seconds,
+        durationSeconds = seconds,
         artworkId = artworkId,
-        automaticProgression = automaticProgression,
-        weightProgression = weightProgression,
         currentPounds = currentPounds,
-        poundsIncrement = poundsIncrement,
-        minimumPounds = minimumPounds,
-        maximumPounds = maximumPounds,
-        durationProgression = durationProgression,
-        currentDurationSeconds = currentDurationSeconds,
-        secondsIncrement = secondsIncrement,
-        minimumSeconds = minimumSeconds,
-        maximumSeconds = maximumSeconds,
         customProgressionEnabled = customProgressionEnabled,
         customProgression = customProgression,
     )
@@ -670,84 +576,7 @@ internal fun ExerciseEditorScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             OutlinedTextField(name, { if (it.length <= 200) name = it }, Modifier.fillMaxWidth(), label = { Text("Exercise name") }, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences))
-            OutlinedTextField(sets, { sets = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Sets") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-            OutlinedTextField(target, { if (it.length <= 500) target = it }, Modifier.fillMaxWidth(), label = { Text("Target") }, singleLine = true)
             OutlinedTextField(notes, { if (it.length <= 4_000) notes = it }, Modifier.fillMaxWidth(), label = { Text("Notes") }, minLines = 2)
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Timed exercise", Modifier.weight(1f))
-                Switch(
-                    checked = timed || automaticProgression && durationProgression,
-                    enabled = !(automaticProgression && durationProgression),
-                    onCheckedChange = { timed = it },
-                    modifier = Modifier.semantics {
-                        stateDescription = if (automaticProgression && durationProgression) "On, synchronized with current duration" else if (timed) "On" else "Off"
-                    },
-                )
-            }
-            if (timed && !(automaticProgression && durationProgression)) OutlinedTextField(seconds, { seconds = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), label = { Text("Timer seconds") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-            AutomaticProgressionEditor(
-                enabled = automaticProgression,
-                onEnabledChange = { enabled ->
-                    automaticProgression = enabled
-                    if (enabled) customProgressionEnabled = false
-                    if (!enabled) {
-                        weightProgression = false
-                        durationProgression = false
-                    }
-                },
-                weightEnabled = weightProgression,
-                onWeightEnabledChange = { weightProgression = it },
-                currentPounds = currentPounds,
-                onCurrentPoundsChange = { currentPounds = it.decimalInput() },
-                poundsIncrement = poundsIncrement,
-                onPoundsIncrementChange = { poundsIncrement = it.decimalInput() },
-                minimumPounds = minimumPounds,
-                onMinimumPoundsChange = { minimumPounds = it.decimalInput() },
-                maximumPounds = maximumPounds,
-                onMaximumPoundsChange = { maximumPounds = it.decimalInput() },
-                durationEnabled = durationProgression,
-                onDurationEnabledChange = { enabled ->
-                    durationProgression = enabled
-                    if (enabled) {
-                        timed = true
-                        if (currentDurationSeconds.isBlank()) currentDurationSeconds = seconds
-                    }
-                },
-                currentDurationSeconds = currentDurationSeconds,
-                onCurrentDurationSecondsChange = { value -> currentDurationSeconds = value.filter(Char::isDigit); seconds = value.filter(Char::isDigit) },
-                secondsIncrement = secondsIncrement,
-                onSecondsIncrementChange = { secondsIncrement = it.filter(Char::isDigit) },
-                minimumSeconds = minimumSeconds,
-                onMinimumSecondsChange = { minimumSeconds = it.filter(Char::isDigit) },
-                maximumSeconds = maximumSeconds,
-                onMaximumSecondsChange = { maximumSeconds = it.filter(Char::isDigit) },
-                preview = draft.nextAutomaticPrescriptionPreview(),
-            )
-            if (!automaticProgression && !customProgressionEnabled &&
-                (initial.currentPounds.isNotBlank() || initial.currentDurationSeconds.isNotBlank() ||
-                    currentPounds.isNotBlank() || currentDurationSeconds.isNotBlank())) {
-                Text("Current measurements", fontWeight = FontWeight.Bold)
-                ProgressionNumberField(currentPounds, { currentPounds = it }, "Current pounds (optional)", KeyboardType.Decimal)
-                ProgressionNumberField(currentDurationSeconds, { currentDurationSeconds = it }, "Current seconds (optional)", KeyboardType.Number)
-            }
-            CustomProgressionControl(
-                enabled = customProgressionEnabled,
-                onEnabledChange = { enabled ->
-                    customProgressionEnabled = enabled
-                    if (enabled) {
-                        automaticProgression = false
-                        weightProgression = false
-                        durationProgression = false
-                    }
-                },
-                currentPounds = currentPounds,
-                onCurrentPoundsChange = { currentPounds = it.decimalInput() },
-                currentDurationSeconds = currentDurationSeconds,
-                onCurrentDurationSecondsChange = { currentDurationSeconds = it.filter(Char::isDigit) },
-                progression = customProgression,
-                onConfigure = { editingCustomProgression = true },
-                canConfigure = draft.copy(customProgressionEnabled = false, customProgression = null).savedExercise() != null,
-            )
             AppSurfaceCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Image(painterResource(ExerciseArtworkCatalog.resolve(artworkId).resource(ExerciseArtworkCrop.LIST)), null, Modifier.size(64.dp), contentScale = ContentScale.Fit)
@@ -758,8 +587,28 @@ internal fun ExerciseEditorScreen(
                     TextButton(onClick = { artworkPicker = true }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Change") }
                 }
             }
+            Text("TARGETS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+            StructuredTargetControls(
+                weight = currentPounds,
+                onWeightChange = { currentPounds = it },
+                durationEnabled = timed,
+                onDurationEnabledChange = { timed = it },
+                duration = seconds,
+                onDurationChange = { seconds = it },
+                sets = sets,
+                onSetsChange = { sets = it },
+                reps = reps,
+                onRepsChange = { reps = it },
+            )
+            CustomProgressionControl(
+                enabled = customProgressionEnabled,
+                onEnabledChange = { customProgressionEnabled = it },
+                progression = customProgression,
+                onConfigure = { editingCustomProgression = true },
+                canConfigure = draft.copy(customProgressionEnabled = false, customProgression = null).savedExercise() != null,
+            )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onDismiss, Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }
+                OutlinedButton(onClick = requestBack, Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }
                 Button(enabled = candidate != null, onClick = { candidate?.let(onSave) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Save exercise") }
             }
         }
@@ -787,138 +636,73 @@ internal fun ExerciseEditorScreen(
     }
 }
 
-private fun String.decimalInput(): String {
-    val filtered = filter { it.isDigit() || it == '.' }
-    val point = filtered.indexOf('.')
-    return if (point < 0) filtered else filtered.take(point + 1) + filtered.drop(point + 1).replace(".", "")
-}
-
 @Composable
-private fun AutomaticProgressionEditor(
-    enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
-    weightEnabled: Boolean,
-    onWeightEnabledChange: (Boolean) -> Unit,
-    currentPounds: String,
-    onCurrentPoundsChange: (String) -> Unit,
-    poundsIncrement: String,
-    onPoundsIncrementChange: (String) -> Unit,
-    minimumPounds: String,
-    onMinimumPoundsChange: (String) -> Unit,
-    maximumPounds: String,
-    onMaximumPoundsChange: (String) -> Unit,
+internal fun StructuredTargetControls(
+    weight: String,
+    onWeightChange: (String) -> Unit,
     durationEnabled: Boolean,
     onDurationEnabledChange: (Boolean) -> Unit,
-    currentDurationSeconds: String,
-    onCurrentDurationSecondsChange: (String) -> Unit,
-    secondsIncrement: String,
-    onSecondsIncrementChange: (String) -> Unit,
-    minimumSeconds: String,
-    onMinimumSecondsChange: (String) -> Unit,
-    maximumSeconds: String,
-    onMaximumSecondsChange: (String) -> Unit,
-    preview: String?,
+    duration: String,
+    onDurationChange: (String) -> Unit,
+    sets: String,
+    onSetsChange: (String) -> Unit,
+    reps: String,
+    onRepsChange: (String) -> Unit,
 ) {
-    AppSurfaceCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Automatic progression", fontWeight = FontWeight.Bold)
-                    Text("Configure this exercise only", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = onEnabledChange,
-                    modifier = Modifier.semantics { stateDescription = if (enabled) "Enabled" else "Disabled" },
-                )
-            }
-            if (!enabled) {
-                Text("Off · the existing target and timer stay unchanged.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                return@Column
-            }
-            Text("Choose weight, duration, or both. Bounds are optional.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            ProgressionMeasureHeader("Weight", "Pounds only", weightEnabled, onWeightEnabledChange)
-            if (weightEnabled) {
-                ProgressionNumberField(currentPounds, onCurrentPoundsChange, "Current pounds", KeyboardType.Decimal)
-                ProgressionNumberField(poundsIncrement, onPoundsIncrementChange, "Increase by pounds", KeyboardType.Decimal)
-                ProgressionBoundsFields(
-                    minimumPounds, onMinimumPoundsChange, maximumPounds, onMaximumPoundsChange, KeyboardType.Decimal,
-                )
-            }
-            HorizontalDivider(color = AppBorder)
-            ProgressionMeasureHeader("Duration", "Seconds", durationEnabled, onDurationEnabledChange)
-            if (durationEnabled) {
-                Text("Current seconds also controls the exercise timer.", color = AppMint, style = MaterialTheme.typography.bodySmall)
-                ProgressionNumberField(currentDurationSeconds, onCurrentDurationSecondsChange, "Current seconds", KeyboardType.Number)
-                ProgressionNumberField(secondsIncrement, onSecondsIncrementChange, "Increase by seconds", KeyboardType.Number)
-                ProgressionBoundsFields(
-                    minimumSeconds, onMinimumSecondsChange, maximumSeconds, onMaximumSecondsChange, KeyboardType.Number,
-                )
-            }
-            AppSurfaceCard(Modifier.fillMaxWidth().semantics {
-                contentDescription = preview?.let { "Next prescription, $it" } ?: "Next prescription unavailable until progression is valid"
-            }) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("NEXT PRESCRIPTION", color = AppGold, style = MaterialTheme.typography.labelSmall)
-                    Text(preview ?: "Complete the selected progression fields", color = if (preview == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-                }
-            }
-        }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        TargetStepper("Weight", "lb · optional", weight.ifBlank { "Not set" },
+            decrementLabel = "Decrease weight by 5 pounds", incrementLabel = "Increase weight by 5 pounds",
+            onDecrement = { onWeightChange(steppedWeight(weight, -1)) }, onIncrement = { onWeightChange(steppedWeight(weight, 1)) },
+            onClear = if (weight.isNotBlank()) {{ onWeightChange("") }} else null)
+        TargetStepper("Duration", "seconds · controls the timer", if (durationEnabled) duration else "Not timed",
+            decrementLabel = "Decrease duration by 5 seconds", incrementLabel = "Increase duration by 5 seconds",
+            onDecrement = { if (durationEnabled) {
+                val next = steppedPositive(duration, -1, 20, 5)
+                if (next.isBlank()) onDurationEnabledChange(false) else onDurationChange(next)
+            } },
+            onIncrement = { if (!durationEnabled) { onDurationEnabledChange(true); onDurationChange("20") } else onDurationChange(steppedPositive(duration, 1, 20, 5)) },
+            onClear = if (durationEnabled) {{ onDurationEnabledChange(false) }} else null)
+        TargetStepper("Sets", "required", sets.ifBlank { "Not set" },
+            decrementLabel = "Decrease sets by 1", incrementLabel = "Increase sets by 1",
+            onDecrement = { steppedPositive(sets, -1, 3).takeIf { it.isNotBlank() }?.let(onSetsChange) },
+            onIncrement = { onSetsChange(steppedPositive(sets, 1, 3)) })
+        TargetStepper("Reps", "optional", reps.ifBlank { "Not set" },
+            decrementLabel = "Decrease reps by 1", incrementLabel = "Increase reps by 1",
+            onDecrement = { onRepsChange(steppedPositive(reps, -1, 10)) }, onIncrement = { onRepsChange(steppedPositive(reps, 1, 10)) },
+            onClear = if (reps.isNotBlank()) {{ onRepsChange("") }} else null)
     }
 }
 
 @Composable
-private fun ProgressionBoundsFields(
-    minimum: String,
-    onMinimumChange: (String) -> Unit,
-    maximum: String,
-    onMaximumChange: (String) -> Unit,
-    keyboardType: KeyboardType,
-) {
-    if (LocalDensity.current.fontScale > 1.3f || LocalConfiguration.current.screenWidthDp < 340) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ProgressionNumberField(minimum, onMinimumChange, "Minimum (optional)", keyboardType)
-            ProgressionNumberField(maximum, onMaximumChange, "Maximum (optional)", keyboardType)
-        }
-    } else {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ProgressionNumberField(minimum, onMinimumChange, "Minimum (optional)", keyboardType, Modifier.weight(1f))
-            ProgressionNumberField(maximum, onMaximumChange, "Maximum (optional)", keyboardType, Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun ProgressionMeasureHeader(title: String, unit: String, enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.SemiBold)
-            Text(unit, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-        }
-        Switch(
-            checked = enabled,
-            onCheckedChange = onEnabledChange,
-            modifier = Modifier.semantics { contentDescription = "$title progression"; stateDescription = if (enabled) "Enabled" else "Disabled" },
-        )
-    }
-}
-
-@Composable
-private fun ProgressionNumberField(
+private fun TargetStepper(
+    title: String,
+    unit: String,
     value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    keyboardType: KeyboardType,
-    modifier: Modifier = Modifier.fillMaxWidth(),
+    decrementLabel: String,
+    incrementLabel: String,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+    onClear: (() -> Unit)? = null,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier,
-        label = { Text(label) },
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        singleLine = true,
-    )
+    AppSurfaceCard(Modifier.fillMaxWidth().semantics { stateDescription = "$title, $value $unit" }) {
+        val compact = LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold)
+                Text(unit, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            onClear?.let { TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Clear $title" }) { Text("Clear") } }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = if (compact) Arrangement.SpaceBetween else Arrangement.End) {
+                OutlinedButton(onClick = onDecrement, modifier = Modifier.size(48.dp).semantics { contentDescription = decrementLabel }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { Text("−") }
+                Text(value, modifier = (if (value.length >= 8) Modifier.weight(1f) else Modifier)
+                    .padding(horizontal = 12.dp).semantics { contentDescription = "$title value $value" },
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold)
+                OutlinedButton(onClick = onIncrement, modifier = Modifier.size(48.dp).semantics { contentDescription = incrementLabel }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { Text("+") }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

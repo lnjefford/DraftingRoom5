@@ -97,7 +97,13 @@ internal fun validateAppDocument(document: AppDocument) {
                 "Progression receipt is newer than its routine."
             }
         }
-        require(receipt.before.progressionOptions().any { it.choice == receipt.choice }) { "Progression choice is unavailable." }
+        when (receipt.choice) {
+            ProgressionChoice.CUSTOM -> {
+                require(receipt.manualPrescription == null)
+                require(receipt.before.progressionOptions().isNotEmpty()) { "Custom step is unavailable." }
+            }
+            ProgressionChoice.MANUAL -> validatePrescription(requireNotNull(receipt.manualPrescription))
+        }
     }
 }
 
@@ -124,7 +130,6 @@ private fun validateExercise(exercise: Exercise, exerciseIds: MutableSet<String>
     validatePrescription(exercise.prescription())
     when (val progression = exercise.progression) {
         null -> Unit
-        is AutomaticExerciseProgression -> validateAutomaticProgression(exercise, progression)
         is CustomExerciseProgression -> {
             require(progression.steps.isNotEmpty()) { "Custom progression needs at least one step." }
             progression.steps.forEach { step ->
@@ -135,51 +140,16 @@ private fun validateExercise(exercise: Exercise, exerciseIds: MutableSet<String>
     }
 }
 
-private fun validatePrescription(prescription: ExercisePrescription) {
+internal fun validatePrescription(prescription: ExercisePrescription) {
     validateText(prescription.name, 200, "Exercise name")
     require(prescription.notes.length <= 4_000) { "Exercise notes are too long." }
     require(prescription.setCount > 0) { "Set count must be positive." }
-    validateText(prescription.target, 500, "Exercise target")
-    require(prescription.timerSeconds == null || prescription.timerSeconds > 0) { "Timer duration must be positive." }
+    require(prescription.reps == null || prescription.reps > 0) { "Reps must be positive." }
+    require(prescription.durationSeconds == null || prescription.durationSeconds > 0) { "Duration must be positive." }
     validateText(prescription.artworkId, 128, "Exercise artwork")
-    prescription.measurements.weightPounds?.let {
-        require(it.isFinite() && it > 0.0) { "Weight in pounds must be finite and positive." }
+    prescription.weightPounds?.let {
+        require(it > 0 && it % 5 == 0) { "Weight must be positive whole pounds in multiples of 5." }
     }
-    prescription.measurements.durationSeconds?.let {
-        require(it > 0) { "Structured duration must be positive." }
-    }
-}
-
-private fun validateAutomaticProgression(exercise: Exercise, progression: AutomaticExerciseProgression) {
-    require(progression.weightPounds != null || progression.durationSeconds != null) {
-        "Automatic progression needs at least one measurement rule."
-    }
-    progression.weightPounds?.let { rule ->
-        val current = requireNotNull(exercise.measurements.weightPounds) {
-            "Automatic weight progression needs a current weight."
-        }
-        require(rule.increment.isFinite() && rule.increment > 0.0) { "Weight increment must be finite and positive." }
-        validatePoundsBound(rule.minimum, "minimum")
-        validatePoundsBound(rule.maximum, "maximum")
-        require(rule.minimum == null || rule.maximum == null || rule.minimum <= rule.maximum) { "Weight bounds are invalid." }
-        require(rule.minimum == null || current >= rule.minimum) { "Current weight is below its minimum." }
-        require(rule.maximum == null || current <= rule.maximum) { "Current weight is above its maximum." }
-    }
-    progression.durationSeconds?.let { rule ->
-        val current = requireNotNull(exercise.measurements.durationSeconds) {
-            "Automatic duration progression needs a current duration."
-        }
-        require(rule.increment > 0) { "Duration increment must be positive." }
-        require(rule.minimum == null || rule.minimum > 0) { "Duration minimum must be positive." }
-        require(rule.maximum == null || rule.maximum > 0) { "Duration maximum must be positive." }
-        require(rule.minimum == null || rule.maximum == null || rule.minimum <= rule.maximum) { "Duration bounds are invalid." }
-        require(rule.minimum == null || current >= rule.minimum) { "Current duration is below its minimum." }
-        require(rule.maximum == null || current <= rule.maximum) { "Current duration is above its maximum." }
-    }
-}
-
-private fun validatePoundsBound(value: Double?, label: String) {
-    require(value == null || value.isFinite() && value > 0.0) { "Weight $label must be finite and positive." }
 }
 
 private fun validateSession(session: GuidedSession, plan: TrainingPlan) {
@@ -211,12 +181,12 @@ private fun validateTimer(timer: SessionTimer, session: GuidedSession) {
     val exerciseId = requireNotNull(timer.exerciseId)
     require(exerciseId == session.focusedExerciseId) { "Timer must belong to the focused exercise." }
     val exercise = checkNotNull(session.snapshot.exercises.firstOrNull { it.id == exerciseId })
-    require(exercise.timerSeconds != null) { "Timer exercise has no duration." }
+    require(exercise.durationSeconds != null) { "Timer exercise has no duration." }
     val completed = session.completedSets.getValue(exerciseId)
     require(completed < exercise.setCount && timer.setNumber == completed + 1) { "Timer set number is invalid." }
     val ready = requireNotNull(timer.readyDeadlineElapsedMillis)
     val active = requireNotNull(timer.activeDeadlineElapsedMillis)
-    val duration = exercise.timerSeconds.toLong() * 1_000L
+    val duration = exercise.durationSeconds.toLong() * 1_000L
     require(ready >= 0 && ready <= Long.MAX_VALUE - duration && active == ready + duration) { "Timer deadlines are invalid." }
     val observed = requireNotNull(timer.lastObservedElapsedMillis)
     val ordinal = requireNotNull(timer.lastHandledCueOrdinal)

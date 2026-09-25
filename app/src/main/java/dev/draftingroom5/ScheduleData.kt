@@ -9,39 +9,18 @@ internal enum class ScheduleRepeat { WEEKLY, WEEKDAYS, DAILY, CUSTOM }
 
 internal data class AppLink(val packageName: String, val deepLink: String?)
 
-internal data class ExerciseMeasurements(
-    val weightPounds: Double? = null,
-    val durationSeconds: Int? = null,
-)
-
+/** Current targets: sets are required; all other targets are independently optional.
+ * Duration is also the session timer duration. Pounds are exact integers in steps of five.
+ */
 internal data class ExercisePrescription(
     val name: String,
     val notes: String,
     val setCount: Int,
-    val target: String,
-    val timerSeconds: Int?,
+    val reps: Int?,
+    val durationSeconds: Int?,
     val artworkId: String,
-    val measurements: ExerciseMeasurements = ExerciseMeasurements(),
+    val weightPounds: Int? = null,
 )
-
-internal sealed interface ExerciseProgression
-
-internal data class AutomaticPoundsProgression(
-    val increment: Double,
-    val minimum: Double? = null,
-    val maximum: Double? = null,
-)
-
-internal data class AutomaticSecondsProgression(
-    val increment: Int,
-    val minimum: Int? = null,
-    val maximum: Int? = null,
-)
-
-internal data class AutomaticExerciseProgression(
-    val weightPounds: AutomaticPoundsProgression? = null,
-    val durationSeconds: AutomaticSecondsProgression? = null,
-) : ExerciseProgression
 
 internal data class CustomProgressionStep(
     val replacement: ExercisePrescription,
@@ -50,28 +29,28 @@ internal data class CustomProgressionStep(
 
 internal data class CustomExerciseProgression(
     val steps: List<CustomProgressionStep>,
-) : ExerciseProgression
+)
 
 internal data class Exercise(
     val id: String,
     val name: String,
     val notes: String,
     val setCount: Int,
-    val target: String,
-    val timerSeconds: Int?,
+    val reps: Int?,
+    val durationSeconds: Int?,
     val artworkId: String,
-    val measurements: ExerciseMeasurements = ExerciseMeasurements(),
-    val progression: ExerciseProgression? = null,
+    val weightPounds: Int? = null,
+    val progression: CustomExerciseProgression? = null,
 )
 
 internal fun Exercise.prescription() = ExercisePrescription(
     name = name,
     notes = notes,
     setCount = setCount,
-    target = target,
-    timerSeconds = timerSeconds,
+    reps = reps,
+    durationSeconds = durationSeconds,
     artworkId = artworkId,
-    measurements = measurements,
+    weightPounds = weightPounds,
 )
 
 internal data class Routine(
@@ -93,14 +72,14 @@ internal fun defaultTrainingPlan(): TrainingPlan {
         id = "routine-forearm", revision = 1, name = "Forearm & Grip Conditioning",
         artworkId = "grip_trainer", execution = RoutineExecution.GUIDED, appLink = null,
         exercises = listOf(
-            Exercise("exercise-hangboard", "Hangboard Holds", "Controlled edge hold", 3, "20 sec", 20, "hangboard"),
-            Exercise("exercise-dead-hang", "Thick-Bar Dead Hangs", "Pull-up bar + thick adapter", 3, "20 sec", 20, "dead_hang"),
-            Exercise("exercise-farmers-walk", "Dumbbell Farmer's Walks", "Start 15-20 lb/hand", 3, "30 sec", 30, "farmers_walk"),
-            Exercise("exercise-grip-hold", "Grip Holds", "Pinch & crush", 4, "20 sec", 20, "grip_hold"),
-            Exercise("exercise-wrist-curl", "Seated Dumbbell Wrist Curls", "Palms up, start 5-10 lb", 3, "12-15 reps", null, "wrist_curl"),
-            Exercise("exercise-reverse-wrist-curl", "Seated Dumbbell Reverse Wrist Curls", "Palms down, start 5-10 lb", 3, "12-15 reps", null, "reverse_wrist_curl"),
-            Exercise("exercise-finger-extension", "Finger Extensor Band Extensions", "", 3, "15-20 reps", null, "finger_extension"),
-            Exercise("exercise-wrist-rotation", "Wrist Rotations", "Pronation / supination", 2, "10-12 / side", null, "wrist_rotation"),
+            Exercise("exercise-hangboard", "Hangboard Holds", "Controlled edge hold", 3, null, 20, "hangboard"),
+            Exercise("exercise-dead-hang", "Thick-Bar Dead Hangs", "Pull-up bar + thick adapter", 3, null, 20, "dead_hang"),
+            Exercise("exercise-farmers-walk", "Dumbbell Farmer's Walks", "Start 15-20 lb/hand", 3, null, 30, "farmers_walk"),
+            Exercise("exercise-grip-hold", "Grip Holds", "Pinch & crush", 4, null, 20, "grip_hold"),
+            Exercise("exercise-wrist-curl", "Seated Dumbbell Wrist Curls", "Palms up, start 5-10 lb", 3, 12, null, "wrist_curl"),
+            Exercise("exercise-reverse-wrist-curl", "Seated Dumbbell Reverse Wrist Curls", "Palms down, start 5-10 lb", 3, 12, null, "reverse_wrist_curl"),
+            Exercise("exercise-finger-extension", "Finger Extensor Band Extensions", "", 3, 15, null, "finger_extension"),
+            Exercise("exercise-wrist-rotation", "Wrist Rotations", "Pronation / supination", 2, 10, null, "wrist_rotation"),
         ),
     )
     val strength = Routine(

@@ -1,6 +1,6 @@
 # Guided routine session specification
 
-Status: implemented and resilience-audited through DR5-030, including durable progress, elapsed-clock timers, feedback ownership, recovery, and atomic completion.
+Status: implemented and resilience-audited through the DR5-084 Phase 10 release, including structured targets, the fast Next exercise path, optional multi-field adjustment, planned-step application, and Undo.
 
 ## Selected reference
 
@@ -55,9 +55,11 @@ data class Exercise(
     val name: String,
     val notes: String,
     val setCount: Int,
-    val target: String,
-    val timerSeconds: Int?,
-    val artworkId: String? = null,
+    val reps: Int?,
+    val durationSeconds: Int?,
+    val artworkId: String,
+    val weightPounds: Int? = null,
+    val progression: CustomExerciseProgression? = null,
 )
 
 data class ExerciseArtwork(
@@ -123,11 +125,11 @@ An incomplete session changes the associated dashboard action from `Start` to `R
 
 ### Per-exercise progression decision
 
-Completing the final set of an eligible exercise opens a compact sheet titled `<Exercise name> complete`. It has no explanatory subtitle or rating scale: outlined **Ready for more** is secondary and filled-blue **Continue workout** is primary. Dismissing the sheet has the same safe effect as Continue.
+Completing the final set of an eligible exercise opens a compact sheet titled `<Exercise name> complete`. The visually strongest filled action is **Next exercise**. It immediately continues with the already-focused next incomplete exercise, keeps Weight, Duration, Sets, and Reps unchanged, and consumes no planned step. Outlined **Adjust exercise** is secondary, and no adjustment control appears until it is chosen. Dismissing the root sheet has the same safe keep-current effect as Next exercise.
 
-Continue changes no routine data, records that this completion was handled in the saved session, and permits the exercise to ask again in a later workout (undoing and recompleting its last set can also reopen a declined decision). Ready applies a single custom or single-measure result immediately, with its result and additions shown inside the outlined action; multiple available results first show an exact chooser for weight-only, duration-only, and heavier/shorter results. The full resulting prescription is visible and exposed to TalkBack before commitment. A successful write advances the future routine once, continues the current snapshot normally, and offers nonblocking Undo. Failed writes remain visible in the sheet; a failed Undo offers the Undo action again. Workout cards show structured pounds and seconds alongside the unchanged free-text target. Voice/timer feedback pauses while the decision sheet owns interaction.
+The adjustment view shows the complete current structured prescription first and, when one exists, the exact next planned custom prescription and inserted exercises. **Apply planned step** replaces the complete future prescription, consumes exactly one ordered step, advances, and offers nonblocking Undo. **Adjust manually** then exposes independent 5 lb Weight, Duration, Sets, and Reps controls; one save may change several targets together, previews the exact result, preserves every queued custom step, advances, and is equally undoable. Invalid weight never enables a save or crosses the persistence boundary. Back, cancel, rotation, backgrounding, and process recreation retain or discard draft UI state without applying or consuming anything. Voice/timer feedback pauses while the sheet owns interaction.
 
-No sheet appears when progression is disabled, the next custom step is unavailable, every automatic choice is at its bound, the routine is linked-app based, the completion was already handled, a progression receipt already exists, or the live exercise no longer exactly matches the session snapshot. Repeated taps, stale revisions, restart, rotation, backgrounding, and process recreation cannot apply a step twice. Undo is immediate-only: a later routine edit or progression expires it.
+The sheet is also available when an exercise has no planned steps so manual adjustment remains optional rather than progression-dependent. It does not appear for a linked-app routine, an already handled completion, an existing receipt, or a live exercise that no longer exactly matches the session snapshot. Repeated taps, stale routine/session revisions, restart, and competing writes cannot apply a decision twice or overwrite newer edits. Undo is immediate-only: a later routine edit or progression expires it.
 
 The active session and completed history are immutable routine snapshots. Applying, undoing, reordering, editing, or deleting exercises affects future sessions only. Restarting a saved session is the explicit way to discard that snapshot and adopt the current live routine.
 

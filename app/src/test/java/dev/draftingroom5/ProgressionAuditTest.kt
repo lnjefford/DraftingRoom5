@@ -71,9 +71,10 @@ class ProgressionAuditTest {
         val final = source.progressionOptions().single().source.progressionOptions().single().source
         assertNull(final.progression)
         val edited = final.exerciseDraft().copy(notes = "Audited note").savedExercise()!!
-        assertEquals(final.measurements, edited.measurements)
-        assertEquals(final.timerSeconds, edited.timerSeconds)
-        final.measurements.durationSeconds?.let { assertTrue(edited.targetSummary().contains("$it seconds")) }
+        assertEquals(final.weightPounds, edited.weightPounds)
+        assertEquals(final.reps, edited.reps)
+        assertEquals(final.durationSeconds, edited.durationSeconds)
+        final.durationSeconds?.let { assertTrue(edited.targetSummary().contains("$it seconds")) }
     }
 
     @Test fun draftRecreationRetainsNestedStepsInsertionsAndEmptyDraft() {
@@ -96,16 +97,7 @@ class ProgressionAuditTest {
         val result = progressionResult(option)
         assertTrue(result.contains(option.source.name))
         option.additions.forEach { assertTrue(result.contains("Add: ${it.name}")) }
-        option.source.timerSeconds?.let { assertTrue(result.contains("Timer: $it seconds")) }
+        option.source.durationSeconds?.let { assertTrue(result.contains("Timer: $it seconds")) }
     }
 
-    @Test fun previewUsesDecimalCalculationAndShowsNoOptionAtBound() {
-        val draft = ExerciseDraft("decimal", "Hold", sets = "1", target = "Controlled",
-            automaticProgression = true, weightProgression = true, currentPounds = "0.1", poundsIncrement = "0.2")
-        assertEquals("More weight: 0.3 lb", draft.nextAutomaticPrescriptionPreview())
-        assertEquals("At configured limits", draft.copy(maximumPounds = "0.1").nextAutomaticPrescriptionPreview())
-        val huge = draft.copy(currentPounds = "1.0E20").savedExercise()!!
-        assertEquals(huge, huge.exerciseDraft().savedExercise())
-        assertTrue(progressionPrescription(huge).contains("100000000000000000000 lb"))
-    }
 }

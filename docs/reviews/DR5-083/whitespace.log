@@ -1,0 +1,15 @@
+warning: in the working copy of 'GuidedSession.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'RoutineEditor.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'TechnicalDesign.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/androidTest/java/dev/draftingroom5/ProgressionNativeAudit.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/AppDocument.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/CustomProgressionEditor.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/GuidedRoutineEditor.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/GuidedSessionScreen.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/dev/draftingroom5/ScheduleData.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/screenshotTest/kotlin/dev/draftingroom5/CoreShellScreenshots.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/test/java/dev/draftingroom5/ExerciseProgressionTest.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/test/java/dev/draftingroom5/GuidedRoutineEditorTest.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/test/java/dev/draftingroom5/GuidedSessionStateTest.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/test/java/dev/draftingroom5/GuidedSessionUiTest.kt', LF will be replaced by CRLF the next time Git touches it

@@ -19,7 +19,7 @@ class ScheduleDataTest {
         assertEquals(3, plan.routines.single { it.id == "routine-forearm" }.exercises.single { it.id == "exercise-finger-extension" }.setCount)
         val forearm = plan.routines.single { it.id == "routine-forearm" }
         assertEquals(8, forearm.exercises.size)
-        assertEquals(Exercise("exercise-hangboard", "Hangboard Holds", "Controlled edge hold", 3, "20 sec", 20, "hangboard"), forearm.exercises.first())
+        assertEquals(Exercise("exercise-hangboard", "Hangboard Holds", "Controlled edge hold", 3, null, 20, "hangboard"), forearm.exercises.first())
     }
 
     @Test fun removingRoutineCascadesOnlyItsLiveScheduleReferences() {
