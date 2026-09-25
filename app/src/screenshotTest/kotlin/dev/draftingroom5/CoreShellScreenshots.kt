@@ -504,3 +504,20 @@ fun StructuredTargetBoundaryScreenshots() {
         }
     }
 }
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun StructuredTargetPlacementScreenshots() {
+    DraftingRoom5Theme {
+        androidx.compose.material3.Surface {
+            androidx.compose.foundation.layout.Column(Modifier.fillMaxSize().padding(20.dp)
+                .verticalScroll(rememberScrollState())) {
+                StructuredTargetControls("", {}, false, {}, "", {}, "4", {}, "12", {})
+            }
+        }
+    }
+}
