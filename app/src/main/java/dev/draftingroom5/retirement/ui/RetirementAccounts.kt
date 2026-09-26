@@ -1,6 +1,7 @@
 package dev.draftingroom5.retirement.ui
 
 import android.content.Intent
+import android.os.UserManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -106,6 +107,26 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
+internal data class AccountDataLoadPresentation(
+    val state: RetirementState,
+    val message: String?,
+)
+
+internal fun accountDataLoadPresentation(
+    currentState: RetirementState,
+    result: Result<RetirementState>,
+    userUnlocked: Boolean,
+): AccountDataLoadPresentation = result.fold(
+    onSuccess = { AccountDataLoadPresentation(it, null) },
+    onFailure = {
+        AccountDataLoadPresentation(
+            currentState,
+            if (userUnlocked) "Account data couldn't be loaded. Try again."
+            else "Account data is unavailable until you unlock the phone.",
+        )
+    },
+)
+
 @Composable
 internal fun RetirementAccountsHost(
     route: AppRoute,
@@ -127,9 +148,16 @@ internal fun RetirementAccountsHost(
         onDispose { lifecycle.removeObserver(observer) }
     }
     LaunchedEffect(reload, previewState) {
-        if (previewState != null) state = previewState else runCatching {
-            withContext(Dispatchers.IO) { RetirementProviders.get(context).repository.load() }
-        }.onSuccess { state = it }.onFailure { message = "Account data is unavailable. Retry after unlocking the phone." }
+        if (previewState != null) state = previewState else {
+            val result = runCatching { withContext(Dispatchers.IO) { RetirementProviders.get(context).repository.load() } }
+            val presentation = accountDataLoadPresentation(
+                state,
+                result,
+                context.getSystemService(UserManager::class.java).isUserUnlocked,
+            )
+            state = presentation.state
+            message = presentation.message
+        }
     }
     val mutate: (((dev.draftingroom5.retirement.data.RetirementRepository) -> RetirementResult<RetirementState>), String) -> Unit = { operation, success ->
         if (previewState != null) message = "Preview action: $success" else scope.launch {
