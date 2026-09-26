@@ -1,0 +1,70 @@
+name: Export Play signing key
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Restore and verify existing signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/distribution.jks"
+          actual_fingerprint="$({ keytool -list -v \
+            -keystore "$RUNNER_TEMP/distribution.jks" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD"; } \
+            | sed -n 's/.*SHA256: //p' \
+            | head -n 1 \
+            | tr -d ':' \
+            | tr '[:upper:]' '[:lower:]')"
+          test "$actual_fingerprint" = "f63b0490744b684257226d04ac94cac742baf5764705daaa7810048899e2d37f"
+      - name: Download and verify Google PEPK
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            https://www.gstatic.com/play-apps-publisher-rapid/signing-tool/prod/pepk.jar \
+            --output "$RUNNER_TEMP/pepk.jar"
+          echo "aaccc0774b240aa5304bdad2a49865e92f229ca73209ecb6eaafe75dc858e24e  $RUNNER_TEMP/pepk.jar" \
+            | sha256sum --check --strict
+      - name: Create Google-encrypted signing-key transfer
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEY_PASSWORD"
+          java -jar "$RUNNER_TEMP/pepk.jar" \
+            --keystore "$RUNNER_TEMP/distribution.jks" \
+            --alias "$ANDROID_KEY_ALIAS" \
+            --output "$RUNNER_TEMP/DraftingRoom5-Play-signing-key.zip" \
+            --include-cert \
+            --rsa-aes-encryption \
+            --encryption-key-path .github/play-key-transfer/encryption_public_key.pem \
+            --keystore-pass "$ANDROID_KEYSTORE_PASSWORD" \
+            --key-pass "$ANDROID_KEY_PASSWORD"
+      - name: Upload encrypted transfer only
+        uses: actions/upload-artifact@v4
+        with:
+          name: DraftingRoom5-Play-signing-key
+          path: ${{ runner.temp }}/DraftingRoom5-Play-signing-key.zip
+          if-no-files-found: error
+          retention-days: 1
+
