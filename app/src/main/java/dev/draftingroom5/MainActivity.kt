@@ -2344,6 +2344,7 @@ private fun SessionCard(
     var menuExpanded by rememberSaveable(session.occurrence.scheduleEntryId, session.occurrence.scheduledDate) { mutableStateOf(initialMenuExpanded) }
     BackHandler(enabled = menuExpanded) { menuExpanded = false }
     val completed = session.action == SessionAction.DONE
+    val cardColor = if (completed) AppCompleted else AppSurfaceRaised
     val actionModifier = if (completed) Modifier else Modifier.clickable(
         onClickLabel = session.accessibilityAction,
         onClick = { if (menuExpanded) menuExpanded = false else onClick() },
@@ -2371,7 +2372,7 @@ private fun SessionCard(
                 stateDescription = if (completed) "Completed" else session.actionLabel
             }
             .then(if (completed) Modifier.border(1.dp, AppMint.copy(alpha = .7f), MaterialTheme.shapes.large) else Modifier),
-        containerColor = if (completed) AppCompleted else AppSurfaceRaised,
+        containerColor = cardColor,
     ) {
         Box(Modifier.fillMaxWidth().heightIn(min = 168.dp)) {
             Box(Modifier.matchParentSize()) {
@@ -2383,9 +2384,9 @@ private fun SessionCard(
                 alignment = Alignment.CenterEnd,
             )
             Box(
-                Modifier.align(Alignment.CenterEnd).fillMaxWidth(.56f).fillMaxHeight().background(
+                Modifier.align(Alignment.CenterEnd).fillMaxWidth(.7f).fillMaxHeight().background(
                     Brush.horizontalGradient(
-                        listOf(if (completed) AppCompleted else AppSurfaceRaised, Color.Transparent),
+                        listOf(cardColor, Color.Transparent),
                     ),
                 ),
             )
