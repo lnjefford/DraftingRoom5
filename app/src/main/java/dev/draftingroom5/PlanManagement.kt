@@ -82,6 +82,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
@@ -460,6 +461,7 @@ private fun ManagedScheduleCard(
                     painter = painterResource(RoutineArtworkCatalog.resolve(routine.artworkId).cardAsset),
                     contentDescription = null,
                     modifier = Modifier.width(92.dp).height(116.dp).clip(MaterialTheme.shapes.medium),
+                    contentScale = ContentScale.Crop,
                 )
             }
             Box {
@@ -548,6 +550,7 @@ private fun ManagedRoutineRow(
                     painter = painterResource(RoutineArtworkCatalog.resolve(routine.artworkId).cardAsset),
                     contentDescription = null,
                     modifier = Modifier.width(82.dp).height(92.dp).clip(MaterialTheme.shapes.medium),
+                    contentScale = ContentScale.Crop,
                 )
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -291,7 +291,7 @@ internal fun GuidedRoutineEditorScreen(
                         painter = painterResource(RoutineArtworkCatalog.resolve(working.artworkId).resource(RoutineArtworkCrop.HEADER)),
                         contentDescription = null,
                         modifier = Modifier.size(110.dp),
-                        contentScale = ContentScale.Fit,
+                        contentScale = ContentScale.Crop,
                     )
                 }
                 RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })

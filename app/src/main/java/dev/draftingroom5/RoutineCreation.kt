@@ -55,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -364,6 +365,7 @@ internal fun NewRoutineDraftScreen(
                 painter = painterResource(RoutineArtworkCatalog.resolve(artworkId).resource(RoutineArtworkCrop.HEADER)),
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
+                contentScale = ContentScale.Crop,
             )
             if (draft.execution == RoutineExecution.LINKED_APP) {
                 AppSurfaceCard(Modifier.fillMaxWidth()) {

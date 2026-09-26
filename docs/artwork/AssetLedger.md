@@ -1,5 +1,36 @@
 # Production artwork asset ledger
 
+## Editorial routine photography family — 2026-09-26
+
+- Tool: OpenAI built-in image generation. The managed image model identifier was not exposed.
+- Source: 12 original photorealistic workout scenes generated specifically for DraftingRoom5. The approved farmer's-walk exercise hero supplied the initial female-athlete and lighting direction; the generated generic-workout master then served as the identity reference for the remaining scenes. No third-party or stock imagery was used.
+- Recurring subject: one adult woman with warm-medium skin, a lean athletic feminine build, dark ponytail, black racerback training top, and charcoal leggings. Every people-based routine image uses this subject in the same dark navy gym with warm directional window light.
+- Masters: `docs/artwork/masters/routine_<id>.png`, 1536 × 1024 RGB landscape photography.
+- Runtime: `routine_<id>_{card,header,picker}.webp` in `app/src/main/res/drawable-nodpi/`. `prepare_routine_artwork.py` exports full-bleed 720 × 480 cards, 960 × 480 headers, and 320 × 320 pickers with bounded retry handling for transient OneDrive locks.
+- Review: `RoutineArtworkContactSheet.png` was inspected at phone-like scale. All 12 subjects remain recognizable in all three crops, faces and defining equipment are legible, and the categories are visually distinct.
+- Rights/provenance: generated specifically for DraftingRoom5 under the applicable OpenAI output terms; no intentional brands, logos, text, or watermarks.
+
+### Shared prompt direction
+
+> Premium photoreal editorial sports photography for a dark fitness app. Preserve the recurring adult woman's recognizable face, warm-medium skin, dark ponytail, lean athletic feminine build, black racerback top, and charcoal leggings. Use a dark navy boutique strength gym, matte rubber floor, directional warm window light, and cool navy shadows. Frame the defining action and equipment inside a center-safe landscape composition that also supports square crops. Exactly one woman; anatomically and mechanically accurate exercise; no male figure, text, logos, watermark, border, or collage.
+
+### Scene inventory
+
+| Stable ID | Scene | Variants |
+| --- | --- | --- |
+| `generic` | Athlete preparing to train while tightening a wrist wrap beside simple free weights. | card, header, picker |
+| `dumbbell` | Standing two-dumbbell shoulder press. | card, header, picker |
+| `grip_trainer` | Close three-quarter view using an adjustable gray hand gripper. | card, header, picker |
+| `hangboard` | Controlled two-hand dead hang from a wooden climbing hangboard. | card, header, picker |
+| `running_shoe` | Pre-run shoe-lacing pose in the gym's track corridor. | card, header, picker |
+| `kettlebell` | Technically correct two-hand kettlebell swing. | card, header, picker |
+| `leg_day` | Barbell back squat inside a power rack. | card, header, picker |
+| `full_body` | Loaded sled push in a low athletic stance. | card, header, picker |
+| `push_day` | Incline dumbbell chest press. | card, header, picker |
+| `pull_day` | Seated neutral-grip cable row. | card, header, picker |
+| `jump_rope` | Mid-skip with a thin black speed rope. | card, header, picker |
+| `stopwatch` | Athlete checking a handheld gray sports stopwatch after an interval. | card, header, picker |
+
 ## Rice-bag exercise artwork — 2026-09-13
 
 - Tool: OpenAI built-in image generation; managed image model identifier not exposed. Orchestrating model: `gpt-5.6-sol`.

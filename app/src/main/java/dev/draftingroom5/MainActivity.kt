@@ -2379,7 +2379,7 @@ private fun SessionCard(
                 painter = painterResource(RoutineArtworkCatalog.resolve(routine.artworkId).cardAsset),
                 contentDescription = null,
                 modifier = Modifier.align(Alignment.CenterEnd).fillMaxWidth(.7f).fillMaxHeight(),
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
                 alignment = Alignment.CenterEnd,
             )
             Box(

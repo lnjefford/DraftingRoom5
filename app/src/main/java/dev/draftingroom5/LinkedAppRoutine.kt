@@ -222,7 +222,7 @@ internal fun LinkedAppRoutineEditorScreen(
                     painter = painterResource(RoutineArtworkCatalog.resolve(artworkId).resource(RoutineArtworkCrop.HEADER)),
                     contentDescription = null,
                     modifier = Modifier.size(112.dp),
-                    contentScale = ContentScale.Fit,
+                    contentScale = ContentScale.Crop,
                 )
             }
             RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
@@ -326,7 +326,7 @@ internal fun RoutineArtworkSelection(pending: String, onSelect: (String) -> Unit
                             shape = RoundedCornerShape(18.dp),
                         ) {
                             Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Image(painterResource(asset.resource(RoutineArtworkCrop.PICKER)), null, Modifier.size(82.dp), contentScale = ContentScale.Fit)
+                                Image(painterResource(asset.resource(RoutineArtworkCrop.PICKER)), null, Modifier.size(82.dp), contentScale = ContentScale.Crop)
                                 Text(stringResource(asset.displayNameRes), style = MaterialTheme.typography.labelMedium)
                                 if (isSelected) Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Check, null, tint = AppMint, modifier = Modifier.size(16.dp))

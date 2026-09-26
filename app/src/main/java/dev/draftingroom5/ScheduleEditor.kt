@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -200,6 +201,7 @@ private fun RoutineChoiceRow(routine: Routine, selected: Boolean, onSelect: () -
                 painter = painterResource(RoutineArtworkCatalog.resolve(routine.artworkId).pickerAsset),
                 contentDescription = null,
                 modifier = Modifier.size(60.dp).clip(MaterialTheme.shapes.medium),
+                contentScale = ContentScale.Crop,
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(routine.name, fontWeight = FontWeight.Bold)
