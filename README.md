@@ -1,13 +1,14 @@
 # DraftingRoom5
 
-DraftingRoom5 is a native Android health dashboard. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
+DraftingRoom5 is a native Android health dashboard with a Wear OS workout companion. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
 
-The current production release is v0.27.34. It replaces Fitness exercise target text and automatic progression with structured Weight, Duration, Sets, and Reps, an optional ordered queue of complete planned prescriptions, and a fast Next exercise path with optional multi-field adjustment and Undo. The target steppers place the value before a consistent, right-aligned minus/plus pair for easier repeated use. It also restores compatibility with saved documents from v0.25.1 through v0.27.31 and introduces explicit schema versions plus permanent prior-release fixtures for future upgrades. Weight is stored in whole pounds and every weight control changes by exactly 5 lb. The v0.27.x line also includes the Finance workspace and its later forecast, account, property, import, library, and presentation refinements. Phase 10 audit and release evidence is in `docs/reviews/DR5-083/` and `docs/reviews/DR5-084/`; Phase 9 evidence remains in `docs/reviews/DR5-078/` and `docs/reviews/DR5-079/`.
+The current production release is v0.28.0. It adds the round-first Wear OS companion for starting or resuming today's guided routine, viewing exercise artwork and structured targets, running the 10-second readiness countdown and exercise timer, completing sets, and finishing the session from the wrist. Watch actions are cached locally and synchronized through the private Wear Data Layer; duplicate set commands are idempotent and the phone remains the durable session authority. The v0.27.x line introduced structured Weight, Duration, Sets, and Reps, optional planned prescriptions, the fast Next exercise path, document compatibility fixtures, and the Finance workspace refinements.
 
 ## Current scope
 
 - The next release requires Android 17 or newer (API 37); the development build compiles and targets API 37.
 - Native Android app built with Kotlin and Jetpack Compose.
+- Paired Wear OS 3+ companion built with Compose for Wear OS, persistent offline command projection, watch haptics, exercise artwork, and 41/45 mm screenshot coverage.
 - Health Connect permission flow for body mass, body-fat percentage, lean body mass, exercise sessions, and distance.
 - Today-focused training cards resolve their name, artwork, type, and launch behavior from one persistent routine model.
 - Dashboard trends always show the latest 30 days, independent of metric-detail ranges; scheduled cards support defer to tomorrow, skip today, and exact Undo.
@@ -53,6 +54,8 @@ This release supports Android 17+ (API 37). Android 17 runtime behavior is not c
 
 Open the project in Android Studio with Android SDK 37 and Java 17 or newer installed. On Windows, use `./tools/verify.ps1 -Tier Fast`, `Commit`, or `Release` as described in [the validation guide](docs/VALIDATION.md). The bootstrap validates `JAVA_HOME`, searches `%USERPROFILE%/.jdks`, a repository-local JDK under `.tooling/jdk17/`, and Android Studio's JBR, and isolates generated Gradle/build state under `%LOCALAPPDATA%\DraftingRoom5` to avoid OneDrive locks. Linux and macOS builds, including CI, continue to use `./gradlew testDebugUnitTest lintDebug assembleDebug`.
 
+Install `DraftingRoom5.apk` on the Android phone and `DraftingRoom5-Wear.apk` on its paired Wear OS watch. Both APKs must come from the same signed release. The watch is a non-standalone companion and requires a paired Android phone with DraftingRoom5 and Google Play services. Open the watch app to sync today's first resumable or scheduled guided routine. Timers continue locally and persisted set commands synchronize after a temporary disconnect; linked-app routines, routine editing, progression decisions, history, Health Connect, and Finance remain phone-only. See [WearCompanion.md](WearCompanion.md) for the interaction and synchronization contract.
+
 Add **DraftingRoom5 living icon** from the launcher's widget picker to place the one-cell tile. Android controls the exact delivery time of its approximately-hourly refresh, so the image is not promised to change on the hour; opening the app and system widget lifecycle events can also refresh the current time-selected look. The whole tile opens the normal app route.
 
 Open **Settings → Customize dashboard** to choose which training and metric sections appear, move them into the exact order you want, or restore the default layout. At least one section always remains visible. Open **Settings → Schedules & routines** to manage recurring weekday entries and both routine types. You can create, rename, illustrate, edit, schedule, reorder, launch, and delete guided and linked-app routines; changes persist on-device across restarts. Linked-app launch failures offer change-app and store recovery instead of a dead action.
@@ -71,7 +74,7 @@ DraftingRoom5 checks the latest public GitHub release twice daily when a network
 
 ## Publishing updates
 
-Configure GitHub Actions secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` with a backed-up, persistent Android signing key. Never commit the key or credentials. Publish increasing `vMAJOR.MINOR.PATCH` tags (minor and patch below 1000); the workflow assigns increasing version codes and attaches `DraftingRoom5.apk` to each release.
+Configure GitHub Actions secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` with a backed-up, persistent Android signing key. Never commit the key or credentials. Publish increasing `vMAJOR.MINOR.PATCH` tags (minor and patch below 1000); the workflow assigns matching increasing version codes and attaches `DraftingRoom5.apk` plus `DraftingRoom5-Wear.apk` to each release.
 
 Every push to `main` and every pull request targeting `main` runs unit tests, Android lint, and a debug build. The successful workflow retains its installable debug APK artifact for 14 days. Dependabot checks Gradle and GitHub Actions dependencies weekly; patch-only updates are grouped and set to squash auto-merge only after this complete verification workflow succeeds. Minor and major updates remain open for manual review. Versioned releases and signed APK publication remain tag-driven.
 

@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.DraftingRoom5.Wear" parent="android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#061424</item>
+        <item name="android:colorAccent">#2F82FF</item>
+    </style>
+</resources>

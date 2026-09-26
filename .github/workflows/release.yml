@@ -22,7 +22,7 @@ jobs:
         run: |
           test -n "$KEYSTORE_BASE64" || { echo "Configure the Android signing secrets before releasing."; exit 1; }
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/distribution.jks"
-      - name: Build signed APK
+      - name: Build signed phone and watch APKs
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/distribution.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -37,8 +37,11 @@ jobs:
           CODE=$((10#$MAJOR * 1000000 + 10#$MINOR * 1000 + 10#$PATCH + 2))
           ./gradlew assembleRelease -PappVersionName="$VERSION" -PappVersionCode="$CODE"
           cp app/build/outputs/apk/release/app-release.apk DraftingRoom5.apk
+          cp wear/build/outputs/apk/release/wear-release.apk DraftingRoom5-Wear.apk
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: DraftingRoom5.apk
+          files: |
+            DraftingRoom5.apk
+            DraftingRoom5-Wear.apk

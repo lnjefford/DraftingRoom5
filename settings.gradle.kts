@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "DraftingRoom5"
 include(":app")
+include(":wear")

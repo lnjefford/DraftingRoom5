@@ -55,6 +55,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".watch.PhoneWatchDataService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/draftingroom5/watch/command/" />
+            </intent-filter>
+        </service>
         <receiver android:name=".LivingIconWidgetProvider" android:exported="true"
             android:process=":living_icon"
             android:label="@string/living_icon_widget_label">
