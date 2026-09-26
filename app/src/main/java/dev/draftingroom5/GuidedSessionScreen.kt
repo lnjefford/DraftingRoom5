@@ -4,6 +4,8 @@ import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,16 +24,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -71,6 +71,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -696,48 +697,54 @@ internal fun GuidedSessionScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxSize().padding(padding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item(key = "progress") {
-                SessionProgress(presentation)
+                SessionProgress(presentation, Modifier.padding(horizontal = 20.dp))
             }
             if (error != null) item {
-                InlineErrorState("Session needs attention", error, "Dismiss", onDismissError)
+                Box(Modifier.padding(horizontal = 20.dp)) {
+                    InlineErrorState("Session needs attention", error, "Dismiss", onDismissError)
+                }
             }
             item(key = "exercise-header") {
                 CurrentExerciseHeader(presentation.focused, motionEnabled)
             }
             item(key = "set-panel") {
-                SetAndTimerPanel(
-                    presentation = presentation,
-                    session = session,
-                    onCompleteSet = onCompleteSet,
-                    onUndo = onUndo,
-                    onStartTimer = onStartTimer,
-                    onCancelTimer = onCancelTimer,
-                )
+                Box(Modifier.padding(horizontal = 20.dp)) {
+                    SetAndTimerPanel(
+                        presentation = presentation,
+                        session = session,
+                        onCompleteSet = onCompleteSet,
+                        onUndo = onUndo,
+                        onStartTimer = onStartTimer,
+                        onCancelTimer = onCancelTimer,
+                    )
+                }
             }
             sessionExerciseSection("UP NEXT", "up-next", presentation.upcoming, session.completedSets, onFocus)
             sessionExerciseSection("COMPLETED", "completed", presentation.completed, session.completedSets, onFocus)
             item {
-                if (presentation.readyToFinish) {
-                    Button(
-                        onClick = onFinish,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = AppMint, contentColor = AppBackgroundDeep),
-                    ) {
-                        Icon(Icons.Default.Check, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Finish session")
+                Column(Modifier.padding(horizontal = 20.dp)) {
+                    if (presentation.readyToFinish) {
+                        Button(
+                            onClick = onFinish,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AppMint, contentColor = AppBackgroundDeep),
+                        ) {
+                            Icon(Icons.Default.Check, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Finish session")
+                        }
                     }
+                    Text(
+                        "Progress saves automatically",
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
-                Text(
-                    "Progress saves automatically",
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                )
             }
         }
     }
@@ -946,62 +953,109 @@ private fun androidx.compose.foundation.lazy.LazyListScope.sessionExerciseSectio
     if (exercises.isEmpty()) return
     item(key = "$keyPrefix-heading") {
         Text(title, color = AppGold, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp,
-            modifier = Modifier.semantics { heading() })
+            modifier = Modifier.padding(horizontal = 20.dp).semantics { heading() })
     }
     items(exercises, key = Exercise::id) { exercise ->
-        UpcomingExerciseRow(exercise, completedSets.getValue(exercise.id), onFocus)
+        Box(Modifier.padding(horizontal = 20.dp)) {
+            UpcomingExerciseRow(exercise, completedSets.getValue(exercise.id), onFocus)
+        }
     }
 }
 
 @Composable
-private fun SessionProgress(presentation: GuidedSessionPresentation) {
+private fun SessionProgress(presentation: GuidedSessionPresentation, modifier: Modifier = Modifier) {
+    val fontScale = LocalDensity.current.fontScale
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "${presentation.focusedIndex + 1} of ${presentation.totalExercises} exercises",
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelLarge,
-        )
-        Text(
-            if (presentation.readyToFinish) "All complete" else "In progress",
-            modifier = Modifier.fillMaxWidth(),
-            color = if (presentation.readyToFinish) AppMint else AppBlue,
-            textAlign = TextAlign.End,
-        )
+        val position: @Composable () -> Unit = {
+            Text(
+                "${presentation.focusedIndex + 1} of ${presentation.totalExercises} exercises",
+                color = if (presentation.readyToFinish) AppMint else AppBlue,
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        val status: @Composable () -> Unit = {
+            Text(
+                if (presentation.readyToFinish) "ALL COMPLETE" else "IN PROGRESS",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                letterSpacing = 1.4.sp,
+            )
+        }
+        if (fontScale >= 1.75f) {
+            Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                position()
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) { status() }
+            }
+        } else {
+            Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                position()
+                status()
+            }
+        }
         LinearProgressIndicator(
             progress = { presentation.setProgress },
-            modifier = Modifier.fillMaxWidth().height(4.dp),
+            modifier = modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
             color = if (presentation.readyToFinish) AppMint else AppBlue,
             trackColor = AppBorder,
         )
-        Text("Focused exercise: ${presentation.focused.name}", modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        Text(
+            "Focused exercise: ${presentation.focused.name}",
+            modifier = Modifier.clearAndSetSemantics { liveRegion = LiveRegionMode.Polite; contentDescription = "Focused exercise: ${presentation.focused.name}" }.height(0.dp),
+        )
     }
 }
 
 @Composable
 private fun CurrentExerciseHeader(exercise: Exercise, motionEnabled: Boolean) {
     val fontScale = LocalDensity.current.fontScale
-    val artworkWidth = if (fontScale >= 1.75f) 168.dp else 220.dp
-    val artworkHeight = if (fontScale >= 1.75f) 84.dp else 108.dp
     val artwork = ExerciseArtworkCatalog.resolve(exercise.artworkId)
-    AppSurfaceCard(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Text("CURRENT EXERCISE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-            HorizontalDivider(Modifier.width(36.dp), thickness = 2.dp, color = AppGold)
-            BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                Image(
-                    painter = painterResource(artwork.headerAsset),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.width(minOf(maxWidth, artworkWidth)).height(artworkHeight)
-                        .alpha(if (motionEnabled) 0.9f else 0.82f),
-                )
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val heroHeight = when {
+            fontScale >= 1.75f -> 430.dp
+            maxWidth < 360.dp -> 360.dp
+            else -> 420.dp
+        }
+        Box(Modifier.fillMaxWidth().height(heroHeight)) {
+            Image(
+                painter = painterResource(artwork.headerAsset),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().alpha(if (motionEnabled) 1f else 0.96f),
+            )
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.46f to AppBackgroundDeep.copy(alpha = 0.08f),
+                        0.72f to AppBackgroundDeep.copy(alpha = 0.78f),
+                        1f to AppBackground,
+                    ),
+                ),
+            )
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.horizontalGradient(
+                        0f to AppBackgroundDeep.copy(alpha = 0.28f),
+                        0.55f to Color.Transparent,
+                    ),
+                ),
+            )
+            Column(
+                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text("CURRENT EXERCISE", color = AppGold, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp)
+                Text(exercise.name, style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onSurface)
+                if (exercise.notes.isNotBlank()) {
+                    Text(
+                        exercise.notes.uppercase(),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                        letterSpacing = 1.2.sp,
+                    )
+                }
+                Text(exercise.targetSummary().uppercase(), color = AppBlue, style = MaterialTheme.typography.titleMedium)
             }
-            Text(exercise.name, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
-            if (exercise.notes.isNotBlank()) Text(exercise.notes, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${exercise.setCount} sets · ${exercise.targetSummary()}", color = AppBlue, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -1025,22 +1079,22 @@ private fun SetAndTimerPanel(
     LaunchedEffect(exercise.id, session.timer.phase) {
         presentation.timer?.let { accessibilityView.announceForAccessibility(it.phaseLabel) }
     }
-    AppSurfaceCard(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        if (currentComplete) "All ${exercise.setCount} sets complete" else "Set ${presentation.completedSets + 1} of ${exercise.setCount}",
-                        style = MaterialTheme.typography.titleLarge,
+                        when {
+                            currentComplete -> "ALL SETS COMPLETE"
+                            presentation.completedSets + 1 == exercise.setCount -> "FINAL SET"
+                            else -> "SET ${presentation.completedSets + 1} OF ${exercise.setCount}"
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        letterSpacing = 1.6.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                    if (fontScale >= 1.75f || exercise.setCount > 3) {
-                        SetIndicators(exercise.setCount, presentation.completedSets)
-                    }
-                }
-                if (fontScale < 1.75f && exercise.setCount <= 3) {
                     SetIndicators(exercise.setCount, presentation.completedSets)
                 }
                 if (presentation.completedSets > 0) {
@@ -1048,7 +1102,7 @@ private fun SetAndTimerPanel(
                         IconButton(
                             onClick = { optionsExpanded = true },
                             modifier = Modifier.size(48.dp).semantics { contentDescription = "Set options for ${exercise.name}" },
-                        ) { Icon(Icons.Default.MoreVert, null) }
+                        ) { Icon(Icons.Default.MoreVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                         DropdownMenu(expanded = optionsExpanded, onDismissRequest = { optionsExpanded = false }) {
                             DropdownMenuItem(
                                 text = { Text("Undo last set") },
@@ -1127,32 +1181,31 @@ private fun SetAndTimerPanel(
                 Button(
                     onClick = { onCompleteSet(exercise.id, presentation.completedSets + 1) },
                     enabled = presentation.timer?.completeSetEnabled != false,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AppBlue, contentColor = AppBackgroundDeep),
                 ) { Text("Complete set") }
             }
-        }
     }
 }
 
 @Composable
 private fun SetIndicators(total: Int, completed: Int) {
     if (total > 6) {
-        Text("$completed of $total sets complete")
+        Text("$completed of $total sets complete", color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
     Row(
-        modifier = Modifier.clearAndSetSemantics { contentDescription = "$completed of $total sets complete" },
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = "$completed of $total sets complete" },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         repeat(total) { index ->
             val setNumber = index + 1
             val done = setNumber <= completed
             val current = setNumber == completed + 1
-            Icon(
-                imageVector = when { done -> Icons.Default.CheckCircle; current -> Icons.Default.RadioButtonChecked; else -> Icons.Default.Circle },
-                contentDescription = when { done -> "Set $setNumber complete"; current -> "Set $setNumber current"; else -> "Set $setNumber upcoming" },
-                tint = when { done -> AppMint; current -> AppBlue; else -> AppBorder },
-                modifier = Modifier.size(24.dp),
+            Box(
+                Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(
+                    when { done -> AppMint; current -> AppBlue; else -> AppBorder },
+                ),
             )
         }
     }
@@ -1162,20 +1215,20 @@ private fun SetIndicators(total: Int, completed: Int) {
 private fun UpcomingExerciseRow(exercise: Exercise, completedSets: Int, onFocus: (String) -> Unit) {
     val artwork = ExerciseArtworkCatalog.resolve(exercise.artworkId)
     val completed = completedSets == exercise.setCount
-    AppSurfaceCard(
-        Modifier.fillMaxWidth().heightIn(min = 76.dp).clickable(role = Role.Button) { onFocus(exercise.id) }
+    Column(
+        Modifier.fillMaxWidth().clickable(role = Role.Button) { onFocus(exercise.id) }
             .semantics { stateDescription = if (completed) "Complete" else "$completedSets of ${exercise.setCount} sets complete" },
     ) {
-        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 82.dp).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Image(
                 painter = painterResource(artwork.listAsset),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.size(58.dp).clip(MaterialTheme.shapes.medium).aspectRatio(1f),
+                modifier = Modifier.size(62.dp).clip(RoundedCornerShape(14.dp)).border(1.dp, AppBorder, RoundedCornerShape(14.dp)).aspectRatio(1f),
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(exercise.name, style = MaterialTheme.typography.titleMedium)
+                Text(exercise.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                 Text(
                     if (completed) "Completed · ${exercise.targetSummary()}" else "$completedSets of ${exercise.setCount} sets · ${exercise.targetSummary()}",
                     color = if (completed) AppMint else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1184,6 +1237,7 @@ private fun UpcomingExerciseRow(exercise: Exercise, completedSets: Int, onFocus:
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = AppBlue)
         }
+        HorizontalDivider(color = AppBorder.copy(alpha = 0.8f))
     }
 }
 
