@@ -22,7 +22,7 @@ jobs:
         run: |
           test -n "$KEYSTORE_BASE64" || { echo "Configure the Android signing secrets before releasing."; exit 1; }
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/distribution.jks"
-      - name: Build signed phone and watch APKs
+      - name: Build signed GitHub APKs and Google Play bundles
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/distribution.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -34,10 +34,19 @@ jobs:
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Use a vMAJOR.MINOR.PATCH tag"; exit 1; }
           IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
           (( MAJOR < 2000 && MINOR < 1000 && PATCH < 1000 )) || exit 1
-          CODE=$((10#$MAJOR * 1000000 + 10#$MINOR * 1000 + 10#$PATCH + 2))
-          ./gradlew assembleRelease -PappVersionName="$VERSION" -PappVersionCode="$CODE"
+          BASE_CODE=$((10#$MAJOR * 1000000 + 10#$MINOR * 1000 + 10#$PATCH + 2))
+          PHONE_CODE=$((BASE_CODE * 10))
+          WEAR_CODE=$((BASE_CODE * 10 + 1))
+          (( WEAR_CODE <= 2100000000 )) || { echo "Calculated version codes exceed Google Play's limit"; exit 1; }
+          ./gradlew :app:assembleRelease :wear:assembleRelease :app:bundlePlay :wear:bundlePlay \
+            -PappVersionName="$VERSION" -PphoneVersionCode="$PHONE_CODE" -PwearVersionCode="$WEAR_CODE"
+          PLAY_MANIFEST=app/build/intermediates/bundle_manifest/play/processApplicationManifestPlayForBundle/AndroidManifest.xml
+          ! grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' "$PLAY_MANIFEST"
+          ! grep -q 'dev.draftingroom5.updates' "$PLAY_MANIFEST"
           cp app/build/outputs/apk/release/app-release.apk DraftingRoom5.apk
           cp wear/build/outputs/apk/release/wear-release.apk DraftingRoom5-Wear.apk
+          cp app/build/outputs/bundle/play/app-play.aab DraftingRoom5-Play.aab
+          cp wear/build/outputs/bundle/play/wear-play.aab DraftingRoom5-Wear-Play.aab
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -45,3 +54,5 @@ jobs:
           files: |
             DraftingRoom5.apk
             DraftingRoom5-Wear.apk
+            DraftingRoom5-Play.aab
+            DraftingRoom5-Wear-Play.aab

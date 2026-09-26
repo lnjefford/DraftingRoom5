@@ -14,8 +14,9 @@ android {
         minSdk = 37
         targetSdk = 37
         testInstrumentationRunner = "dev.draftingroom5.WidgetAuditInstrumentation"
-        versionCode = providers.gradleProperty("appVersionCode").orElse("28006").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.28.4").get()
+        versionCode = providers.gradleProperty("phoneVersionCode").orElse("280070").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.28.5").get()
+        buildConfigField("boolean", "PLAY_DISTRIBUTION", "false")
     }
 
     signingConfigs {
@@ -31,6 +32,12 @@ android {
     }
     buildTypes {
         getByName("release") { signingConfig = signingConfigs.getByName("distribution") }
+        create("play") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("distribution")
+            buildConfigField("boolean", "PLAY_DISTRIBUTION", "true")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     buildFeatures { compose = true; buildConfig = true }

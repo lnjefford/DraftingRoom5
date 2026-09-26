@@ -74,7 +74,7 @@ DraftingRoom5 checks the latest public GitHub release twice daily when a network
 
 ## Publishing updates
 
-Configure GitHub Actions secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` with a backed-up, persistent Android signing key. Never commit the key or credentials. Publish increasing `vMAJOR.MINOR.PATCH` tags (minor and patch below 1000); the workflow assigns matching increasing version codes and attaches `DraftingRoom5.apk` plus `DraftingRoom5-Wear.apk` to each release.
+Configure GitHub Actions secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` with a backed-up, persistent Android signing key. Never commit the key or credentials. Publish increasing `vMAJOR.MINOR.PATCH` tags (minor and patch below 1000); the workflow assigns unique increasing phone and watch version codes and attaches the GitHub-distributed APKs plus `DraftingRoom5-Play.aab` and `DraftingRoom5-Wear-Play.aab` to each release. The Play phone bundle omits the GitHub self-updater's package-install permission and update entry point. See [GooglePlayDistribution.md](docs/GooglePlayDistribution.md) for the upload workflow.
 
 Every push to `main` and every pull request targeting `main` runs unit tests, Android lint, and a debug build. The successful workflow retains its installable debug APK artifact for 14 days. Dependabot checks Gradle and GitHub Actions dependencies weekly; patch-only updates are grouped and set to squash auto-merge only after this complete verification workflow succeeds. Minor and major updates remain open for manual review. Versioned releases and signed APK publication remain tag-driven.
 

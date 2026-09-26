@@ -122,7 +122,14 @@ internal fun updateSettingsPresentation(
     busy: Boolean,
     actionMessage: String?,
     versionName: String,
+    managedByPlay: Boolean = BuildConfig.PLAY_DISTRIBUTION,
 ): UpdateSettingsPresentation = when {
+    managedByPlay -> UpdateSettingsPresentation(
+        "Version $versionName · Updates managed by Google Play",
+        "Automatic",
+        false,
+        SettingsStatusTone.POSITIVE,
+    )
     busy -> UpdateSettingsPresentation(actionMessage ?: "Checking for updates…", "Working…", false, SettingsStatusTone.NEUTRAL)
     actionMessage?.let { it.contains("failed", ignoreCase = true) || it.contains("could not", ignoreCase = true) } == true -> UpdateSettingsPresentation(
         actionMessage,

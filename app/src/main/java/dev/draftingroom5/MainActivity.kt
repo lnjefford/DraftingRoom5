@@ -327,7 +327,7 @@ private fun DraftingRoom5App() {
         pendingUpdateInstall = false
     }
     val checkAndInstallUpdate: () -> Unit = {
-        if (!updateBusy) {
+        if (!BuildConfig.PLAY_DISTRIBUTION && !updateBusy) {
             updateBusy = true
             updateActionMessage = "Checking for updates…"
             coroutineScope.launch {

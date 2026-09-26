@@ -46,6 +46,21 @@ class SettingsSupportTest {
         assertEquals("Retry", updateSettingsPresentation(AppUpdateStatus(availableVersion = "2.4.0"), false, "Could not open the installer", "2.3.4").actionLabel)
     }
 
+    @Test fun playManagedUpdateSummaryIsInformationalAndDisabled() {
+        val presentation = updateSettingsPresentation(
+            AppUpdateStatus(availableVersion = "9.9.9", lastError = "Ignored"),
+            busy = true,
+            actionMessage = "Ignored",
+            versionName = "2.3.4",
+            managedByPlay = true,
+        )
+
+        assertEquals("Version 2.3.4 · Updates managed by Google Play", presentation.summary)
+        assertEquals("Automatic", presentation.actionLabel)
+        assertFalse(presentation.enabled)
+        assertEquals(SettingsStatusTone.POSITIVE, presentation.tone)
+    }
+
     @Test fun interruptedUpdateWorkRecoversAfterRecreationWithoutAStuckBusyState() {
         listOf("Checking for updates…", "Downloading version 2.4.0…", "Opening Android's installer…").forEach { working ->
             assertEquals(working, dashboardUpdateAnnouncement("2.4.0", true, working))

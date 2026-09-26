@@ -43,6 +43,7 @@ internal class AppUpdateManager(context: Context) {
     )
 
     fun schedule() {
+        if (BuildConfig.PLAY_DISTRIBUTION) return
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         val periodic = PeriodicWorkRequestBuilder<AppUpdateCheckWorker>(12, TimeUnit.HOURS)
             .setConstraints(constraints)
@@ -56,6 +57,7 @@ internal class AppUpdateManager(context: Context) {
     }
 
     fun requestCheckIfStale(nowMillis: Long = System.currentTimeMillis()) {
+        if (BuildConfig.PLAY_DISTRIBUTION) return
         val lastChecked = status().lastCheckedMillis
         if (lastChecked != null && nowMillis - lastChecked < STALE_AFTER_MILLIS) return
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()

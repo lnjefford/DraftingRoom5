@@ -13,8 +13,8 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 30
         targetSdk = 37
-        versionCode = providers.gradleProperty("appVersionCode").orElse("28006").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.28.4").get()
+        versionCode = providers.gradleProperty("wearVersionCode").orElse("280071").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.28.5").get()
     }
 
     signingConfigs {
@@ -30,6 +30,11 @@ android {
     }
     buildTypes {
         getByName("release") { signingConfig = signingConfigs.getByName("distribution") }
+        create("play") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("distribution")
+            matchingFallbacks += listOf("release")
+        }
     }
     buildFeatures { compose = true }
     sourceSets.getByName("main") {
