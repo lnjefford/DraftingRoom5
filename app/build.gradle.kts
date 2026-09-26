@@ -46,7 +46,7 @@ android {
 dependencies {
     // Keep the independently audited provider SDK version pinned.
     implementation("com.plaid.link:sdk-core:5.5.5")
-    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha15") {
+    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16") {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }
     screenshotTestImplementation("androidx.compose.ui:ui-tooling")
