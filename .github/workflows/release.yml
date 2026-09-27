@@ -56,3 +56,21 @@ jobs:
             DraftingRoom5-Wear.apk
             DraftingRoom5-Play.aab
             DraftingRoom5-Wear-Play.aab
+      - name: Publish phone bundle to Google Play internal testing
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.draftingroom5
+          releaseFiles: DraftingRoom5-Play.aab
+          releaseName: ${{ github.ref_name }}
+          tracks: internal
+          status: completed
+      - name: Publish watch bundle to Google Play Wear internal testing
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.draftingroom5
+          releaseFiles: DraftingRoom5-Wear-Play.aab
+          releaseName: ${{ github.ref_name }}
+          tracks: wear:internal
+          status: completed
