@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("com.android.compose.screenshot") version "0.0.1-alpha15"
+    id("com.android.compose.screenshot") version "0.0.1-alpha16"
 }
 
 android {
@@ -58,7 +58,7 @@ dependencies {
     implementation(libs.google.play.services.wearable)
     testImplementation(libs.junit)
     testImplementation(libs.json)
-    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha15") {
+    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16") {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }
     screenshotTestImplementation(libs.androidx.compose.ui.tooling)
