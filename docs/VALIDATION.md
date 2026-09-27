@@ -1,8 +1,8 @@
 # Validation workflow
 
 Use `tools/verify.ps1` for routine and release validation on Windows. It provides
-three deliberately different gates so the full screenshot matrix is not paid for
-after every source edit.
+path-aware routine validation plus broad audit gates so the full screenshot matrix
+is paid for only when the changed behavior can affect in-app visuals.
 
 ## Tiers
 
@@ -10,18 +10,38 @@ after every source edit.
 # During implementation: pass one or more directly affected JVM test patterns.
 ./tools/verify.ps1 -Tier Fast -Tests 'dev.draftingroom5.retirement.ForecastCoordinatorTest'
 
-# Before committing a coherent change set.
+# Before routine commits: inspect the working-tree diff and run affected checks.
+./tools/verify.ps1 -Tier Changed
+
+# Preview automatic classification without running Gradle.
+./tools/verify.ps1 -Tier Changed -PlanOnly
+
+# Override classification when the intended scope is known.
+./tools/verify.ps1 -Tier Changed -Scope Wear
+
+# Before committing a broad non-visual change across both modules.
 ./tools/verify.ps1 -Tier Commit
 
-# Once, immediately before the version commit and tag.
+# For broad in-app UI changes or an explicit full-release audit.
 ./tools/verify.ps1 -Tier Release
 ```
 
 `Fast` runs `git diff --check` and the requested unit-test filters. Without
 `-Tests`, it intentionally runs the complete unit suite rather than guessing an
-unsafe subset. `Commit` runs the unit suite, lint, and APK assembly as separate
-Gradle invocations so D8, lint, and tests do not compete for heap. `Release` adds
-the complete screenshot comparison after the commit gate.
+unsafe subset.
+
+`Changed` reads tracked, staged, and untracked working-tree paths. It validates
+PowerShell and XML syntax, scopes Gradle work to `app`, `wear`, or both, skips
+unit tests for resource-only changes, and runs screenshot validation only when
+changed resources or source contain in-app visual content. Launcher mipmaps,
+launcher vectors, and icon-only manifest edits are intentionally excluded from
+the in-app screenshot matrix. Version-only Gradle edits inherit their module
+scope without forcing unit recompilation.
+
+`Commit` runs the complete unit suite, lint, and APK assembly as separate Gradle
+invocations so D8, lint, and tests do not compete for heap. `Release` adds the
+complete screenshot comparison after the commit gate. Every tier prints per-phase
+timings so future regressions are visible.
 
 For a known visual change, update only the relevant preview class, inspect the
 changed PNGs, and then validate it:
@@ -33,6 +53,20 @@ changed PNGs, and then validate it:
 
 Omit `-ScreenshotTests` only when the complete visual baseline genuinely needs
 refreshing. Never accept reference changes solely to make validation green.
+
+## Choosing the smallest safe tier
+
+- Documentation, workflow, and validation-script edits: `Changed` performs
+  whitespace and syntax checks without starting Gradle.
+- Launcher icons and icon-only manifest edits: `Changed` runs module lint and
+  APK assembly, but not unrelated in-app screenshots.
+- Module-local Kotlin logic: `Changed` runs that module's tests, lint, and APK
+  assembly.
+- Kotlin files containing Compose UI or in-app visual resources: `Changed`
+  adds that module's screenshot validation.
+- Shared protocol, root Gradle, or cross-module changes: use `Commit`, or
+  `Changed -Scope All` during iteration.
+- Broad UI changes or screenshot-tooling changes: use `Release`.
 
 ## Saved-data compatibility gate
 

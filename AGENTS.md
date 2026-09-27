@@ -18,9 +18,18 @@ path under `%LOCALAPPDATA%\DraftingRoom5` so OneDrive cannot lock generated
 files. The canonical tiers and troubleshooting rules are in
 `docs/VALIDATION.md` and must be followed by future sessions:
 
-- `Fast` with explicit `-Tests` while implementing;
-- `Commit` once for unit tests, lint, and debug APK assembly;
-- `Release` once on stable source, adding the full screenshot matrix.
+- `Fast` with explicit `-Tests` while implementing logic;
+- `Changed` before routine commits, automatically scoping tests, lint, assembly,
+  and screenshots to affected modules and change types;
+- `Commit` for broad non-visual changes spanning both modules;
+- `Release` only for broad in-app UI changes, screenshot infrastructure changes,
+  or an explicit full-release audit.
+
+Launcher icons, manifests, documentation, workflows, and other module-local
+resource changes should use `Changed`; they do not require the complete
+in-app screenshot matrix. Use `-Scope App`, `-Scope Wear`, or `-Scope All`
+to override automatic classification when needed. Use `-PlanOnly` to inspect
+the selected checks without running them.
 
 Do not routinely run `clean`, do not combine memory-heavy gates manually, and
 do not update screenshot references unless the visual change is intentional and
