@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:name="launcher_safe_zone" android:pivotX="54" android:pivotY="54" android:scaleX="1" android:scaleY="1">
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:fillColor="@android:color/transparent" android:pathData="M86,54a32,32 0,1 1,-64 0a32,32 0,1 1,64 0" />
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.2" android:strokeLineCap="round" android:fillColor="@android:color/transparent" android:pathData="M79.83,66.04a28.5,28.5 0,0 1,-18.45 15.49M28.17,41.96a28.5,28.5 0,0 1,18.45 -15.49" />
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="0.9" android:strokeLineCap="round" android:fillColor="@android:color/transparent" android:pathData="M77.63,69.94L79.52,72.48M73.8,74.5L75.12,77.38M69.11,78.17L69.8,81.26M63.75,80.78L63.78,83.95M30.37,38.06L28.48,35.52M34.2,33.5L32.88,30.62M38.89,29.83L38.2,26.74M44.25,27.22L44.22,24.05" />
+        <group android:name="launcher_numeral" android:pivotX="54" android:pivotY="54" android:scaleX="0.79" android:scaleY="0.79" android:translateX="-1" android:translateY="-2">
+            <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M36,29h37v11h-23v10h10c12,0 20,7 20,17c0,12 -9,19 -23,19c-10,0 -19,-4 -24,-11l9,-7c4,5 9,7 15,7c7,0 11,-3 11,-8c0,-5 -4,-8 -11,-8h-21zM44,29h4v6h-4zM53,29h4v6h-4zM62,29h4v6h-4z" />
+        </group>
+    </group>
+</vector>

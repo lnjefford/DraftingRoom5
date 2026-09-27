@@ -7,8 +7,9 @@
         android:usesCleartextTraffic="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/watch_app_icon"
+        android:icon="@mipmap/ic_launcher"
         android:label="DraftingRoom5"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.DraftingRoom5.Wear">
         <uses-library android:name="com.google.android.wearable" android:required="true" />
         <meta-data android:name="com.google.android.wearable.standalone" android:value="false" />
