@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("com.android.compose.screenshot") version "0.0.1-alpha16"
+    id("com.android.compose.screenshot") version "0.0.1-alpha15"
 }
 
 android {
@@ -52,8 +52,8 @@ android {
 
 dependencies {
     // Keep the independently audited provider SDK version pinned.
-    implementation("com.plaid.link:sdk-core:6.2.2")
-    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16") {
+    implementation("com.plaid.link:sdk-core:5.5.5")
+    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha15") {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }
     screenshotTestImplementation("androidx.compose.ui:ui-tooling")

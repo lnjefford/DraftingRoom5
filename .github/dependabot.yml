@@ -9,6 +9,15 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - dependencies
+    ignore:
+      # Visual stack updates require an explicit screenshot-baseline review.
+      - dependency-name: "com.android.application"
+      - dependency-name: "androidx.compose:compose-bom"
+      - dependency-name: "com.android.compose.screenshot"
+      - dependency-name: "com.android.tools.screenshot:screenshot-validation-api"
+      - dependency-name: "org.jetbrains.kotlin.plugin.compose"
+      - dependency-name: "gradle-wrapper"
+      - dependency-name: "com.plaid.link:sdk-core"
     groups:
       all-gradle-updates:
         patterns:
