@@ -1,12 +1,12 @@
 [versions]
 agp = "9.1.1"
 kotlin = "2.2.10"
-coreKtx = "1.15.0"
+coreKtx = "1.19.1"
 lifecycle = "2.8.7"
 activityCompose = "1.10.0"
 composeBom = "2024.12.01"
 healthConnect = "1.1.0"
-workManager = "2.10.1"
+workManager = "2.12.0"
 wearActivityCompose = "1.13.0"
 wearCompose = "1.7.0"
 wearComposeBom = "2026.09.00"
@@ -32,7 +32,7 @@ androidx-wear-compose-foundation = { group = "androidx.wear.compose", name = "co
 androidx-wear-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "wearCompose" }
 google-play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "wearable" }
 junit = { group = "junit", name = "junit", version = "4.13.2" }
-json = { group = "org.json", name = "json", version = "20240303" }
+json = { group = "org.json", name = "json", version = "20260814" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
