@@ -1,0 +1,151 @@
+name: Dependabot release
+
+on:
+  repository_dispatch:
+    types: [dependabot-merged]
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: dependabot-release
+  cancel-in-progress: false
+
+jobs:
+  version-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create one release for untagged Dependabot updates
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const main = await github.rest.git.getRef({ owner, repo, ref: "heads/main" });
+            const mainSha = main.data.object.sha;
+            const tags = await github.paginate(github.rest.repos.listTags, {
+              owner,
+              repo,
+              per_page: 100
+            });
+            const releases = tags
+              .map(tag => {
+                const match = /^v(\d+)\.(\d+)\.(\d+)$/.exec(tag.name);
+                return match && {
+                  name: tag.name,
+                  sha: tag.commit.sha,
+                  parts: match.slice(1).map(Number)
+                };
+              })
+              .filter(Boolean)
+              .sort((left, right) => {
+                for (let index = 0; index < 3; index += 1) {
+                  if (left.parts[index] !== right.parts[index]) {
+                    return right.parts[index] - left.parts[index];
+                  }
+                }
+                return 0;
+              });
+            if (!releases.length) {
+              throw new Error("No semantic release tag exists.");
+            }
+            const latest = releases[0];
+            if (latest.sha === mainSha) {
+              core.info(`${latest.name} already points at main; there is nothing to release.`);
+              return;
+            }
+
+            let [major, minor, patch] = latest.parts;
+            patch += 1;
+            if (patch >= 1000) {
+              patch = 0;
+              minor += 1;
+            }
+            if (minor >= 1000) {
+              minor = 0;
+              major += 1;
+            }
+            if (major >= 2000) {
+              throw new Error("The calculated version exceeds the supported version-code range.");
+            }
+            const version = `${major}.${minor}.${patch}`;
+            const tagName = `v${version}`;
+            const baseCode = major * 1000000 + minor * 1000 + patch + 2;
+            const phoneCode = baseCode * 10;
+            const wearCode = phoneCode + 1;
+
+            async function updatedBlob(path, versionCode) {
+              const response = await github.rest.repos.getContent({
+                owner,
+                repo,
+                path,
+                ref: mainSha
+              });
+              const current = Buffer.from(response.data.content, "base64").toString("utf8");
+              const next = current
+                .replace(
+                  /(versionCode\s*=\s*providers\.gradleProperty\("[^\"]+"\)\.orElse\(")[0-9]+("\)\.get\(\)\.toInt\(\))/,
+                  `$1${versionCode}$2`
+                )
+                .replace(
+                  /(versionName\s*=\s*providers\.gradleProperty\("appVersionName"\)\.orElse\(")[^"]+("\)\.get\(\))/,
+                  `$1${version}$2`
+                );
+              if (next === current) {
+                throw new Error(`Could not update version defaults in ${path}.`);
+              }
+              const blob = await github.rest.git.createBlob({
+                owner,
+                repo,
+                content: next,
+                encoding: "utf-8"
+              });
+              return { path, mode: "100644", type: "blob", sha: blob.data.sha };
+            }
+
+            const [phone, wear] = await Promise.all([
+              updatedBlob("app/build.gradle.kts", phoneCode),
+              updatedBlob("wear/build.gradle.kts", wearCode)
+            ]);
+            const baseCommit = await github.rest.git.getCommit({ owner, repo, commit_sha: mainSha });
+            const tree = await github.rest.git.createTree({
+              owner,
+              repo,
+              base_tree: baseCommit.data.tree.sha,
+              tree: [phone, wear]
+            });
+            const commit = await github.rest.git.createCommit({
+              owner,
+              repo,
+              message: `Release ${tagName} after Dependabot updates`,
+              tree: tree.data.sha,
+              parents: [mainSha]
+            });
+            await github.rest.git.updateRef({
+              owner,
+              repo,
+              ref: "heads/main",
+              sha: commit.data.sha,
+              force: false
+            });
+            const tag = await github.rest.git.createTag({
+              owner,
+              repo,
+              tag: tagName,
+              message: `DraftingRoom5 ${tagName}`,
+              object: commit.data.sha,
+              type: "commit"
+            });
+            await github.rest.git.createRef({
+              owner,
+              repo,
+              ref: `refs/tags/${tagName}`,
+              sha: tag.data.sha
+            });
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: "release.yml",
+              ref: tagName
+            });
+            core.notice(`Created ${tagName} and started its release workflow.`);

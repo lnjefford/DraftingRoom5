@@ -10,9 +10,9 @@ updates:
     labels:
       - dependencies
     groups:
-      gradle-patch-updates:
-        update-types:
-          - patch
+      all-gradle-updates:
+        patterns:
+          - "*"
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -23,6 +23,6 @@ updates:
     labels:
       - dependencies
     groups:
-      actions-patch-updates:
-        update-types:
-          - patch
+      all-actions-updates:
+        patterns:
+          - "*"

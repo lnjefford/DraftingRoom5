@@ -1,4 +1,4 @@
-name: Dependabot patch auto-merge
+name: Dependabot auto-merge
 
 on:
   workflow_run:
@@ -10,11 +10,11 @@ permissions:
   pull-requests: write
 
 jobs:
-  merge-patch-update:
+  merge-update:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Merge the verified Dependabot patch update
+      - name: Merge the verified Dependabot update
         uses: actions/github-script@v8
         with:
           script: |
@@ -35,14 +35,6 @@ jobs:
               core.info("The successful build does not belong to an open Dependabot pull request.");
               return;
             }
-            const patchGroupPrefixes = [
-              "dependabot/gradle/main/gradle-patch-updates-",
-              "dependabot/github_actions/main/actions-patch-updates-"
-            ];
-            if (!patchGroupPrefixes.some(prefix => pull.head.ref.startsWith(prefix))) {
-              core.info(`Dependabot pull request #${pull.number} is not a configured patch-only group.`);
-              return;
-            }
             const result = await github.rest.pulls.merge({
               owner,
               repo,
@@ -52,4 +44,14 @@ jobs:
             });
             if (!result.data.merged) {
               core.setFailed(result.data.message || `Pull request #${pull.number} was not merged.`);
+              return;
             }
+            await github.rest.repos.createDispatchEvent({
+              owner,
+              repo,
+              event_type: "dependabot-merged",
+              client_payload: {
+                pull_request: pull.number,
+                merge_sha: result.data.sha
+              }
+            });
