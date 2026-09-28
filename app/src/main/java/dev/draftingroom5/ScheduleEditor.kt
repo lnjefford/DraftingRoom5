@@ -27,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -99,6 +100,7 @@ internal fun ScheduleEditorScreen(
     onSave: (TrainingPlan) -> Boolean,
     onBack: () -> Unit,
 ) {
+    val locale = LocalLocale.current.platformLocale
     val initial = remember(original?.id, draftId, requestedAnchor) {
         ScheduleEditorDraft.initial(original, requestedAnchor)
     }
@@ -131,9 +133,9 @@ internal fun ScheduleEditorScreen(
         ) {
             item {
                 EditorialHeading(
-                    eyebrow = requestedAnchor.getDisplayName(TextStyle.FULL, Locale.getDefault()),
+                    eyebrow = requestedAnchor.getDisplayName(TextStyle.FULL, locale),
                     title = if (original == null) "Choose an activity" else "Change this activity",
-                    supportingText = "Pick an activity for ${requestedAnchor.getDisplayName(TextStyle.FULL, Locale.getDefault())}. You can choose another day when you return to the schedule.",
+                    supportingText = "Pick an activity for ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}. You can choose another day when you return to the schedule.",
                 )
             }
             if (plan.routines.isEmpty()) {
@@ -163,7 +165,7 @@ internal fun ScheduleEditorScreen(
                     },
                     enabled = valid,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                ) { Text(if (original == null) "Add to ${requestedAnchor.getDisplayName(TextStyle.FULL, Locale.getDefault())}" else "Save ${requestedAnchor.getDisplayName(TextStyle.FULL, Locale.getDefault())}") }
+                ) { Text(if (original == null) "Add to ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}" else "Save ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}") }
             }
         }
     }

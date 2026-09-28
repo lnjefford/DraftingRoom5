@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("com.android.compose.screenshot") version "0.0.1-alpha15"
+    id("com.android.compose.screenshot") version "0.0.1-alpha16"
 }
 
 android {
@@ -13,8 +13,8 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 30
         targetSdk = 37
-        versionCode = providers.gradleProperty("wearVersionCode").orElse("280151").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.28.13").get()
+        versionCode = providers.gradleProperty("wearVersionCode").orElse("280161").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.28.14").get()
     }
 
     signingConfigs {
@@ -47,8 +47,13 @@ android {
 }
 
 dependencies {
-    implementation(platform(libs.androidx.wear.compose.bom))
-    implementation(libs.androidx.wear.activity.compose)
+    constraints {
+        implementation(libs.androidx.fragment) {
+            because("Keep transitive Fragment compatible with Activity Result APIs")
+        }
+    }
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -58,7 +63,7 @@ dependencies {
     implementation(libs.google.play.services.wearable)
     testImplementation(libs.junit)
     testImplementation(libs.json)
-    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha15") {
+    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16") {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }
     screenshotTestImplementation(libs.androidx.compose.ui.tooling)

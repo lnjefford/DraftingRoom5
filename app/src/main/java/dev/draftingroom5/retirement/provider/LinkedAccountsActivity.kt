@@ -31,12 +31,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
-import com.plaid.link.FastOpenPlaidLink
+import com.plaid.link.OpenPlaidLink
 import com.plaid.link.OnLoadCallback
 import com.plaid.link.Plaid
-import com.plaid.link.PlaidHandler
+import com.plaid.link.PlaidLinkSession
 import com.plaid.link.configuration.LinkTokenConfiguration
-import com.plaid.link.configuration.LinkLogLevel
 import com.plaid.link.result.LinkSuccess
 import dev.draftingroom5.RetirementTheme
 import dev.draftingroom5.retirement.data.RetirementResult
@@ -62,6 +61,7 @@ class LinkedAccountsActivity : ComponentActivity() {
     private var reviewGeneration = 0L
     private var manualAccounts by mutableStateOf<List<Account>>(emptyList())
     private var attempt: LinkAttempt? = null
+    private var plaidSession: PlaidLinkSession? = null
     private var authenticatedUntil = 0L
     private var reconnectItem: String? = null
     private var clientField: EditText? = null
@@ -71,8 +71,8 @@ class LinkedAccountsActivity : ComponentActivity() {
         if (result.resultCode == RESULT_OK) { authenticatedUntil = android.os.SystemClock.elapsedRealtime() + 120_000; setup = true }
         else message = "Device authentication cancelled. You can still add an account manually."
     }
-    private val link = registerForActivityResult(FastOpenPlaidLink()) { result ->
-        Plaid.destroy()
+    private val link = registerForActivityResult(OpenPlaidLink()) { result ->
+        destroyPlaidSession()
         val active = attempt; attempt = null
         if (active == null) { message = "Link was interrupted. Resume a pending review or start again."; return@registerForActivityResult }
         if (result !is LinkSuccess) {
@@ -114,7 +114,13 @@ class LinkedAccountsActivity : ComponentActivity() {
     override fun onDestroy() {
         clientField?.text?.clear(); secretField?.text?.clear()
         attempt?.let { runtime.plaid.cancelLink(it.id) }
+        attempt = null
+        destroyPlaidSession()
         super.onDestroy()
+    }
+    private fun destroyPlaidSession() {
+        plaidSession?.destroy()
+        plaidSession = null
     }
     private fun authenticate() {
         val keyguard = getSystemService(KeyguardManager::class.java)
@@ -145,33 +151,35 @@ class LinkedAccountsActivity : ComponentActivity() {
                 val active = withContext(Dispatchers.IO) { runtime.plaid.beginLink(selectedProfile.id, reconnectItem) }
                 pending = active
                 attempt = active
-                val configuration = LinkTokenConfiguration.Builder().token(active.takeToken()).logLevel(LinkLogLevel.ASSERT).build()
-                val opened = CompletableDeferred<Boolean>()
-                var handler: PlaidHandler? = null
-                handler = Plaid.create(application, configuration, object : OnLoadCallback {
-                    override fun onLoad() {
-                        window.decorView.post {
-                            val readyHandler = handler
-                            if (attempt?.id != active.id || readyHandler == null || opened.isCompleted) return@post
-                            opened.complete(runCatching { link.launch(readyHandler) }.isSuccess)
-                        }
-                    }
-                })
-                if (!withTimeout(30_000) { opened.await() }) throw ProviderException(ProviderFailure.UNAVAILABLE)
+                val loaded = CompletableDeferred<Unit>()
+                val configuration = LinkTokenConfiguration.Builder()
+                    .token(active.takeToken())
+                    .onLoad(OnLoadCallback { loaded.complete(Unit) })
+                    .build()
+                // A session is single-use. Await preload on the lifecycle coroutine so a
+                // late callback cannot launch Link after timeout or Activity destruction.
+                val session = Plaid.createPlaidLinkSession(application, configuration)
+                plaidSession = session
+                withTimeout(30_000) { loaded.await() }
+                if (attempt?.id != active.id) throw ProviderException(ProviderFailure.UNAVAILABLE)
+                link.launch(session)
             } catch (_: TimeoutCancellationException) {
-                Plaid.destroy()
+                destroyPlaidSession()
                 message = "Plaid took too long to open. Check your connection and try again."
                 pending?.let { runtime.plaid.cancelLink(it.id) }
                 if (attempt?.id == pending?.id) attempt = null
             } catch (e: CancellationException) {
+                destroyPlaidSession()
+                pending?.let { runtime.plaid.cancelLink(it.id) }
+                if (attempt?.id == pending?.id) attempt = null
                 throw e
             } catch (e: ProviderException) {
-                Plaid.destroy()
+                destroyPlaidSession()
                 message = safeMessage(e.failure)
                 pending?.let { runtime.plaid.cancelLink(it.id) }
                 if (attempt?.id == pending?.id) attempt = null
             } catch (_: Exception) {
-                Plaid.destroy()
+                destroyPlaidSession()
                 message = "Plaid couldn't open. Try again."
                 pending?.let { runtime.plaid.cancelLink(it.id) }
                 if (attempt?.id == pending?.id) attempt = null

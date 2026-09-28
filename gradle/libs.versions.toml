@@ -1,20 +1,22 @@
 [versions]
-agp = "9.1.1"
-kotlin = "2.2.10"
+agp = "9.4.1"
+kotlin = "2.4.20"
 coreKtx = "1.19.1"
-lifecycle = "2.8.7"
-activityCompose = "1.10.0"
-composeBom = "2024.12.01"
+lifecycle = "2.11.0"
+fragment = "1.9.1"
+guava = "33.7.1-android"
+activityCompose = "1.13.0"
+composeBom = "2026.09.00"
 healthConnect = "1.1.0"
 workManager = "2.12.0"
-wearActivityCompose = "1.13.0"
 wearCompose = "1.7.0"
-wearComposeBom = "2026.09.00"
 wearable = "20.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "fragment" }
+google-guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -25,8 +27,6 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-material-icons = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "healthConnect" }
 androidx-work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
-androidx-wear-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "wearActivityCompose" }
-androidx-wear-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "wearComposeBom" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
 androidx-wear-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "wearCompose" }

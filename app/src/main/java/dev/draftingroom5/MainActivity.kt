@@ -88,6 +88,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.CancellationException
@@ -112,6 +113,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.input.pointer.pointerInput
@@ -223,6 +225,7 @@ private fun DraftingRoom5App() {
     var pendingCompletionCue by remember { mutableStateOf<String?>(null) }
     val workoutVoice = remember { WorkoutVoiceAnnouncements(context) { voiceAvailability = it } }
     var appDocument by remember { mutableStateOf(appRepository.currentOrDefaults()) }
+    val repositoryState by appRepository.state.collectAsState()
     var documentError by remember { mutableStateOf<String?>(
         if (appRepository.state.value is LoadState.Ready) null else "App data could not be loaded. Changes cannot be saved. Restore a recovery snapshot from Settings or retry loading.") }
     var confirmDataReset by remember { mutableStateOf(false) }
@@ -537,9 +540,9 @@ private fun DraftingRoom5App() {
                 text = { Text(message) },
                 confirmButton = { TextButton(onClick = { documentError = null }) { Text("OK") } },
                 dismissButton = {
-                    if (appRepository.state.value is LoadState.Corrupt) {
+                    if (repositoryState is LoadState.Corrupt) {
                         TextButton(onClick = { documentError = null; confirmDataReset = true }) { Text("Reset app data") }
-                    } else if (appRepository.state.value !is LoadState.Ready) {
+                    } else if (repositoryState !is LoadState.Ready) {
                         TextButton(onClick = {
                             (appRepository.load() as? LoadState.Ready)?.value?.let {
                                 acceptDocumentResult(RepositoryResult.Success(it))
@@ -1289,6 +1292,7 @@ private fun Dashboard(
 
 @Composable
 private fun TrainingHero(date: LocalDate, sessions: List<DashboardSession>, showArtwork: Boolean = true) {
+    val locale = LocalLocale.current.platformLocale
     val today = (LocalReviewTime.current ?: Instant.now()).atZone(ZoneId.systemDefault()).toLocalDate()
     val completedCount = sessions.count { it.action == SessionAction.DONE }
     val dayWord = if (date == today) "today" else date.dayOfWeek.name.lowercase().replaceFirstChar(Char::uppercase)
@@ -1311,7 +1315,7 @@ private fun TrainingHero(date: LocalDate, sessions: List<DashboardSession>, show
             Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, AppBackground))))
         }
         Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(.8f)) {
-            Text(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault())).uppercase(), color = Color(0xFFF4F0E7), style = MaterialTheme.typography.labelMedium, letterSpacing = 2.6.sp)
+            Text(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", locale)).uppercase(locale), color = Color(0xFFF4F0E7), style = MaterialTheme.typography.labelMedium, letterSpacing = 2.6.sp)
             Spacer(Modifier.height(22.dp))
             Text("Today’s training", style = MaterialTheme.typography.displayMedium, color = Color(0xFFF4F0E7))
             Spacer(Modifier.height(12.dp))
@@ -2197,6 +2201,7 @@ private fun HealthTrendChart(
     accent: Color,
     dateRange: HealthDateRange,
 ) {
+    val locale = LocalLocale.current.platformLocale
     val values = trend.mapNotNull { it.value }
     val domain = metricChartDomain(trend)
     val recordedPoints = trend.mapIndexedNotNull { index, point -> point.value?.let { index to it } }
@@ -2252,9 +2257,9 @@ private fun HealthTrendChart(
     }
     val span = checkNotNull(metricDateSpan(trend))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(span.first.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(span.first.format(DateTimeFormatter.ofPattern("MMM d", locale)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("${formatMetricNumber(DashboardCard.entries.first { it.title == label }, values.last())} $unit", style = MaterialTheme.typography.labelSmall, color = accent)
-        Text(span.last.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(span.last.format(DateTimeFormatter.ofPattern("MMM d", locale)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -2277,6 +2282,7 @@ private fun WeekSelector(
     today: LocalDate,
     onSelect: (LocalDate) -> Unit,
 ) {
+    val locale = LocalLocale.current.platformLocale
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         dates.forEach { date ->
             val isSelected = date == selectedDate
@@ -2289,7 +2295,7 @@ private fun WeekSelector(
                     .semantics {
                         selected = isSelected
                         stateDescription = buildString {
-                            append(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault())))
+                            append(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", locale)))
                             if (date == today) append(", today")
                             if (isSelected) append(", selected")
                         }
@@ -2340,6 +2346,7 @@ private fun SessionCard(
     onOccurrenceMenu: ((OccurrenceDisposition) -> Unit)? = null,
     initialMenuExpanded: Boolean = false,
 ) {
+    val locale = LocalLocale.current.platformLocale
     val routine = session.routine
     var menuExpanded by rememberSaveable(session.occurrence.scheduleEntryId, session.occurrence.scheduledDate) { mutableStateOf(initialMenuExpanded) }
     BackHandler(enabled = menuExpanded) { menuExpanded = false }
@@ -2351,8 +2358,8 @@ private fun SessionCard(
     )
     val progress = session.progressLabel
     val metadata = when {
-        session.effectiveDate != session.occurrence.scheduledDate -> "Moved from ${session.occurrence.scheduledDate.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))} · ${if (routine.execution == RoutineExecution.GUIDED) "${routine.exercises.size} exercises" else "Opens ${linkedAppDisplayName(checkNotNull(routine.appLink).packageName)}"}"
-        progress != null && session.savedOriginDate != null -> "$progress · ${session.savedOriginDate.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))}"
+        session.effectiveDate != session.occurrence.scheduledDate -> "Moved from ${session.occurrence.scheduledDate.format(DateTimeFormatter.ofPattern("MMM d", locale))} · ${if (routine.execution == RoutineExecution.GUIDED) "${routine.exercises.size} exercises" else "Opens ${linkedAppDisplayName(checkNotNull(routine.appLink).packageName)}"}"
+        progress != null && session.savedOriginDate != null -> "$progress · ${session.savedOriginDate.format(DateTimeFormatter.ofPattern("MMM d", locale))}"
         progress != null -> progress
         completed -> "Completed"
         routine.execution == RoutineExecution.GUIDED -> "${routine.exercises.size} exercises"
