@@ -39,6 +39,19 @@ class CoreShellAuditTest {
         assertEquals(listOf(.5f), metricChartFractions(points.take(1)))
     }
 
+    @Test fun dashboardTreatsMeasurementsAsChangeAndActivityAsFrequency() {
+        val measurement = listOf(186.4, 185.2, 184.2).mapIndexed { index, value ->
+            HealthTrendPoint(date.plusDays(index.toLong()), value)
+        }
+        val activity = listOf(0.0, 2.0, 0.0, 1.0).mapIndexed { index, value ->
+            HealthTrendPoint(date.plusDays(index.toLong()), value)
+        }
+
+        assertEquals("−2.2 lb in 30 days", dashboardMetricChange(DashboardCard.WEIGHT, measurement))
+        assertEquals(2, activityDays(activity))
+        assertEquals("No 30-day comparison", dashboardMetricChange(DashboardCard.BODY_FAT, measurement.take(1)))
+    }
+
     @Test fun refreshFailureRetainsValueButRevocationClearsIt() {
         val time = Instant.parse("2026-09-01T08:00:00Z")
         val previous = healthMetric("180.0", HealthReadOutcome.SUCCESS, time, time)
