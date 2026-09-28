@@ -621,7 +621,17 @@ internal fun GuidedSessionDestination(
             options = offer.options,
             busy = saving,
             error = error,
+            finishSession = currentSession.durableState() == DurableSessionState.READY_TO_FINISH,
             onContinue = { apply(SessionEvent.ContinueWorkout(offer.exerciseId), requestBackup = true) },
+            onFinish = {
+                val currentLease = lease
+                if (currentLease != null) {
+                    execute({ repository.finishGuidedSession(currentLease, currentSession.id, currentSession.eventRevision) }) { result ->
+                        if (result is SessionRepositoryResult.Complete && result.newlyCompleted) onBackupRequested()
+                        accept(result)
+                    }
+                }
+            },
             onApplyPlanned = { applyProgression(offer, offer.request(ProgressionChoice.CUSTOM)) },
             onApplyManual = { applyProgression(offer, offer.manualRequest(it)) },
         )
@@ -757,7 +767,9 @@ private fun ProgressionDecisionSheet(
     options: List<ProgressionOption>,
     busy: Boolean,
     error: String?,
+    finishSession: Boolean,
     onContinue: () -> Unit,
+    onFinish: () -> Unit,
     onApplyPlanned: () -> Unit,
     onApplyManual: (ExercisePrescription) -> Unit,
 ) {
@@ -777,7 +789,8 @@ private fun ProgressionDecisionSheet(
     ModalBottomSheet(
         onDismissRequest = {
             if (!busy) {
-                if (mode == "complete") onContinue() else mode = completionSheetParent(mode)
+                if (mode == "complete" && !finishSession) onContinue()
+                else if (mode != "complete") mode = completionSheetParent(mode)
             }
             // Material hides before this callback. Keep the pending decision visible,
             // including when a keep-current write fails; only committed state removes it.
@@ -792,7 +805,9 @@ private fun ProgressionDecisionSheet(
             mode = mode,
             busy = busy,
             error = error,
+            finishSession = finishSession,
             onContinue = onContinue,
+            onFinish = onFinish,
             onAdjust = { mode = "adjust" },
             onManual = { mode = "manual" },
             onApplyPlanned = onApplyPlanned,
@@ -819,7 +834,9 @@ internal fun ProgressionDecisionSheetContent(
     options: List<ProgressionOption>,
     mode: String,
     busy: Boolean,
+    finishSession: Boolean = false,
     onContinue: () -> Unit,
+    onFinish: () -> Unit = {},
     onAdjust: () -> Unit,
     onManual: () -> Unit,
     onApplyPlanned: () -> Unit,
@@ -854,11 +871,20 @@ internal fun ProgressionDecisionSheetContent(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Button(
-                onClick = onContinue,
+                onClick = if (finishSession) onFinish else onContinue,
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
-            ) { Text("Next exercise") }
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (finishSession) AppMint else AppBlue,
+                    contentColor = if (finishSession) AppBackgroundDeep else MaterialTheme.colorScheme.onPrimary,
+                ),
+            ) {
+                if (finishSession) {
+                    Icon(Icons.Default.Check, null)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(if (finishSession) "Finish session" else "Next exercise")
+            }
             OutlinedButton(
                 onClick = onAdjust,
                 enabled = !busy,
@@ -1372,6 +1398,7 @@ internal fun ProgressionDecisionReviewPreview(choosing: Boolean) {
                 options = options,
                 mode = if (choosing) "adjust" else "complete",
                 busy = false,
+                finishSession = !choosing,
                 onContinue = {},
                 onAdjust = {},
                 onManual = {},

@@ -6,15 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -151,24 +148,6 @@ internal fun WorkspaceDrawerContent(
                 NavigationDrawerItem(
                     label = {
                         Column {
-                            Text("App updates")
-                            Text(updatePresentation.summary, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
-                        }
-                    },
-                    selected = false,
-                    icon = { Icon(Icons.Default.SystemUpdate, contentDescription = null) },
-                    badge = {
-                        if (updatePresentation.actionLabel == "Working…") CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        else Text(updatePresentation.actionLabel)
-                    },
-                    onClick = { if (updatePresentation.enabled) onUpdate() },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                )
-            }
-            item {
-                NavigationDrawerItem(
-                    label = {
-                        Column {
                             Text("Automatic backups")
                             Text(backupPresentation.summary, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                         }
@@ -199,6 +178,14 @@ internal fun WorkspaceDrawerContent(
                         TextButton(onClick = onOpenBackupSettings, modifier = Modifier.align(Alignment.End)) { Text("Android backup settings") }
                     }
                 }
+            }
+            item {
+                Text(
+                    "Version ${BuildConfig.VERSION_NAME} · Updated ${BuildConfig.UPDATE_DATE}",
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }
