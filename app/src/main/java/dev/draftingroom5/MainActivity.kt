@@ -1623,7 +1623,7 @@ private fun ActivityMetricCard(
 
 @Composable
 private fun ActivityBars(trend: List<HealthTrendPoint>, accent: Color) {
-    Canvas(Modifier.fillMaxWidth().height(42.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(58.dp)) {
         val values = trend.map { (it.value ?: 0.0).coerceAtLeast(0.0) }
         if (values.isEmpty()) return@Canvas
         val maximum = values.max().takeIf { it > 0.0 } ?: 1.0
