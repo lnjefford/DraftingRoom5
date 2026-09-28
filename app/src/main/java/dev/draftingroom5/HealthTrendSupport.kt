@@ -36,8 +36,10 @@ internal data class HealthTrendWindow(
         range.startDate(endDate(latestRecordedAt, fallback, zoneId))
 }
 
-internal fun dashboardHealthWindow(today: LocalDate): HealthTrendWindow =
-    HealthTrendWindow(HealthDateRange.MONTH, fixedEndDate = today)
+internal fun dashboardHealthWindow(
+    today: LocalDate,
+    range: HealthDateRange = HealthDateRange.MONTH,
+): HealthTrendWindow = HealthTrendWindow(range, fixedEndDate = today)
 
 internal fun metricDetailHealthWindow(range: HealthDateRange): HealthTrendWindow =
     HealthTrendWindow(range)
@@ -45,8 +47,9 @@ internal fun metricDetailHealthWindow(range: HealthDateRange): HealthTrendWindow
 internal fun dashboardHealthTrend(
     points: List<HealthTrendPoint>,
     today: LocalDate,
+    range: HealthDateRange = HealthDateRange.MONTH,
 ): List<HealthTrendPoint> {
-    val start = HealthDateRange.MONTH.startDate(today)
+    val start = range.startDate(today)
     return points
         .filter { it.date in start..today }
         .sortedWith(compareBy<HealthTrendPoint> { it.date }.thenBy { it.recordedAt })

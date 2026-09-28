@@ -12,7 +12,6 @@ class AppRouteTest {
     fun everyDestinationRoundTripsThroughSavedPrimitiveState() {
         val routes = listOf(
             AppRoute.Dashboard,
-            AppRoute.MetricDetail(DashboardCard.WEIGHT),
             AppRoute.Settings,
             AppRoute.DashboardCustomization,
             AppRoute.PlanManagement,
@@ -71,6 +70,7 @@ class AppRouteTest {
     @Test
     fun malformedOrUnknownSavedRoutesAreRejected() {
         assertNull(decodeAppRoute("metric:NOT_A_CARD"))
+        assertEquals(AppRoute.Dashboard, decodeAppRoute("metric:WEIGHT"))
         assertNull(decodeAppRoute("routine:"))
         assertNull(decodeAppRoute("session:only-one-id"))
         assertNull(decodeAppRoute("future:screen"))

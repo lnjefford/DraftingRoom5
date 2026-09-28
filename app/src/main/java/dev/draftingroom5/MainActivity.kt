@@ -27,6 +27,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +42,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -73,6 +76,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -109,7 +114,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -289,7 +296,6 @@ private fun DraftingRoom5App() {
                     is RepositoryResult.Invalid -> result.error.message
                     is RepositoryResult.Failed -> "Could not save app data. Please retry."
                     is RepositoryResult.Conflict -> "App data changed. Review the current values and retry."
-                    else -> null
                 }
             }
         }
@@ -373,10 +379,8 @@ private fun DraftingRoom5App() {
         )
     }
 
-    fun activeHealthWindow(): HealthTrendWindow = when (screen) {
-        is AppRoute.MetricDetail -> metricDetailHealthWindow(healthDateRange)
-        else -> dashboardHealthWindow(LocalDate.now(ZoneId.systemDefault()))
-    }
+    fun activeHealthWindow(): HealthTrendWindow =
+        dashboardHealthWindow(LocalDate.now(ZoneId.systemDefault()), healthDateRange)
 
     val refreshHealth: (HealthTrendWindow) -> Unit = refresh@ { window ->
         if (!windowFocused) return@refresh
@@ -611,7 +615,12 @@ private fun DraftingRoom5App() {
                     runCatching { openAndroidBackupSettings(context) }
                         .onFailure { backupActionMessage = "Could not open Android backup settings: ${it.message ?: "Try again."}" }
                 },
-                onOpenMetric = { card -> navigation.navigate(AppRoute.MetricDetail(card)) },
+                healthDateRange = healthDateRange,
+                onHealthDateRangeChange = { updated ->
+                    if (persistDocument { it.copy(preferences = it.preferences.copy(healthDateRange = updated)) }) {
+                        requestAutomaticBackup()
+                    }
+                },
                 onOpenCustom = { session -> navigation.navigate(AppRoute.GuidedSession(
                     session.routine.id, session.occurrence.scheduleEntryId, session.occurrence.scheduledDate)) },
                 onLaunchExternal = { session ->
@@ -657,22 +666,6 @@ private fun DraftingRoom5App() {
                     result
                 },
             )
-            is AppRoute.MetricDetail -> {
-                val card = screen.card
-                MetricDetailScreen(
-                    card = card,
-                    healthUi = healthUi,
-                    dateRange = healthDateRange,
-                    onDateRangeChange = { updated ->
-                        if (persistDocument { it.copy(preferences = it.preferences.copy(healthDateRange = updated)) }) {
-                            requestAutomaticBackup()
-                        }
-                    },
-                    onConnectHealth = connectHealth,
-                    onRetry = { refreshHealth(metricDetailHealthWindow(healthDateRange)) },
-                    onBack = { navigation.back() },
-                )
-            }
             AppRoute.Settings -> SettingsScreen(
                 healthUi = healthUi,
                 visibleDashboardCount = dashboardLayout.visibleCards.size,
@@ -1070,7 +1063,8 @@ private fun Dashboard(
     onBackUpNow: () -> Unit = {},
     onRestoreLatest: () -> Unit = {},
     onOpenBackupSettings: () -> Unit = {},
-    onOpenMetric: (DashboardCard) -> Unit,
+    healthDateRange: HealthDateRange,
+    onHealthDateRangeChange: (HealthDateRange) -> Unit,
     onOpenCustom: (DashboardSession) -> Unit,
     onLaunchExternal: (DashboardSession) -> Unit,
     onUndoLinked: (DashboardSession) -> Unit,
@@ -1281,7 +1275,13 @@ private fun Dashboard(
                         }
                     }
                     is DashboardSection.Metrics -> item(key = "metrics-$sectionIndex-${section.cards.joinToString { it.name }}") {
-                        StatsWorkspaceHeader(section.cards, healthUi.stats, today, onOpenMetric)
+                        StatsWorkspaceHeader(
+                            section.cards,
+                            healthUi.stats,
+                            today,
+                            healthDateRange,
+                            onHealthDateRangeChange,
+                        )
                     }
                 }
             }
@@ -1354,80 +1354,107 @@ private fun StatsWorkspaceHeader(
     cards: List<DashboardCard>,
     stats: HealthStats,
     today: LocalDate,
-    onOpenMetric: (DashboardCard) -> Unit,
+    dateRange: HealthDateRange,
+    onDateRangeChange: (HealthDateRange) -> Unit,
 ) {
     val bodyComposition = cards.filterNot { it.isActivityMetric }
     val activity = cards.filter { it.isActivityMetric }
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        EditorialSectionLabel("HEALTH SNAPSHOT", "LAST 30 DAYS")
+    var selectedCardName by rememberSaveable { mutableStateOf(bodyComposition.firstOrNull()?.name) }
+    val selectedCard = bodyComposition.firstOrNull { it.name == selectedCardName } ?: bodyComposition.firstOrNull()
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        HealthSnapshotHeader(dateRange, onDateRangeChange)
         if (bodyComposition.isNotEmpty()) {
-            MetricGroupLabel("BODY COMPOSITION", "Latest readings")
-            BrandedCard(Modifier.fillMaxWidth()) {
-                bodyComposition.forEachIndexed { index, card ->
-                    BodyCompositionMetric(card, stats, today) { onOpenMetric(card) }
-                    if (index != bodyComposition.lastIndex) {
-                        HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = AppBorder.copy(alpha = .72f))
+            BodyMetricSelector(bodyComposition, stats, today, dateRange, selectedCard) { selectedCardName = it.name }
+            selectedCard?.let { card ->
+                Spacer(Modifier.height(2.dp))
+                Text("${card.title} (${card.unit})", color = card.accent, style = MaterialTheme.typography.titleMedium)
+                HealthTrendChart(card, card.trend(stats).forDashboardRange(today, dateRange), card.accent)
+                Text(
+                    "Touch and drag to inspect",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+        if (activity.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            if (LocalDensity.current.fontScale > 1.3f || activity.size == 1) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    activity.forEach { card -> ActivityMetricCard(card, stats, today, dateRange, Modifier.fillMaxWidth()) }
+                }
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    activity.forEach { card ->
+                        ActivityMetricCard(card, stats, today, dateRange, Modifier.weight(1f))
+                    }
+                }
+            }
+            Text(
+                "Updated today · Health Connect",
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HealthSnapshotHeader(
+    selected: HealthDateRange,
+    onSelected: (HealthDateRange) -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth()) {
+        val headerText: @Composable () -> Unit = {
+            Text(
+                "HEALTH SNAPSHOT",
+                color = Color(0xFFF4F0E7),
+                style = MaterialTheme.typography.labelMedium,
+                letterSpacing = 2.4.sp,
+            )
+        }
+        val rangeMenu: @Composable () -> Unit = {
+            Box {
+                Row(
+                    Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(10.dp))
+                        .clickable(onClickLabel = "Change health time range") { expanded = true }
+                        .padding(start = 10.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(selected.menuLabel, color = AppBlue, style = MaterialTheme.typography.labelLarge)
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = AppBlue)
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    HealthDateRange.entries.forEach { range ->
+                        DropdownMenuItem(
+                            text = { Text(range.menuLabel) },
+                            trailingIcon = { if (range == selected) Icon(Icons.Default.Check, null, tint = AppMint) },
+                            modifier = Modifier.semantics { this.selected = range == selected },
+                            onClick = {
+                                expanded = false
+                                if (range != selected) onSelected(range)
+                            },
+                        )
                     }
                 }
             }
         }
-        if (activity.isNotEmpty()) {
-            MetricGroupLabel("ACTIVITY", "Period totals")
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                activity.forEach { card ->
-                    ActivityMetricCard(card, stats, today) { onOpenMetric(card) }
-                }
+        if (LocalDensity.current.fontScale > 1.3f) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                headerText()
+                Box(Modifier.align(Alignment.End)) { rangeMenu() }
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { headerText() }
+                rangeMenu()
             }
         }
-    }
-}
-
-@Composable
-private fun MetricGroupLabel(label: String, context: String) {
-    if (LocalDensity.current.fontScale > 1.3f) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.8.sp)
-            Text(context, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    } else {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = 1.8.sp)
-            Text(context, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun HealthDateRangeSelector(
-    selected: HealthDateRange,
-    onSelected: (HealthDateRange) -> Unit,
-) {
-    Column(Modifier.fillMaxWidth()) {
-        Text("Time range", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(8.dp))
-        Row(
-            Modifier.fillMaxWidth().background(AppSurfaceRaised, RoundedCornerShape(18.dp)).padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            HealthDateRange.entries.forEach { range ->
-                val isSelected = range == selected
-                Button(
-                    onClick = { if (!isSelected) onSelected(range) },
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics {
-                        this.selected = isSelected
-                        stateDescription = if (isSelected) "Selected" else "Not selected"
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isSelected) AppBlue else Color.Transparent,
-                        contentColor = if (isSelected) AppBackgroundDeep else MaterialTheme.colorScheme.onSurface,
-                    ),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp),
-                ) { Text(range.buttonLabel) }
-            }
-        }
+        Box(Modifier.width(46.dp).height(2.dp).background(AppGold))
     }
 }
 
@@ -1466,90 +1493,85 @@ private val DashboardCard.isActivityMetric: Boolean
 private fun List<HealthTrendPoint>.forRange(range: HealthDateRange): List<HealthTrendPoint> =
     visibleMetricTrend(this, range)
 
-internal fun dashboardMetricChange(card: DashboardCard, trend: List<HealthTrendPoint>): String {
+private fun List<HealthTrendPoint>.forDashboardRange(today: LocalDate, range: HealthDateRange): List<HealthTrendPoint> =
+    dashboardHealthTrend(this, today, range)
+
+internal fun dashboardMetricChange(
+    card: DashboardCard,
+    trend: List<HealthTrendPoint>,
+    range: HealthDateRange = HealthDateRange.MONTH,
+): String {
     val values = trend.mapNotNull { it.value }
-    if (values.size < 2) return "No 30-day comparison"
+    val rangeLabel = if (range == HealthDateRange.MONTH) "30-day" else range.displayLabel
+    if (values.size < 2) return "No $rangeLabel comparison"
     val delta = values.last() - values.first()
-    if (kotlin.math.abs(delta) < .0001) return "No change in 30 days"
+    if (kotlin.math.abs(delta) < .0001) return "No change in ${range.displayLabel}"
     val sign = if (delta > 0) "+" else "−"
-    return "$sign${formatMetricNumber(card, kotlin.math.abs(delta))} ${card.unit} in 30 days"
+    return "$sign${formatMetricNumber(card, kotlin.math.abs(delta))} ${card.unit}"
 }
 
 internal fun activityDays(trend: List<HealthTrendPoint>): Int = trend.count { (it.value ?: 0.0) > 0.0 }
 
 @Composable
-private fun BodyCompositionMetric(
-    card: DashboardCard,
+private fun BodyMetricSelector(
+    cards: List<DashboardCard>,
     stats: HealthStats,
     today: LocalDate,
-    onClick: () -> Unit,
+    dateRange: HealthDateRange,
+    selectedCard: DashboardCard?,
+    onSelect: (DashboardCard) -> Unit,
 ) {
-    val metric = card.metric(stats)
-    val trend = dashboardHealthTrend(card.trend(stats), today)
-    val change = dashboardMetricChange(card, trend)
-    Column(
-        Modifier.fillMaxWidth()
-            .clickable(onClickLabel = "View ${card.title} details", onClick = onClick)
-            .semantics(mergeDescendants = true) {
-                contentDescription = "${card.title}, latest ${metric.value} ${card.unit}, $change"
-            }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        MetricHeading(card, change, metric.value)
-        Spacer(Modifier.height(10.dp))
-        CompactTrendLine(trend, card.accent, 30.dp)
-    }
-}
-
-@Composable
-private fun MetricIcon(card: DashboardCard) {
-    Box(
-        Modifier.size(40.dp).background(card.accent.copy(alpha = .13f), RoundedCornerShape(13.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(dashboardPreferenceIcon(card), contentDescription = null, tint = card.accent, modifier = Modifier.size(22.dp))
-    }
-}
-
-@Composable
-private fun MetricValue(value: String, unit: String) {
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(4.dp))
-        Text(unit, modifier = Modifier.padding(bottom = 3.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@Composable
-private fun MetricHeading(card: DashboardCard, subtitle: String, value: String) {
     val largeText = LocalDensity.current.fontScale > 1.3f
     if (largeText) {
         Column(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                MetricIcon(card)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(card.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(subtitle, style = MaterialTheme.typography.labelSmall, color = card.accent)
-                }
-                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            cards.forEach { card ->
+                BodyMetricChoice(card, stats, today, dateRange, card == selectedCard, Modifier.fillMaxWidth()) { onSelect(card) }
             }
-            Spacer(Modifier.height(10.dp))
-            MetricValue(value, card.unit)
         }
     } else {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            MetricIcon(card)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(card.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = card.accent)
+            cards.forEachIndexed { index, card ->
+                BodyMetricChoice(card, stats, today, dateRange, card == selectedCard, Modifier.weight(1f)) { onSelect(card) }
+                if (index != cards.lastIndex) {
+                    Box(Modifier.width(1.dp).height(82.dp).background(AppBorder.copy(alpha = .9f)))
+                }
             }
-            MetricValue(value, card.unit)
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+@Composable
+private fun BodyMetricChoice(
+    card: DashboardCard,
+    stats: HealthStats,
+    today: LocalDate,
+    dateRange: HealthDateRange,
+    isSelected: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val metric = card.metric(stats)
+    val trend = card.trend(stats).forDashboardRange(today, dateRange)
+    val change = dashboardMetricChange(card, trend, dateRange)
+    Column(
+        modifier.clip(RoundedCornerShape(10.dp)).clickable(onClickLabel = "Show ${card.title} trend", onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                selected = isSelected
+                stateDescription = if (isSelected) "Selected" else "Not selected"
+                contentDescription = "${card.title}, latest ${metric.value} ${card.unit}, $change"
+            }
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(metric.value, color = Color(0xFFF4F0E7), fontFamily = EditorialSerif, fontSize = 26.sp, maxLines = 1)
+            Spacer(Modifier.width(3.dp))
+            Text(card.unit, modifier = Modifier.padding(bottom = 3.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall, maxLines = 1)
+        }
+        Text(card.title, color = card.accent, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        Text(change, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+        Spacer(Modifier.height(7.dp))
+        Box(Modifier.fillMaxWidth().height(3.dp).background(if (isSelected) card.accent else Color.Transparent, CircleShape))
     }
 }
 
@@ -1558,10 +1580,11 @@ private fun ActivityMetricCard(
     card: DashboardCard,
     stats: HealthStats,
     today: LocalDate,
-    onClick: () -> Unit,
+    dateRange: HealthDateRange,
+    modifier: Modifier,
 ) {
     val metric = card.metric(stats)
-    val trend = dashboardHealthTrend(card.trend(stats), today)
+    val trend = card.trend(stats).forDashboardRange(today, dateRange)
     val activeDays = activityDays(trend)
     val context = when {
         trend.isEmpty() -> "No daily activity available"
@@ -1569,49 +1592,32 @@ private fun ActivityMetricCard(
         else -> "$activeDays active days"
     }
     BrandedCard(
-        Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)
-            .clickable(onClickLabel = "View ${card.title} details", onClick = onClick)
-            .semantics(mergeDescendants = true) {
-        contentDescription = "${card.title}, ${metric.value} ${card.unit} in the last 30 days, $context"
-            },
+        modifier.semantics(mergeDescendants = true) {
+            contentDescription = "${card.title}, ${metric.value} ${card.unit} in ${dateRange.displayLabel}, $context"
+        },
     ) {
-        Column(Modifier.padding(16.dp)) {
-            MetricHeading(card, context, metric.value)
-            Spacer(Modifier.height(16.dp))
-            ActivityBars(trend, card.accent)
-            Spacer(Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth()) {
-                Text("30 days ago", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Today", modifier = Modifier.weight(1f), textAlign = TextAlign.End,
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(card.title.uppercase(), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall, letterSpacing = 1.8.sp)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(metric.value, color = Color(0xFFF4F0E7), style = MaterialTheme.typography.displaySmall)
+                if (card.unit != "sessions") {
+                    Spacer(Modifier.width(5.dp))
+                    Text(card.unit, modifier = Modifier.padding(bottom = 5.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (card == DashboardCard.WORKOUTS) {
+                WorkoutDots(trend, card.accent)
+                Text(context, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                ActivityBars(trend, card.accent)
+                Row(Modifier.fillMaxWidth()) {
+                    Text(dateRange.menuLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Today", modifier = Modifier.weight(1f), textAlign = TextAlign.End,
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun CompactTrendLine(
-    trend: List<HealthTrendPoint>,
-    accent: Color,
-    height: androidx.compose.ui.unit.Dp = 24.dp,
-) {
-    Canvas(Modifier.fillMaxWidth().height(height).padding(vertical = 4.dp)) {
-        val values = trend.mapNotNull { it.value }
-        if (values.size < 2) {
-            if (values.size == 1) drawCircle(accent, radius = 3.dp.toPx(), center = center)
-            return@Canvas
-        }
-        val min = values.min()
-        val spread = (values.max() - min).takeIf { it > 0.0001 } ?: 1.0
-        val fractions = metricChartFractions(trend)
-        fun point(index: Int, value: Double) = androidx.compose.ui.geometry.Offset(
-            x = size.width * fractions[index],
-            y = size.height - ((value - min) / spread).toFloat() * size.height,
-        )
-        trend.mapIndexedNotNull { index, item -> item.value?.let { index to it } }
-            .zipWithNext()
-            .filter { (first, second) -> second.first == first.first + 1 }
-            .forEach { (first, second) -> drawLine(accent, point(first.first, first.second), point(second.first, second.second), strokeWidth = 3f) }
     }
 }
 
@@ -1631,6 +1637,25 @@ private fun ActivityBars(trend: List<HealthTrendPoint>, accent: Color) {
                 topLeft = androidx.compose.ui.geometry.Offset(index * (barWidth + gap), size.height - barHeight),
                 size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(barWidth / 2f, barWidth / 2f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun WorkoutDots(trend: List<HealthTrendPoint>, accent: Color) {
+    val recent = trend.takeLast(28)
+    Canvas(Modifier.fillMaxWidth().height(58.dp)) {
+        val columns = 7
+        val rows = 4
+        val xStep = size.width / (columns - 1).coerceAtLeast(1)
+        val yStep = size.height / (rows - 1).coerceAtLeast(1)
+        repeat(rows * columns) { index ->
+            val point = recent.getOrNull(index)
+            drawCircle(
+                color = if ((point?.value ?: 0.0) > 0.0) accent else AppBorder,
+                radius = 4.dp.toPx(),
+                center = androidx.compose.ui.geometry.Offset((index % columns) * xStep, (index / columns) * yStep),
             )
         }
     }
@@ -1679,7 +1704,7 @@ private fun MetricDetailScreen(
                     Text(metric.detail(), color = if (metric.state == HealthMetricState.STALE) AppGold else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            item { HealthDateRangeSelector(dateRange, onDateRangeChange) }
+            item { HealthSnapshotHeader(dateRange, onDateRangeChange) }
             metricDetailIssue(healthUi, metric)?.let { issue ->
                 item { MetricDetailIssue(issue, onConnectHealth, onRetry) }
             }
@@ -1693,7 +1718,7 @@ private fun MetricDetailScreen(
                         "${dateRange.displayLabel.uppercase()} TREND",
                         span?.let { "${it.first.monthValue}/${it.first.dayOfMonth} — ${it.last.monthValue}/${it.last.dayOfMonth}" },
                     )
-                    HealthTrendChart(card.title, card.unit, trend, card.accent, dateRange)
+                    HealthTrendChart(card, trend, card.accent)
                     if (summary != null) MetricRangeSummary(card, summary)
                 }
             }
@@ -2318,71 +2343,104 @@ private fun DashboardCustomizationPreview() {
 
 @Composable
 private fun HealthTrendChart(
-    label: String,
-    unit: String,
+    card: DashboardCard,
     trend: List<HealthTrendPoint>,
     accent: Color,
-    dateRange: HealthDateRange,
 ) {
     val locale = LocalLocale.current.platformLocale
     val values = trend.mapNotNull { it.value }
     val domain = metricChartDomain(trend)
     val recordedPoints = trend.mapIndexedNotNull { index, point -> point.value?.let { index to it } }
-    Spacer(Modifier.height(14.dp))
     if (values.isEmpty()) {
         Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
             Text("No data found for this range", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
     }
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(190.dp)
-            .padding(top = 8.dp)
-            .clearAndSetSemantics { contentDescription = metricChartDescription(
-                DashboardCard.entries.first { it.title == label },
-                trend,
-            ) },
+    var selectedPoint by remember(card, trend) { mutableStateOf(recordedPoints.lastIndex) }
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(220.dp).clearAndSetSemantics {
+            contentDescription = metricChartDescription(card, trend)
+        },
     ) {
-        checkNotNull(domain)
         val fractions = metricChartFractions(trend)
-        val inset = 8.dp.toPx()
-        fun x(index: Int) = inset + (size.width - 2 * inset) * fractions[index]
-        fun y(value: Double) = size.height - ((value - domain.minimum) / (domain.maximum - domain.minimum)).toFloat() * size.height
-
-        repeat(4) { guide ->
-            val guideY = size.height * guide / 3f
-            drawLine(AppBorder.copy(alpha = .8f), androidx.compose.ui.geometry.Offset(0f, guideY), androidx.compose.ui.geometry.Offset(size.width, guideY), strokeWidth = 1f)
+        fun selectAt(pointerX: Float, width: Float) {
+            val fraction = (pointerX / width.coerceAtLeast(1f)).coerceIn(0f, 1f)
+            selectedPoint = recordedPoints.indices.minByOrNull { pointIndex ->
+                kotlin.math.abs(fractions[recordedPoints[pointIndex].first] - fraction)
+            } ?: 0
         }
-        if (recordedPoints.size > 1) {
-            val area = Path().apply {
-                moveTo(x(recordedPoints.first().first), size.height)
-                lineTo(x(recordedPoints.first().first), y(recordedPoints.first().second))
-                recordedPoints.drop(1).forEach { (index, value) -> lineTo(x(index), y(value)) }
-                lineTo(x(recordedPoints.last().first), size.height)
-                close()
+        Canvas(
+            Modifier.fillMaxSize().padding(top = 8.dp, bottom = 24.dp)
+                .pointerInput(card, trend) { detectTapGestures { selectAt(it.x, size.width.toFloat()) } }
+                .pointerInput(card, trend) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { selectAt(it.x, size.width.toFloat()) },
+                        onHorizontalDrag = { change, _ -> selectAt(change.position.x, size.width.toFloat()) },
+                    )
+                },
+        ) {
+            checkNotNull(domain)
+            val inset = 8.dp.toPx()
+            fun x(index: Int) = inset + (size.width - 2 * inset) * fractions[index]
+            fun y(value: Double) = size.height - ((value - domain.minimum) / (domain.maximum - domain.minimum)).toFloat() * size.height
+            val dash = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx()))
+            repeat(4) { guide ->
+                val guideY = size.height * guide / 3f
+                drawLine(AppBorder.copy(alpha = .72f), androidx.compose.ui.geometry.Offset(0f, guideY),
+                    androidx.compose.ui.geometry.Offset(size.width, guideY), strokeWidth = 1f, pathEffect = dash)
             }
-            drawPath(area, Brush.verticalGradient(listOf(accent.copy(alpha = .22f), Color.Transparent)))
-            recordedPoints.zipWithNext().forEach { (start, end) ->
-                drawLine(
-                    accent,
-                    start = androidx.compose.ui.geometry.Offset(x(start.first), y(start.second)),
-                    end = androidx.compose.ui.geometry.Offset(x(end.first), y(end.second)),
-                    strokeWidth = 4f,
-                )
+            repeat(5) { guide ->
+                val guideX = size.width * guide / 4f
+                drawLine(AppBorder.copy(alpha = .5f), androidx.compose.ui.geometry.Offset(guideX, 0f),
+                    androidx.compose.ui.geometry.Offset(guideX, size.height), strokeWidth = 1f, pathEffect = dash)
             }
+            if (recordedPoints.size > 1) {
+                val line = Path().apply {
+                    moveTo(x(recordedPoints.first().first), y(recordedPoints.first().second))
+                    recordedPoints.drop(1).forEach { (index, value) -> lineTo(x(index), y(value)) }
+                }
+                val area = Path().apply {
+                    moveTo(x(recordedPoints.first().first), size.height)
+                    lineTo(x(recordedPoints.first().first), y(recordedPoints.first().second))
+                    recordedPoints.drop(1).forEach { (index, value) -> lineTo(x(index), y(value)) }
+                    lineTo(x(recordedPoints.last().first), size.height)
+                    close()
+                }
+                drawPath(area, Brush.verticalGradient(listOf(accent.copy(alpha = .24f), Color.Transparent)))
+                drawPath(line, accent, style = Stroke(3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            }
+            val selected = recordedPoints[selectedPoint.coerceIn(recordedPoints.indices)]
+            val marker = androidx.compose.ui.geometry.Offset(x(selected.first), y(selected.second))
+            drawLine(AppGold, androidx.compose.ui.geometry.Offset(marker.x, 0f),
+                androidx.compose.ui.geometry.Offset(marker.x, size.height), 1.5.dp.toPx())
+            drawCircle(AppGold, 5.dp.toPx(), marker)
+            val last = recordedPoints.last()
+            drawCircle(accent, 5.dp.toPx(), androidx.compose.ui.geometry.Offset(x(last.first), y(last.second)))
         }
-        recordedPoints.forEach { (index, value) ->
-            val isLast = index == recordedPoints.last().first
-            drawCircle(if (isLast) Color(0xFFF4F0E7) else accent, radius = if (isLast) 7f else 5f, center = androidx.compose.ui.geometry.Offset(x(index), y(value)))
+        val selected = recordedPoints[selectedPoint.coerceIn(recordedPoints.indices)]
+        val xFraction = fractions[selected.first]
+        val yFraction = ((selected.second - checkNotNull(domain).minimum) / (domain.maximum - domain.minimum)).toFloat().coerceIn(0f, 1f)
+        val tooltipWidth = if (LocalDensity.current.fontScale >= 1.5f) 150.dp else 118.dp
+        val markerX = maxWidth * xFraction
+        val markerY = (maxHeight - 24.dp) * (1f - yFraction) + 8.dp
+        Column(
+            Modifier.offset(
+                x = (markerX + 8.dp).coerceAtMost((maxWidth - tooltipWidth).coerceAtLeast(0.dp)),
+                y = (markerY - 96.dp).coerceIn(0.dp, (maxHeight - 108.dp).coerceAtLeast(0.dp)),
+            ).width(tooltipWidth).background(AppBackgroundDeep.copy(alpha = .94f), RoundedCornerShape(8.dp))
+                .border(1.dp, AppBorder, RoundedCornerShape(8.dp)).padding(horizontal = 9.dp, vertical = 6.dp),
+        ) {
+            Text(trend[selected.first].date.format(DateTimeFormatter.ofPattern("MMM d", locale)),
+                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            Text("${formatMetricNumber(card, selected.second)} ${card.unit}",
+                color = Color(0xFFF4F0E7), style = MaterialTheme.typography.titleMedium)
         }
-    }
-    val span = checkNotNull(metricDateSpan(trend))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(span.first.format(DateTimeFormatter.ofPattern("MMM d", locale)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("${formatMetricNumber(DashboardCard.entries.first { it.title == label }, values.last())} $unit", style = MaterialTheme.typography.labelSmall, color = accent)
-        Text(span.last.format(DateTimeFormatter.ofPattern("MMM d", locale)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val span = checkNotNull(metricDateSpan(trend))
+        Row(Modifier.fillMaxWidth().align(Alignment.BottomCenter), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(span.first.format(DateTimeFormatter.ofPattern("MMM d", locale)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(span.last.format(DateTimeFormatter.ofPattern("MMM d", locale)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -2715,7 +2773,8 @@ internal fun HealthSnapshotReviewPreview() {
                 ),
                 stats = dashboardPreviewHealthStats(),
                 today = today,
-                onOpenMetric = {},
+                dateRange = HealthDateRange.MONTH,
+                onDateRangeChange = {},
             )
             Spacer(Modifier.height(20.dp))
         }
@@ -2811,7 +2870,8 @@ internal fun CoreShellReviewPreview(screen: String) {
                 updateBusy = screen == "Dashboard update working",
                 updateActionMessage = if (screen == "Dashboard update working") "Checking for updates…" else null,
                 onInstallUpdate = {},
-                onOpenMetric = {},
+                healthDateRange = HealthDateRange.MONTH,
+                onHealthDateRangeChange = {},
                 onOpenCustom = {},
                 onLaunchExternal = {},
                 onUndoLinked = {},
@@ -2873,7 +2933,8 @@ private fun HardeningStateReviewPreview(state: HardeningState) {
                 updateBusy = false,
                 updateActionMessage = null,
                 onInstallUpdate = {},
-                onOpenMetric = {},
+                healthDateRange = HealthDateRange.MONTH,
+                onHealthDateRangeChange = {},
                 onOpenCustom = {},
                 onLaunchExternal = {},
                 onUndoLinked = {},

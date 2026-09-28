@@ -14,7 +14,6 @@ import java.time.DayOfWeek
 /** Every full-screen destination in the clean application shell. */
 internal sealed interface AppRoute {
     data object Dashboard : AppRoute
-    data class MetricDetail(val card: DashboardCard) : AppRoute
     data object Settings : AppRoute
     data object DashboardCustomization : AppRoute
     data object PlanManagement : AppRoute
@@ -172,7 +171,6 @@ internal fun normalizeRouteStack(routes: List<AppRoute>, workspace: AppWorkspace
 
 internal fun encodeAppRoute(route: AppRoute): String = when (route) {
     AppRoute.Dashboard -> "dashboard"
-    is AppRoute.MetricDetail -> "metric:${route.card.name}"
     AppRoute.Settings -> "settings"
     AppRoute.DashboardCustomization -> "customization"
     AppRoute.PlanManagement -> "planning"
@@ -205,7 +203,10 @@ internal fun decodeAppRoute(value: String): AppRoute? {
     val parts = value.split(':')
     return when (parts.firstOrNull()) {
         "dashboard" -> AppRoute.Dashboard.takeIf { parts.size == 1 }
-        "metric" -> parts.getOrNull(1)?.let { runCatching { DashboardCard.valueOf(it) }.getOrNull() }?.let { AppRoute.MetricDetail(it) }
+        // Metric details moved into the snapshot; restore older saved destinations at its dashboard.
+        "metric" -> AppRoute.Dashboard.takeIf {
+            parts.size == 2 && runCatching { DashboardCard.valueOf(parts[1]) }.getOrNull() != null
+        }
         "settings" -> AppRoute.Settings.takeIf { parts.size == 1 }
         "customization" -> AppRoute.DashboardCustomization.takeIf { parts.size == 1 }
         "planning" -> AppRoute.PlanManagement.takeIf { parts.size == 1 }

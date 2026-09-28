@@ -47,7 +47,7 @@ class CoreShellAuditTest {
             HealthTrendPoint(date.plusDays(index.toLong()), value)
         }
 
-        assertEquals("−2.2 lb in 30 days", dashboardMetricChange(DashboardCard.WEIGHT, measurement))
+        assertEquals("−2.2 lb", dashboardMetricChange(DashboardCard.WEIGHT, measurement))
         assertEquals(2, activityDays(activity))
         assertEquals("No 30-day comparison", dashboardMetricChange(DashboardCard.BODY_FAT, measurement.take(1)))
     }
