@@ -1,0 +1,360 @@
+package dev.draftingroom5
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+
+@Composable
+internal fun RunRoutineEditorScreen(
+    routine: Routine,
+    scheduleSummary: String,
+    isNew: Boolean,
+    onPersist: (Routine) -> Boolean,
+    onDelete: () -> Unit,
+    onBack: () -> Unit,
+) {
+    var working by rememberSaveable(routine.id, stateSaver = RoutineDraftSaver) { mutableStateOf(routine) }
+    LaunchedEffect(routine) { if (!isNew) working = routine }
+    var editingIntervalId by rememberSaveable(routine.id) { mutableStateOf<String?>(null) }
+    var addingInterval by rememberSaveable(routine.id) { mutableStateOf(false) }
+    var renaming by rememberSaveable(routine.id) { mutableStateOf(false) }
+    var artworkPicker by rememberSaveable(routine.id) { mutableStateOf(false) }
+    var deleteRoutine by rememberSaveable(routine.id) { mutableStateOf(false) }
+    var discardRequested by rememberSaveable(routine.id) { mutableStateOf(false) }
+    var overflowExpanded by remember { mutableStateOf(false) }
+    var actionMessage by rememberSaveable(routine.id) { mutableStateOf<String?>(null) }
+    val changed = working != routine
+
+    fun applyChange(updated: Routine, message: String): Boolean {
+        if (updated == working) return true
+        val candidate = if (isNew) updated else updated.forRunEditorSave(working, false)
+        if (isNew || onPersist(candidate)) {
+            working = candidate
+            actionMessage = if (isNew) "Draft updated · not saved" else message
+            return true
+        }
+        actionMessage = "Couldn’t save changes. Try again."
+        return false
+    }
+
+    val requestBack = { if (isNew && changed) discardRequested = true else onBack() }
+    BackHandler(onBack = requestBack)
+    Scaffold(
+        modifier = Modifier.fillMaxSize().appScreenBackground(),
+        topBar = {
+            SecondaryTopBar("Run routine", requestBack) {
+                Box {
+                    IconButton(onClick = { overflowExpanded = true }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Default.MoreVert, "More options")
+                    }
+                    DropdownMenu(expanded = overflowExpanded, onDismissRequest = { overflowExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(if (isNew) "Discard routine" else "Delete routine") },
+                            leadingIcon = { Icon(Icons.Default.Delete, null) },
+                            onClick = { overflowExpanded = false; if (isNew) discardRequested = true else deleteRoutine = true },
+                        )
+                    }
+                }
+            }
+        },
+        containerColor = Color.Transparent,
+    ) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("RUN ROUTINE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            working.name.ifBlank { "New run" },
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(runRoutineSummary(checkNotNull(working.run), scheduleSummary), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (LocalDensity.current.fontScale <= 1.3f && LocalConfiguration.current.screenWidthDp >= 360) Image(
+                        painter = painterResource(RoutineArtworkCatalog.resolve(working.artworkId).resource(RoutineArtworkCrop.HEADER)),
+                        contentDescription = null,
+                        modifier = Modifier.size(104.dp),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
+            }
+            item {
+                RunIntervalSectionHeader()
+            }
+            if (working.run?.intervals.isNullOrEmpty()) item {
+                AppSurfaceCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("No intervals yet", fontWeight = FontWeight.Bold)
+                        Text("Add at least one walk or run interval before saving.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            } else {
+                val intervals = checkNotNull(working.run).intervals
+                items(intervals.size, key = { intervals[it].id }) { index ->
+                    val interval = intervals[index]
+                    RunIntervalRow(
+                        interval = interval,
+                        position = index,
+                        total = intervals.size,
+                        onEdit = { editingIntervalId = interval.id },
+                        onMove = { offset -> applyChange(working.moveRunInterval(interval.id, offset), "Interval order saved.") },
+                        onDelete = {
+                            working.withoutRunInterval(interval.id, allowEmpty = isNew)?.let {
+                                applyChange(it, "Interval deleted.")
+                            }
+                        },
+                        deleteEnabled = isNew || intervals.size > 1,
+                    )
+                }
+            }
+            item {
+                Button(
+                    onClick = { addingInterval = true },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) {
+                    Icon(Icons.Default.Add, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add interval")
+                }
+            }
+            actionMessage?.let { message -> item { Text(message, color = AppMint, style = MaterialTheme.typography.bodySmall) } }
+            if (isNew) item {
+                Button(
+                    enabled = working.isSaveableRunRoutine(),
+                    onClick = {
+                        val saved = working.forRunEditorSave(routine, true)
+                        if (saved.isSaveableRunRoutine() && onPersist(saved)) onBack()
+                        else actionMessage = "Couldn’t save routine. Try again."
+                    },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) { Text("Save routine") }
+            }
+            item { Spacer(Modifier.size(24.dp)) }
+        }
+    }
+
+    val editing = working.run?.intervals?.firstOrNull { it.id == editingIntervalId }
+    if (addingInterval || editing != null) RunIntervalDialog(
+        original = editing,
+        onDismiss = { addingInterval = false; editingIntervalId = null },
+        onSave = { interval ->
+            if (working.withRunInterval(interval)?.let { applyChange(it, "Interval saved.") } == true) {
+                addingInterval = false
+                editingIntervalId = null
+            }
+        },
+    )
+    if (renaming) RoutineNameDialog(
+        initial = working.name,
+        onDismiss = { renaming = false },
+        onSave = { name -> if (working.withRunIdentity(name, working.artworkId)?.let { applyChange(it, "Name saved.") } == true) renaming = false },
+    )
+    if (artworkPicker) RoutineArtworkPickerSheet(
+        selectedId = working.artworkId,
+        onDismiss = { artworkPicker = false },
+        onDone = { id -> if (working.withRunArtwork(id)?.let { applyChange(it, "Artwork saved.") } == true) artworkPicker = false },
+    )
+    if (deleteRoutine) AppConfirmationDialog(
+        title = "Delete ${working.name}?",
+        message = "This deletes the routine and every scheduled entry that references it. Completed run history remains available.",
+        confirmLabel = "Delete routine",
+        onConfirm = onDelete,
+        onDismiss = { deleteRoutine = false },
+    )
+    if (discardRequested) AppConfirmationDialog(
+        title = "Discard this run draft?",
+        message = "Nothing from this run routine has been saved.",
+        confirmLabel = "Discard draft",
+        onConfirm = onBack,
+        onDismiss = { discardRequested = false },
+    )
+}
+
+@Composable
+private fun RunIntervalSectionHeader() {
+    val stackLabels = LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
+    if (stackLabels) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("INTERVALS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+            Text("Use arrows to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        }
+    } else {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("INTERVALS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+            Text("Use arrows to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun RunIntervalRow(
+    interval: RunInterval,
+    position: Int,
+    total: Int,
+    onEdit: () -> Unit,
+    onMove: (Int) -> Unit,
+    onDelete: () -> Unit,
+    deleteEnabled: Boolean,
+) {
+    AppSurfaceCard(
+        Modifier.fillMaxWidth().clickable(onClickLabel = "Edit ${interval.kind.displayName()} interval", onClick = onEdit)
+            .semantics {
+                customActions = buildList {
+                    if (position > 0) add(CustomAccessibilityAction("Move interval up") { onMove(-1); true })
+                    if (position < total - 1) add(CustomAccessibilityAction("Move interval down") { onMove(1); true })
+                }
+            },
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("${position + 1}. ${interval.kind.displayName()}", fontWeight = FontWeight.Bold)
+                Text(formatRunDuration(interval.durationSeconds), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(enabled = position > 0, onClick = { onMove(-1) }) { Icon(Icons.Default.ArrowUpward, "Move interval up") }
+            IconButton(enabled = position < total - 1, onClick = { onMove(1) }) { Icon(Icons.Default.ArrowDownward, "Move interval down") }
+            IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, "Edit interval") }
+            IconButton(enabled = deleteEnabled, onClick = onDelete) { Icon(Icons.Default.Delete, "Delete interval") }
+        }
+    }
+}
+
+@Composable
+private fun RunIntervalDialog(original: RunInterval?, onDismiss: () -> Unit, onSave: (RunInterval) -> Unit) {
+    var kindName by rememberSaveable(original?.id) { mutableStateOf((original?.kind ?: RunIntervalKind.RUN).name) }
+    var minutes by rememberSaveable(original?.id) { mutableStateOf(((original?.durationSeconds ?: 60) / 60).toString()) }
+    var seconds by rememberSaveable(original?.id) { mutableStateOf(((original?.durationSeconds ?: 60) % 60).toString()) }
+    val duration = runIntervalDurationSeconds(minutes, seconds)
+    val kind = RunIntervalKind.valueOf(kindName)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (original == null) "Add interval" else "Edit interval") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    RunIntervalKind.entries.forEach { option ->
+                        FilterChip(
+                            selected = kind == option,
+                            onClick = { kindName = option.name },
+                            label = { Text(option.displayName()) },
+                        )
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = minutes,
+                        onValueChange = { minutes = it.filter(Char::isDigit).take(4) },
+                        modifier = Modifier.weight(1f),
+                        label = { Text("Minutes") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = seconds,
+                        onValueChange = { seconds = it.filter(Char::isDigit).take(2) },
+                        modifier = Modifier.weight(1f),
+                        label = { Text("Seconds") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                    )
+                }
+                Text(
+                    if (duration == null) "Enter a duration from 1 second to 24 hours." else formatRunDuration(duration),
+                    color = if (duration == null) MaterialTheme.colorScheme.error else AppMint,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = duration != null,
+                onClick = { duration?.let { onSave(RunInterval(original?.id ?: newId(), kind, it)) } },
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        shape = RoundedCornerShape(24.dp),
+    )
+}
+
+internal fun runIntervalDurationSeconds(minutes: String, seconds: String): Int? {
+    val minuteValue = minutes.ifBlank { "0" }.toLongOrNull() ?: return null
+    val secondValue = seconds.ifBlank { "0" }.toLongOrNull() ?: return null
+    if (minuteValue < 0 || secondValue !in 0..59) return null
+    return (minuteValue * 60L + secondValue).takeIf { it in 1..86_400 }?.toInt()
+}
+
+internal fun formatRunDuration(seconds: Int): String {
+    val hours = seconds / 3_600
+    val minutes = seconds % 3_600 / 60
+    val remainder = seconds % 60
+    return buildList {
+        if (hours > 0) add("${hours}h")
+        if (minutes > 0) add("${minutes}m")
+        if (remainder > 0 || isEmpty()) add("${remainder}s")
+    }.joinToString(" ")
+}
+
+internal fun runRoutineSummary(run: RunRoutine, scheduleSummary: String): String {
+    val duration = if (run.intervals.isEmpty()) "No duration" else formatRunDuration(run.totalDurationSeconds)
+    return "${run.intervalCountLabel()} · $duration · $scheduleSummary"
+}
+
+private fun RunIntervalKind.displayName() = name.lowercase().replaceFirstChar(Char::uppercase)

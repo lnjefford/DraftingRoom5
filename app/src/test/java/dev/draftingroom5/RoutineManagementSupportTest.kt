@@ -6,13 +6,18 @@ import org.junit.Test
 import java.time.DayOfWeek
 
 class RoutineManagementSupportTest {
-    @Test fun unifiedMetadataDescribesGuidedAndLinkedRoutinesWithoutOriginLabels() {
+    @Test fun unifiedMetadataDescribesEveryRoutineTypeWithoutOriginLabels() {
         val plan = defaultTrainingPlan()
         val guided = plan.routines.single { it.execution == RoutineExecution.GUIDED }
         val linked = plan.routines.first { it.execution == RoutineExecution.LINKED_APP }
+        val run = Routine(
+            "run", 1, "Intervals", "running_shoe", RoutineExecution.RUN, emptyList(), null,
+            RunRoutine(listOf(RunInterval("run", RunIntervalKind.RUN, 60))),
+        )
 
         assertEquals("Guided Routine · 8 exercises", guided.routineListMetadata())
         assertTrue(linked.routineListMetadata().startsWith("Linked App · "))
+        assertEquals("Run Routine · 1 interval", run.routineListMetadata())
         assertTrue("built-in" !in guided.routineListMetadata().lowercase())
         assertTrue("custom" !in guided.routineListMetadata().lowercase())
     }

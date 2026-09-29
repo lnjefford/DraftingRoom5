@@ -621,8 +621,12 @@ private fun DraftingRoom5App() {
                         requestAutomaticBackup()
                     }
                 },
-                onOpenCustom = { session -> navigation.navigate(AppRoute.GuidedSession(
-                    session.routine.id, session.occurrence.scheduleEntryId, session.occurrence.scheduledDate)) },
+                onOpenCustom = { session ->
+                    if (session.routine.execution == RoutineExecution.RUN) {
+                        navigation.navigate(AppRoute.RoutineEditor(session.routine.id))
+                    } else navigation.navigate(AppRoute.GuidedSession(
+                        session.routine.id, session.occurrence.scheduleEntryId, session.occurrence.scheduledDate))
+                },
                 onLaunchExternal = { session ->
                     val occurrence = session.occurrence
                     if ((appRepository.state.value as? LoadState.Ready)?.value?.history?.any { it.occurrence == occurrence } == true) {
@@ -703,6 +707,14 @@ private fun DraftingRoom5App() {
                     val draftId = newId()
                     routineDraftId = draftId
                     routineDraftExecution = RoutineExecution.GUIDED.name
+                    routineDraftPackage = null
+                    routineDraftAppLabel = null
+                    navigation.navigate(AppRoute.RoutineEditor(draftId))
+                },
+                onAddRunRoutine = {
+                    val draftId = newId()
+                    routineDraftId = draftId
+                    routineDraftExecution = RoutineExecution.RUN.name
                     routineDraftPackage = null
                     routineDraftAppLabel = null
                     navigation.navigate(AppRoute.RoutineEditor(draftId))
@@ -801,6 +813,25 @@ private fun DraftingRoom5App() {
                         clearAppPicker()
                         navigation.back()
                     },
+                ) else if (routine?.execution == RoutineExecution.RUN) RunRoutineEditorScreen(
+                    routine = routine,
+                    scheduleSummary = trainingPlan.routineScheduleSummary(routine.id),
+                    isNew = false,
+                    onPersist = { updated ->
+                        val saved = acceptDocumentResult(appRepository.replacePlan(
+                            appDocument.generation,
+                            trainingPlan.copy(routines = trainingPlan.routines.map { if (it.id == updated.id) updated else it }),
+                        ))
+                        if (saved) requestAutomaticBackup()
+                        saved
+                    },
+                    onDelete = {
+                        if (acceptDocumentResult(appRepository.deleteRoutine(appDocument.generation, routine.id))) {
+                            requestAutomaticBackup()
+                            navigation.back()
+                        }
+                    },
+                    onBack = { navigation.back() },
                 ) else if (routine != null) GuidedRoutineEditorScreen(
                     routine = routine,
                     scheduleSummary = trainingPlan.routineScheduleSummary(routine.id),
@@ -837,6 +868,38 @@ private fun DraftingRoom5App() {
                     hapticsEnabled = hapticsEnabled,
                     onPersist = { created ->
                         val saved = created.isSaveableGuidedRoutine() && acceptDocumentResult(appRepository.replacePlan(
+                            appDocument.generation,
+                            trainingPlan.copy(routines = trainingPlan.routines + created),
+                        ))
+                        if (saved) {
+                            requestAutomaticBackup()
+                            clearRoutineDraft()
+                        }
+                        saved
+                    },
+                    onDelete = {
+                        clearRoutineDraft()
+                        navigation.back()
+                    },
+                    onBack = {
+                        clearRoutineDraft()
+                        navigation.back()
+                    },
+                ) else if (draft?.execution == RoutineExecution.RUN) RunRoutineEditorScreen(
+                    routine = Routine(
+                        id = draft.id,
+                        revision = 1,
+                        name = "",
+                        artworkId = "running_shoe",
+                        execution = RoutineExecution.RUN,
+                        exercises = emptyList(),
+                        appLink = null,
+                        run = RunRoutine(emptyList()),
+                    ),
+                    scheduleSummary = "Not scheduled",
+                    isNew = true,
+                    onPersist = { created ->
+                        val saved = created.isSaveableRunRoutine() && acceptDocumentResult(appRepository.replacePlan(
                             appDocument.generation,
                             trainingPlan.copy(routines = trainingPlan.routines + created),
                         ))
@@ -1239,7 +1302,7 @@ private fun Dashboard(
                                     session = session,
                                     onClick = {
                                         if (session.action != SessionAction.DONE) {
-                                            if (session.routine.execution == RoutineExecution.GUIDED) onOpenCustom(session)
+                                            if (session.routine.execution != RoutineExecution.LINKED_APP) onOpenCustom(session)
                                             else onLaunchExternal(session)
                                         }
                                     },
@@ -2759,7 +2822,7 @@ private fun dashboardPreviewHealthStats(): HealthStats {
 private fun Routine.dashboardMetadata(): String = when (execution) {
     RoutineExecution.GUIDED -> "${exercises.size} exercises"
     RoutineExecution.LINKED_APP -> "Opens ${linkedAppDisplayName(checkNotNull(appLink).packageName)}"
-    RoutineExecution.RUN -> "${checkNotNull(run).intervals.size} intervals"
+    RoutineExecution.RUN -> checkNotNull(run).intervalCountLabel()
 }
 
 @Composable

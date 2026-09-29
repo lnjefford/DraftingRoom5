@@ -17,7 +17,11 @@ internal data class DashboardSession(
 ) {
     val actionLabel: String
         get() = when (action) {
-            SessionAction.START -> if (routine.execution == RoutineExecution.LINKED_APP) "Open & complete" else "Start"
+            SessionAction.START -> when (routine.execution) {
+                RoutineExecution.GUIDED -> "Start"
+                RoutineExecution.LINKED_APP -> "Open & complete"
+                RoutineExecution.RUN -> "Edit intervals"
+            }
             SessionAction.RESUME -> "Resume"
             SessionAction.DONE -> "Done"
         }

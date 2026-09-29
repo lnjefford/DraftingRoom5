@@ -12,10 +12,11 @@ class RoutineCreationTest {
         InstalledAppOption("com.example.alpha", "Alpha Run", "Health & fitness"),
     )
 
-    @Test fun chooserHasExactlyTheTwoApprovedImmediateActions() {
-        assertEquals(listOf(AddRoutineChoice.GUIDED, AddRoutineChoice.LINKED_APP), addRoutineOptions.map { it.choice })
+    @Test fun chooserHasTheThreeFirstClassRoutineActions() {
+        assertEquals(listOf(AddRoutineChoice.GUIDED, AddRoutineChoice.RUN, AddRoutineChoice.LINKED_APP), addRoutineOptions.map { it.choice })
         assertEquals("Guided routine", addRoutineOptions[0].title)
-        assertEquals("Linked-app routine", addRoutineOptions[1].title)
+        assertEquals("Run routine", addRoutineOptions[1].title)
+        assertEquals("Linked-app routine", addRoutineOptions[2].title)
     }
 
     @Test fun localSearchUsesVisibleLabelsAndHandlesNoMatches() {

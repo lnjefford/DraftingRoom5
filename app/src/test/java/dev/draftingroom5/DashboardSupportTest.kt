@@ -35,6 +35,21 @@ class DashboardSupportTest {
         assertEquals("FITBOD", linkedAppDisplayName(sessions.first().routine.appLink!!.packageName))
     }
 
+    @Test fun runRoutineUsesTheEditorActionUntilExecutionIsAvailable() {
+        val run = Routine(
+            "run", 1, "Intervals", "running_shoe", RoutineExecution.RUN, emptyList(), null,
+            RunRoutine(listOf(RunInterval("run", RunIntervalKind.RUN, 60))),
+        )
+        val date = LocalDate.of(2026, 9, 7)
+        val runEntry = ScheduleEntry("run-entry", run.id, setOf(date.dayOfWeek))
+        val session = dashboardSessions(
+            TrainingPlan(listOf(run), listOf(runEntry)), emptyList(), emptyList(), date,
+        ).single()
+
+        assertEquals("Edit intervals", session.actionLabel)
+        assertEquals("Edit intervals Intervals", session.accessibilityAction)
+    }
+
     @Test
     fun partialGuidedOccurrenceResumesWithCompletedExerciseProgress() {
         val completedSets = routine.exercises.associate { exercise ->

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -67,7 +68,7 @@ import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal enum class AddRoutineChoice { GUIDED, LINKED_APP }
+internal enum class AddRoutineChoice { GUIDED, RUN, LINKED_APP }
 
 internal data class AddRoutineOption(
     val choice: AddRoutineChoice,
@@ -80,6 +81,11 @@ internal val addRoutineOptions = listOf(
         AddRoutineChoice.GUIDED,
         "Guided routine",
         "Build a list of exercises or activities to complete here.",
+    ),
+    AddRoutineOption(
+        AddRoutineChoice.RUN,
+        "Run routine",
+        "Build an ordered plan of timed walk and run intervals.",
     ),
     AddRoutineOption(
         AddRoutineChoice.LINKED_APP,
@@ -169,7 +175,11 @@ internal fun AddRoutineChooserSheet(
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         Icon(
-                            if (option.choice == AddRoutineChoice.GUIDED) Icons.Default.FitnessCenter else Icons.Default.Link,
+                            when (option.choice) {
+                                AddRoutineChoice.GUIDED -> Icons.Default.FitnessCenter
+                                AddRoutineChoice.RUN -> Icons.Default.DirectionsRun
+                                AddRoutineChoice.LINKED_APP -> Icons.Default.Link
+                            },
                             contentDescription = null,
                             tint = AppBlue,
                             modifier = Modifier.size(28.dp),

@@ -521,3 +521,30 @@ fun StructuredTargetPlacementScreenshots() {
         }
     }
 }
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun RunRoutineEditorScreenshots() {
+    val routine = Routine(
+        id = "run-preview",
+        revision = 1,
+        name = "Neighborhood intervals",
+        artworkId = "running_shoe",
+        execution = RoutineExecution.RUN,
+        exercises = emptyList(),
+        appLink = null,
+        run = RunRoutine(listOf(
+            RunInterval("warmup", RunIntervalKind.WALK, 300),
+            RunInterval("run-one", RunIntervalKind.RUN, 120),
+            RunInterval("recovery", RunIntervalKind.WALK, 60),
+            RunInterval("run-two", RunIntervalKind.RUN, 120),
+        )),
+    )
+    DraftingRoom5Theme {
+        RunRoutineEditorScreen(routine, "Scheduled Mon · Wed · Fri", false, { true }, {}, {})
+    }
+}

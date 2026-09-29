@@ -13,6 +13,59 @@ internal data class RunRoutine(
     val intervals: List<RunInterval>,
 )
 
+internal val RunRoutine.totalDurationSeconds: Int
+    get() = intervals.sumOf { it.durationSeconds }
+
+internal fun RunRoutine.intervalCountLabel(): String =
+    if (intervals.size == 1) "1 interval" else "${intervals.size} intervals"
+
+internal fun Routine.withRunIdentity(name: String, artworkId: String): Routine? {
+    val cleanName = name.trim()
+    if (execution != RoutineExecution.RUN || cleanName.isEmpty() || cleanName.length > 200) return null
+    val resolvedArtwork = RoutineArtworkCatalog.resolve(artworkId).storageId
+    if (cleanName == this.name && resolvedArtwork == this.artworkId) return this
+    return copy(revision = revision + 1, name = cleanName, artworkId = resolvedArtwork)
+}
+
+internal fun Routine.withRunArtwork(artworkId: String): Routine? {
+    if (execution != RoutineExecution.RUN) return null
+    val resolvedArtwork = RoutineArtworkCatalog.resolve(artworkId).storageId
+    return if (resolvedArtwork == this.artworkId) this else copy(revision = revision + 1, artworkId = resolvedArtwork)
+}
+
+internal fun Routine.withRunInterval(interval: RunInterval): Routine? {
+    if (execution != RoutineExecution.RUN || interval.id.isBlank() || interval.durationSeconds !in 1..86_400) return null
+    val current = checkNotNull(run)
+    val next = if (current.intervals.any { it.id == interval.id }) {
+        current.intervals.map { if (it.id == interval.id) interval else it }
+    } else current.intervals + interval
+    if (next.map { it.id }.distinct().size != next.size || next.size > 512) return null
+    return if (next == current.intervals) this else copy(revision = revision + 1, run = current.copy(intervals = next))
+}
+
+internal fun Routine.moveRunInterval(intervalId: String, offset: Int): Routine {
+    if (execution != RoutineExecution.RUN) return this
+    val current = checkNotNull(run)
+    val moved = move(current.intervals, current.intervals.indexOfFirst { it.id == intervalId }, offset)
+    return if (moved == current.intervals) this else copy(revision = revision + 1, run = current.copy(intervals = moved))
+}
+
+internal fun Routine.withoutRunInterval(intervalId: String, allowEmpty: Boolean = false): Routine? {
+    if (execution != RoutineExecution.RUN) return null
+    val current = checkNotNull(run)
+    val next = current.intervals.filterNot { it.id == intervalId }
+    if (next.size == current.intervals.size || (!allowEmpty && next.isEmpty())) return null
+    return copy(revision = revision + 1, run = current.copy(intervals = next))
+}
+
+internal fun Routine.forRunEditorSave(original: Routine, isNew: Boolean): Routine =
+    copy(revision = if (isNew) 1 else if (copy(revision = original.revision) == original) original.revision else original.revision + 1)
+
+internal fun Routine.isSaveableRunRoutine(): Boolean = runCatching {
+    execution == RoutineExecution.RUN && name.trim().isNotEmpty() && name.trim().length <= 200 &&
+        appLink == null && exercises.isEmpty() && run != null && validateRunRoutine(run).let { true }
+}.getOrDefault(false)
+
 /** Integer coordinates keep saved documents and phone/watch comparisons deterministic. */
 internal data class RunRoutePoint(
     val latitudeE7: Int,
