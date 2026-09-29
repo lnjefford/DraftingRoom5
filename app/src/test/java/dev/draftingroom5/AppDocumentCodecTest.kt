@@ -35,13 +35,52 @@ class AppDocumentCodecTest {
         val encoded = encodeAppDocument(document)
         val restored = decodeAppDocument(encoded)
         assertEquals(document, restored)
-        assertEquals(2, JSONObject(encoded).getInt("schemaVersion"))
+        assertEquals(3, JSONObject(encoded).getInt("schemaVersion"))
         assertEquals(3, restored.plan.routines.single { it.id == "routine-forearm" }.exercises.first().setCount)
     }
 
     @Test fun futureSchemaVersionsFailClosedInsteadOfGuessing() {
-        val root = JSONObject(encodeAppDocument(defaultAppDocument())).put("schemaVersion", 3)
+        val root = JSONObject(encodeAppDocument(defaultAppDocument())).put("schemaVersion", 4)
         assertThrows(IllegalArgumentException::class.java) { decodeAppDocument(root.toString()) }
+    }
+
+    @Test fun nativeRunRoutineAndOfflineRouteRoundTrip() {
+        val run = Routine(
+            id = "routine-native-run",
+            revision = 1,
+            name = "Neighborhood intervals",
+            artworkId = "running_shoe",
+            execution = RoutineExecution.RUN,
+            exercises = emptyList(),
+            appLink = null,
+            run = RunRoutine(listOf(
+                RunInterval("warmup", RunIntervalKind.WALK, 300),
+                RunInterval("run-1", RunIntervalKind.RUN, 120),
+                RunInterval("walk-1", RunIntervalKind.WALK, 60),
+            )),
+        )
+        val route = RunRoute(
+            id = "route-neighborhood",
+            revision = 2,
+            name = "Neighborhood loop",
+            points = listOf(
+                RunRoutePoint(410_000_000, -870_000_000),
+                RunRoutePoint(410_000_100, -870_000_100),
+                RunRoutePoint(410_000_200, -870_000_000),
+            ),
+            waypointIndices = listOf(0, 2),
+            turnCues = listOf(
+                RunTurnCue(1, RunTurnKind.RIGHT, "Turn right onto Oak Street"),
+                RunTurnCue(2, RunTurnKind.ARRIVE, "Route complete"),
+            ),
+        )
+        val base = defaultAppDocument()
+        val document = base.copy(
+            plan = base.plan.copy(routines = base.plan.routines + run),
+            runRoutes = listOf(route),
+        )
+
+        assertEquals(document, decodeAppDocument(encodeAppDocument(document)))
     }
 
     @Test fun mixedReleasedExerciseSchemasAreRejected() {

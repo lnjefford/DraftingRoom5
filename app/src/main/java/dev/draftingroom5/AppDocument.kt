@@ -49,6 +49,7 @@ internal data class AppDocument(
     val history: List<WorkoutHistoryEntry> = emptyList(),
     val occurrenceExceptions: List<OccurrenceException> = emptyList(),
     val progressionReceipts: List<ProgressionReceipt> = emptyList(),
+    val runRoutes: List<RunRoute> = emptyList(),
 )
 
 internal fun defaultAppDocument() = AppDocument()
@@ -59,6 +60,8 @@ internal fun validateAppDocument(document: AppDocument) {
     require(document.plan.routines.map { it.id }.distinct().size == document.plan.routines.size) { "Routine IDs must be unique." }
     require(document.plan.schedule.map { it.id }.distinct().size == document.plan.schedule.size) { "Schedule IDs must be unique." }
     document.plan.routines.forEach(::validateRoutine)
+    require(document.runRoutes.map { it.id }.distinct().size == document.runRoutes.size) { "Run route IDs must be unique." }
+    document.runRoutes.forEach(::validateRunRoute)
     val routineIds = document.plan.routines.mapTo(hashSetOf()) { it.id }
     document.plan.schedule.forEach { entry ->
         validateId(entry.id)
@@ -113,8 +116,9 @@ private fun validateRoutine(routine: Routine) {
     validateText(routine.name, 200, "Routine name")
     validateText(routine.artworkId, 128, "Routine artwork")
     when (routine.execution) {
-        RoutineExecution.GUIDED -> require(routine.appLink == null && routine.exercises.isNotEmpty()) { "Guided routines need exercises and no app link." }
-        RoutineExecution.LINKED_APP -> require(routine.appLink != null && routine.exercises.isEmpty()) { "Linked routines need an app link and no exercises." }
+        RoutineExecution.GUIDED -> require(routine.appLink == null && routine.exercises.isNotEmpty() && routine.run == null) { "Guided routines need exercises only." }
+        RoutineExecution.LINKED_APP -> require(routine.appLink != null && routine.exercises.isEmpty() && routine.run == null) { "Linked routines need an app link only." }
+        RoutineExecution.RUN -> require(routine.appLink == null && routine.exercises.isEmpty() && routine.run != null) { "Run routines need an interval plan only." }
     }
     routine.appLink?.let { link ->
         validateText(link.packageName, 255, "Package name")
@@ -122,6 +126,7 @@ private fun validateRoutine(routine: Routine) {
     }
     val exerciseIds = hashSetOf<String>()
     routine.exercises.forEach { validateExercise(it, exerciseIds) }
+    routine.run?.let(::validateRunRoutine)
 }
 
 private fun validateExercise(exercise: Exercise, exerciseIds: MutableSet<String>) {

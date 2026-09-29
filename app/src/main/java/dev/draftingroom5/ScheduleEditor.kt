@@ -217,4 +217,5 @@ private fun RoutineChoiceRow(routine: Routine, selected: Boolean, onSelect: () -
 private fun Routine.scheduleEditorMetadata(): String = when (execution) {
     RoutineExecution.GUIDED -> "Guided routine · ${if (exercises.size == 1) "1 exercise" else "${exercises.size} exercises"}"
     RoutineExecution.LINKED_APP -> "Linked app · ${linkedAppDisplayName(checkNotNull(appLink).packageName)}"
+    RoutineExecution.RUN -> "Run routine · ${checkNotNull(run).intervals.size} intervals"
 }

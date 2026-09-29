@@ -3,7 +3,7 @@ package dev.draftingroom5
 import java.time.DayOfWeek
 import java.util.UUID
 
-internal enum class RoutineExecution { GUIDED, LINKED_APP }
+internal enum class RoutineExecution { GUIDED, LINKED_APP, RUN }
 
 internal enum class ScheduleRepeat { WEEKLY, WEEKDAYS, DAILY, CUSTOM }
 
@@ -61,6 +61,7 @@ internal data class Routine(
     val execution: RoutineExecution,
     val exercises: List<Exercise>,
     val appLink: AppLink?,
+    val run: RunRoutine? = null,
 )
 
 internal data class ScheduleEntry(val id: String, val routineId: String, val days: Set<DayOfWeek>)

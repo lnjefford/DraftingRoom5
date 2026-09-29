@@ -597,16 +597,19 @@ private fun Set<DayOfWeek>.weekdayList(): String = sortedBy(DayOfWeek::getValue)
 private fun Routine.scheduleEyebrow(): String = when (execution) {
     RoutineExecution.GUIDED -> "GUIDED ROUTINE"
     RoutineExecution.LINKED_APP -> "LINKED APP · ${linkedAppDisplayName(checkNotNull(appLink).packageName).uppercase()}"
+    RoutineExecution.RUN -> "RUN ROUTINE"
 }
 
 private fun Routine.scheduleMetadata(): String = when (execution) {
     RoutineExecution.GUIDED -> if (exercises.size == 1) "1 exercise" else "${exercises.size} exercises"
     RoutineExecution.LINKED_APP -> "Opens ${linkedAppDisplayName(checkNotNull(appLink).packageName)}"
+    RoutineExecution.RUN -> "${checkNotNull(run).intervals.size} intervals"
 }
 
 internal fun Routine.routineListMetadata(): String = when (execution) {
     RoutineExecution.GUIDED -> "Guided Routine · ${if (exercises.size == 1) "1 exercise" else "${exercises.size} exercises"}"
     RoutineExecution.LINKED_APP -> "Linked App · ${linkedAppDisplayName(checkNotNull(appLink).packageName)}"
+    RoutineExecution.RUN -> "Run Routine · ${checkNotNull(run).intervals.size} intervals"
 }
 
 internal fun TrainingPlan.routineScheduleSummary(routineId: String): String {

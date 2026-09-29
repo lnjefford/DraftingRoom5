@@ -7,7 +7,7 @@ import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.LocalDate
 
-private const val CURRENT_SCHEMA_VERSION = 2
+private const val CURRENT_SCHEMA_VERSION = 3
 
 internal fun encodeAppDocument(document: AppDocument): String {
     validateAppDocument(document)
@@ -16,6 +16,7 @@ internal fun encodeAppDocument(document: AppDocument): String {
         put("schemaVersion", CURRENT_SCHEMA_VERSION)
         put("generation", document.generation)
         put("plan", encodePlan(document.plan))
+        put("runRoutes", JSONArray().apply { document.runRoutes.forEach { put(encodeRunRoute(it)) } })
         put("preferences", encodePreferences(document.preferences))
         put("partialSessions", JSONArray().apply { document.partialSessions.forEach { put(encodeSession(it)) } })
         put("history", JSONArray().apply { document.history.forEach { put(encodeHistory(it)) } })
@@ -51,6 +52,10 @@ internal fun decodeAppDocument(value: String): AppDocument = try {
             root.exact(*CURRENT_DOCUMENT_FIELDS.toTypedArray())
             require(root.strictInt("schemaVersion") == CURRENT_SCHEMA_VERSION) { "Unsupported document schema version." }
         }
+        DocumentSchema.RELEASED_V02817 -> {
+            root.exact(*V2_DOCUMENT_FIELDS.toTypedArray())
+            require(root.strictInt("schemaVersion") == 2) { "Unsupported document schema version." }
+        }
         DocumentSchema.RELEASED_V02731,
         DocumentSchema.RELEASED_V02730 -> root.exact(*PREVERSION_DOCUMENT_FIELDS.toTypedArray())
         DocumentSchema.RELEASED_V025 -> root.exact(*V025_DOCUMENT_FIELDS.toTypedArray())
@@ -59,6 +64,7 @@ internal fun decodeAppDocument(value: String): AppDocument = try {
         format = root.strictString("format"),
         generation = root.strictLong("generation"),
         plan = decodePlan(root.strictObject("plan"), schema),
+        runRoutes = if (schema == DocumentSchema.CURRENT) root.strictArray("runRoutes").objects(::decodeRunRoute) else emptyList(),
         preferences = decodePreferences(root.strictObject("preferences")),
         partialSessions = root.strictArray("partialSessions").objects { decodeSession(it, schema) },
         history = root.strictArray("history").objects { decodeHistory(it, schema) },
@@ -116,12 +122,14 @@ internal fun encodeRoutine(routine: Routine) = JSONObject().apply {
     put("execution", routine.execution.name)
     put("appLink", routine.appLink?.let { JSONObject().apply { put("packageName", it.packageName); put("deepLink", it.deepLink ?: JSONObject.NULL) } } ?: JSONObject.NULL)
     put("exercises", JSONArray().apply { routine.exercises.forEach { put(encodeExercise(it)) } })
+    put("run", routine.run?.let(::encodeRunRoutine) ?: JSONObject.NULL)
 }
 
 internal fun decodeRoutine(value: JSONObject): Routine = decodeRoutine(value, DocumentSchema.CURRENT)
 
 private fun decodeRoutine(value: JSONObject, schema: DocumentSchema): Routine {
-    value.exact("id", "revision", "name", "artworkId", "execution", "appLink", "exercises")
+    if (schema == DocumentSchema.CURRENT) value.exact(*CURRENT_ROUTINE_FIELDS.toTypedArray())
+    else value.exact(*LEGACY_ROUTINE_FIELDS.toTypedArray())
     return Routine(
         id = value.strictString("id"), revision = value.strictLong("revision"), name = value.strictString("name"),
         artworkId = value.strictString("artworkId"), execution = RoutineExecution.valueOf(value.strictString("execution")),
@@ -130,6 +138,65 @@ private fun decodeRoutine(value: JSONObject, schema: DocumentSchema): Routine {
             AppLink(it.strictString("packageName"), it.nullableString("deepLink"))
         },
         exercises = value.strictArray("exercises").objects { exercise -> decodeExercise(exercise, schema) },
+        run = if (schema == DocumentSchema.CURRENT) value.nullableObject("run")?.let(::decodeRunRoutine) else null,
+    )
+}
+
+private fun encodeRunRoutine(value: RunRoutine) = JSONObject().apply {
+    put("intervals", JSONArray().apply { value.intervals.forEach { interval ->
+        put(JSONObject().apply {
+            put("id", interval.id)
+            put("kind", interval.kind.name)
+            put("durationSeconds", interval.durationSeconds)
+        })
+    } })
+}
+
+private fun decodeRunRoutine(value: JSONObject): RunRoutine {
+    value.exact("intervals")
+    return RunRoutine(value.strictArray("intervals").objects { interval ->
+        interval.exact("id", "kind", "durationSeconds")
+        RunInterval(
+            id = interval.strictString("id"),
+            kind = RunIntervalKind.valueOf(interval.strictString("kind")),
+            durationSeconds = interval.strictInt("durationSeconds"),
+        )
+    })
+}
+
+private fun encodeRunRoute(value: RunRoute) = JSONObject().apply {
+    put("id", value.id)
+    put("revision", value.revision)
+    put("name", value.name)
+    put("points", JSONArray().apply { value.points.forEach { point ->
+        put(JSONArray().put(point.latitudeE7).put(point.longitudeE7))
+    } })
+    put("waypointIndices", JSONArray(value.waypointIndices))
+    put("turnCues", JSONArray().apply { value.turnCues.forEach { cue ->
+        put(JSONObject().apply {
+            put("pointIndex", cue.pointIndex)
+            put("kind", cue.kind.name)
+            put("instruction", cue.instruction)
+        })
+    } })
+}
+
+private fun decodeRunRoute(value: JSONObject): RunRoute {
+    value.exact("id", "revision", "name", "points", "waypointIndices", "turnCues")
+    return RunRoute(
+        id = value.strictString("id"),
+        revision = value.strictLong("revision"),
+        name = value.strictString("name"),
+        points = value.strictArray("points").coordinatePairs(),
+        waypointIndices = value.strictArray("waypointIndices").integers(),
+        turnCues = value.strictArray("turnCues").objects { cue ->
+            cue.exact("pointIndex", "kind", "instruction")
+            RunTurnCue(
+                pointIndex = cue.strictInt("pointIndex"),
+                kind = RunTurnKind.valueOf(cue.strictString("kind")),
+                instruction = cue.strictString("instruction"),
+            )
+        },
     )
 }
 
@@ -438,6 +505,7 @@ private fun legacyAutomaticOutcome(beforeJson: JSONObject, choice: String): Exer
 private fun detectDocumentSchema(root: JSONObject): DocumentSchema {
     val fields = root.keys().asSequence().toSet()
     if (fields == CURRENT_DOCUMENT_FIELDS) return DocumentSchema.CURRENT
+    if (fields == V2_DOCUMENT_FIELDS) return DocumentSchema.RELEASED_V02817
     if (fields == V025_DOCUMENT_FIELDS) return DocumentSchema.RELEASED_V025
     require(fields == PREVERSION_DOCUMENT_FIELDS) { "Unexpected or missing fields." }
     val shapes = mutableSetOf<DocumentSchema>()
@@ -465,13 +533,16 @@ private fun detectDocumentSchema(root: JSONObject): DocumentSchema {
     return shapes.singleOrNull() ?: DocumentSchema.RELEASED_V02731
 }
 
-private enum class DocumentSchema { CURRENT, RELEASED_V02731, RELEASED_V02730, RELEASED_V025 }
+private enum class DocumentSchema { CURRENT, RELEASED_V02817, RELEASED_V02731, RELEASED_V02730, RELEASED_V025 }
 
 private val PREVERSION_DOCUMENT_FIELDS = setOf(
     "format", "generation", "plan", "preferences", "partialSessions", "history", "occurrenceExceptions", "progressionReceipts",
 )
-private val CURRENT_DOCUMENT_FIELDS = PREVERSION_DOCUMENT_FIELDS + "schemaVersion"
+private val V2_DOCUMENT_FIELDS = PREVERSION_DOCUMENT_FIELDS + "schemaVersion"
+private val CURRENT_DOCUMENT_FIELDS = V2_DOCUMENT_FIELDS + "runRoutes"
 private val V025_DOCUMENT_FIELDS = PREVERSION_DOCUMENT_FIELDS - "progressionReceipts"
+private val LEGACY_ROUTINE_FIELDS = setOf("id", "revision", "name", "artworkId", "execution", "appLink", "exercises")
+private val CURRENT_ROUTINE_FIELDS = LEGACY_ROUTINE_FIELDS + "run"
 private val CURRENT_EXERCISE_FIELDS = setOf(
     "id", "name", "notes", "setCount", "reps", "durationSeconds", "artworkId", "weightPounds", "progression",
 )
@@ -498,6 +569,15 @@ private fun JSONObject.strictObject(name: String) = get(name).let { require(it i
 private fun JSONObject.nullableObject(name: String) = if (isNull(name)) null else strictObject(name)
 private fun JSONObject.strictArray(name: String) = get(name).let { require(it is JSONArray) { "$name must be an array." }; it }
 private fun JSONArray.strings() = List(length()) { index -> get(index).let { require(it is String); it } }
+private fun JSONArray.integers() = List(length()) { index -> get(index).let { require(it is Int); it } }
+private fun JSONArray.coordinatePairs() = List(length()) { index ->
+    val pair = get(index)
+    require(pair is JSONArray && pair.length() == 2) { "Run route point must be a coordinate pair." }
+    RunRoutePoint(
+        latitudeE7 = pair.get(0).let { require(it is Int); it },
+        longitudeE7 = pair.get(1).let { require(it is Int); it },
+    )
+}
 private fun <T> JSONArray.objects(transform: (JSONObject) -> T) = List(length()) { index ->
     val item = get(index); require(item is JSONObject) { "Array item must be an object." }; transform(item)
 }

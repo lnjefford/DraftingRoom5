@@ -2539,16 +2539,16 @@ private fun SessionCard(
     )
     val progress = session.progressLabel
     val metadata = when {
-        session.effectiveDate != session.occurrence.scheduledDate -> "Moved from ${session.occurrence.scheduledDate.format(DateTimeFormatter.ofPattern("MMM d", locale))} · ${if (routine.execution == RoutineExecution.GUIDED) "${routine.exercises.size} exercises" else "Opens ${linkedAppDisplayName(checkNotNull(routine.appLink).packageName)}"}"
+        session.effectiveDate != session.occurrence.scheduledDate -> "Moved from ${session.occurrence.scheduledDate.format(DateTimeFormatter.ofPattern("MMM d", locale))} · ${routine.dashboardMetadata()}"
         progress != null && session.savedOriginDate != null -> "$progress · ${session.savedOriginDate.format(DateTimeFormatter.ofPattern("MMM d", locale))}"
         progress != null -> progress
         completed -> "Completed"
-        routine.execution == RoutineExecution.GUIDED -> "${routine.exercises.size} exercises"
-        else -> "Opens ${linkedAppDisplayName(checkNotNull(routine.appLink).packageName)}"
+        else -> routine.dashboardMetadata()
     }
     val eyebrow = when (routine.execution) {
         RoutineExecution.GUIDED -> "GUIDED ROUTINE"
         RoutineExecution.LINKED_APP -> "LINKED APP · ${linkedAppDisplayName(checkNotNull(routine.appLink).packageName)}"
+        RoutineExecution.RUN -> "RUN ROUTINE"
     }
     BrandedCard(
         Modifier
@@ -2754,6 +2754,12 @@ private fun dashboardPreviewHealthStats(): HealthStats {
         workoutTrend = workoutTrend,
         distanceTrend = distanceTrend,
     )
+}
+
+private fun Routine.dashboardMetadata(): String = when (execution) {
+    RoutineExecution.GUIDED -> "${exercises.size} exercises"
+    RoutineExecution.LINKED_APP -> "Opens ${linkedAppDisplayName(checkNotNull(appLink).packageName)}"
+    RoutineExecution.RUN -> "${checkNotNull(run).intervals.size} intervals"
 }
 
 @Composable
