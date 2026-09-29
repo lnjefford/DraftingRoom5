@@ -8,9 +8,23 @@ internal data class RunInterval(
     val durationSeconds: Int,
 )
 
-/** A routine owns its timing plan. Route selection is deliberately separate. */
+/** A routine owns its timing plan and an optional reference to a reusable route. */
 internal data class RunRoutine(
     val intervals: List<RunInterval>,
+    val routeId: String? = null,
+)
+
+internal fun Routine.withRunRoute(routeId: String?): Routine? {
+    if (execution != RoutineExecution.RUN || (routeId != null && (routeId.isBlank() || routeId.length > 128))) return null
+    val current = checkNotNull(run)
+    return if (current.routeId == routeId) this else copy(revision = revision + 1, run = current.copy(routeId = routeId))
+}
+
+internal fun AppDocument.withoutRunRoute(routeId: String): AppDocument = copy(
+    runRoutes = runRoutes.filterNot { it.id == routeId },
+    plan = plan.copy(routines = plan.routines.map { routine ->
+        if (routine.run?.routeId == routeId) checkNotNull(routine.withRunRoute(null)) else routine
+    }),
 )
 
 internal val RunRoutine.totalDurationSeconds: Int
@@ -124,6 +138,9 @@ internal fun RunRoute.withoutTurnCue(pointIndex: Int): RunRoute? {
 }
 
 internal fun validateRunRoutine(run: RunRoutine) {
+    require(run.routeId == null || (run.routeId.isNotBlank() && run.routeId.length <= 128)) {
+        "Run route ID is invalid."
+    }
     require(run.intervals.isNotEmpty() && run.intervals.size <= 512) {
         "Run routines need between 1 and 512 intervals."
     }

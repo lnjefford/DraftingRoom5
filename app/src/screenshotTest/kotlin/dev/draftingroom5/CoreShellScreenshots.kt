@@ -542,10 +542,17 @@ fun RunRoutineEditorScreenshots() {
             RunInterval("run-one", RunIntervalKind.RUN, 120),
             RunInterval("recovery", RunIntervalKind.WALK, 60),
             RunInterval("run-two", RunIntervalKind.RUN, 120),
-        )),
+        ), routeId = "preview-route"),
     )
     DraftingRoom5Theme {
-        RunRoutineEditorScreen(routine, "Scheduled Mon · Wed · Fri", false, { true }, {}, {})
+        RunRoutineEditorScreen(
+            routine = routine,
+            routes = listOf(RunRoute("preview-route", 1, "Neighborhood loop",
+                listOf(RunRoutePoint(410_000_000, -870_000_000), RunRoutePoint(410_001_000, -870_001_000)),
+                listOf(0, 1), emptyList())),
+            scheduleSummary = "Scheduled Mon · Wed · Fri", isNew = false,
+            onPersist = { true }, onDelete = {}, onBack = {},
+        )
     }
 }
 

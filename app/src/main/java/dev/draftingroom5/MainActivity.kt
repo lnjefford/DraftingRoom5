@@ -815,6 +815,7 @@ private fun DraftingRoom5App() {
                     },
                 ) else if (routine?.execution == RoutineExecution.RUN) RunRoutineEditorScreen(
                     routine = routine,
+                    routes = appDocument.runRoutes,
                     scheduleSummary = trainingPlan.routineScheduleSummary(routine.id),
                     isNew = false,
                     onPersist = { updated ->
@@ -897,6 +898,7 @@ private fun DraftingRoom5App() {
                         appLink = null,
                         run = RunRoutine(emptyList()),
                     ),
+                    routes = appDocument.runRoutes,
                     scheduleSummary = "Not scheduled",
                     isNew = true,
                     onPersist = { created ->
@@ -1030,7 +1032,7 @@ private fun DraftingRoom5App() {
                     saved
                 },
                 onDelete = { routeId ->
-                    val saved = persistDocument { current -> current.copy(runRoutes = current.runRoutes.filterNot { it.id == routeId }) }
+                    val saved = persistDocument { current -> current.withoutRunRoute(routeId) }
                     if (saved) requestAutomaticBackup()
                     saved
                 },

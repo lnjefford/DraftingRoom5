@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun RunRoutineEditorScreen(
     routine: Routine,
+    routes: List<RunRoute>,
     scheduleSummary: String,
     isNew: Boolean,
     onPersist: (Routine) -> Boolean,
@@ -78,6 +79,7 @@ internal fun RunRoutineEditorScreen(
     var deleteRoutine by rememberSaveable(routine.id) { mutableStateOf(false) }
     var discardRequested by rememberSaveable(routine.id) { mutableStateOf(false) }
     var overflowExpanded by remember { mutableStateOf(false) }
+    var routePicker by remember { mutableStateOf(false) }
     var actionMessage by rememberSaveable(routine.id) { mutableStateOf<String?>(null) }
     val changed = working != routine
 
@@ -138,6 +140,23 @@ internal fun RunRoutineEditorScreen(
                     )
                 }
                 RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
+            }
+            item {
+                AppSurfaceCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("ROUTE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                        val selected = routes.firstOrNull { it.id == working.run?.routeId }
+                        Text(selected?.name ?: "No route selected", fontWeight = FontWeight.Bold)
+                        Text(
+                            if (selected == null) "Choose a saved route for this run routine." else
+                                "${selected.points.size} route points · ${selected.turnCues.size} turn cues",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(onClick = { routePicker = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text(if (selected == null) "Choose route" else "Change route")
+                        }
+                    }
+                }
             }
             item {
                 OutlinedButton(onClick = onOpenRoutes, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -233,6 +252,25 @@ internal fun RunRoutineEditorScreen(
         confirmLabel = "Discard draft",
         onConfirm = onBack,
         onDismiss = { discardRequested = false },
+    )
+    if (routePicker) AlertDialog(
+        onDismissRequest = { routePicker = false },
+        title = { Text("Choose a route") },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                item {
+                    TextButton(onClick = {
+                        working.withRunRoute(null)?.let { if (applyChange(it, "Route cleared.")) routePicker = false }
+                    }, modifier = Modifier.fillMaxWidth()) { Text("No route") }
+                }
+                items(routes, key = { it.id }) { route ->
+                    TextButton(onClick = {
+                        working.withRunRoute(route.id)?.let { if (applyChange(it, "Route saved.")) routePicker = false }
+                    }, modifier = Modifier.fillMaxWidth()) { Text(route.name) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { routePicker = false }) { Text("Cancel") } },
     )
 }
 

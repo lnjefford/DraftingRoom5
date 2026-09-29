@@ -62,6 +62,12 @@ internal fun validateAppDocument(document: AppDocument) {
     document.plan.routines.forEach(::validateRoutine)
     require(document.runRoutes.map { it.id }.distinct().size == document.runRoutes.size) { "Run route IDs must be unique." }
     document.runRoutes.forEach(::validateRunRoute)
+    val routeIds = document.runRoutes.mapTo(hashSetOf()) { it.id }
+    document.plan.routines.forEach { routine ->
+        require(routine.run?.routeId == null || routine.run.routeId in routeIds) {
+            "Run routine ${routine.id} references a missing route."
+        }
+    }
     val routineIds = document.plan.routines.mapTo(hashSetOf()) { it.id }
     document.plan.schedule.forEach { entry ->
         validateId(entry.id)

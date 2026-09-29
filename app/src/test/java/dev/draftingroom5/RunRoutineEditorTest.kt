@@ -71,5 +71,16 @@ class RunRoutineEditorTest {
         assertNull(guided.withRunIdentity("Run", "running_shoe"))
         assertNull(guided.withRunInterval(RunInterval("run", RunIntervalKind.RUN, 60)))
         assertSame(guided, guided.moveRunInterval("run", 1))
+        assertNull(guided.withRunRoute("route"))
+    }
+
+    @Test fun selectingAndClearingRoutePreservesIntervalsAndIncrementsRevision() {
+        val selected = original.withRunRoute("route-park")!!
+        assertEquals(5, selected.revision)
+        assertEquals(original.run!!.intervals, selected.run!!.intervals)
+        assertEquals("route-park", selected.run.routeId)
+        assertSame(selected, selected.withRunRoute("route-park"))
+        assertEquals(null, selected.withRunRoute(null)!!.run!!.routeId)
+        assertNull(original.withRunRoute(" "))
     }
 }

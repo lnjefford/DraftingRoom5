@@ -7,7 +7,7 @@ import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.LocalDate
 
-private const val CURRENT_SCHEMA_VERSION = 3
+private const val CURRENT_SCHEMA_VERSION = 4
 
 internal fun encodeAppDocument(document: AppDocument): String {
     validateAppDocument(document)
@@ -52,6 +52,10 @@ internal fun decodeAppDocument(value: String): AppDocument = try {
             root.exact(*CURRENT_DOCUMENT_FIELDS.toTypedArray())
             require(root.strictInt("schemaVersion") == CURRENT_SCHEMA_VERSION) { "Unsupported document schema version." }
         }
+        DocumentSchema.RELEASED_V02820 -> {
+            root.exact(*CURRENT_DOCUMENT_FIELDS.toTypedArray())
+            require(root.strictInt("schemaVersion") == 3) { "Unsupported document schema version." }
+        }
         DocumentSchema.RELEASED_V02817 -> {
             root.exact(*V2_DOCUMENT_FIELDS.toTypedArray())
             require(root.strictInt("schemaVersion") == 2) { "Unsupported document schema version." }
@@ -64,7 +68,8 @@ internal fun decodeAppDocument(value: String): AppDocument = try {
         format = root.strictString("format"),
         generation = root.strictLong("generation"),
         plan = decodePlan(root.strictObject("plan"), schema),
-        runRoutes = if (schema == DocumentSchema.CURRENT) root.strictArray("runRoutes").objects(::decodeRunRoute) else emptyList(),
+        runRoutes = if (schema == DocumentSchema.CURRENT || schema == DocumentSchema.RELEASED_V02820)
+            root.strictArray("runRoutes").objects(::decodeRunRoute) else emptyList(),
         preferences = decodePreferences(root.strictObject("preferences")),
         partialSessions = root.strictArray("partialSessions").objects { decodeSession(it, schema) },
         history = root.strictArray("history").objects { decodeHistory(it, schema) },
@@ -128,7 +133,7 @@ internal fun encodeRoutine(routine: Routine) = JSONObject().apply {
 internal fun decodeRoutine(value: JSONObject): Routine = decodeRoutine(value, DocumentSchema.CURRENT)
 
 private fun decodeRoutine(value: JSONObject, schema: DocumentSchema): Routine {
-    if (schema == DocumentSchema.CURRENT) value.exact(*CURRENT_ROUTINE_FIELDS.toTypedArray())
+    if (schema == DocumentSchema.CURRENT || schema == DocumentSchema.RELEASED_V02820) value.exact(*CURRENT_ROUTINE_FIELDS.toTypedArray())
     else value.exact(*LEGACY_ROUTINE_FIELDS.toTypedArray())
     return Routine(
         id = value.strictString("id"), revision = value.strictLong("revision"), name = value.strictString("name"),
@@ -138,11 +143,16 @@ private fun decodeRoutine(value: JSONObject, schema: DocumentSchema): Routine {
             AppLink(it.strictString("packageName"), it.nullableString("deepLink"))
         },
         exercises = value.strictArray("exercises").objects { exercise -> decodeExercise(exercise, schema) },
-        run = if (schema == DocumentSchema.CURRENT) value.nullableObject("run")?.let(::decodeRunRoutine) else null,
+        run = when (schema) {
+            DocumentSchema.CURRENT -> value.nullableObject("run")?.let { decodeRunRoutine(it, true) }
+            DocumentSchema.RELEASED_V02820 -> value.nullableObject("run")?.let { decodeRunRoutine(it, false) }
+            else -> null
+        },
     )
 }
 
 private fun encodeRunRoutine(value: RunRoutine) = JSONObject().apply {
+    put("routeId", value.routeId ?: JSONObject.NULL)
     put("intervals", JSONArray().apply { value.intervals.forEach { interval ->
         put(JSONObject().apply {
             put("id", interval.id)
@@ -152,16 +162,17 @@ private fun encodeRunRoutine(value: RunRoutine) = JSONObject().apply {
     } })
 }
 
-private fun decodeRunRoutine(value: JSONObject): RunRoutine {
-    value.exact("intervals")
-    return RunRoutine(value.strictArray("intervals").objects { interval ->
+private fun decodeRunRoutine(value: JSONObject, hasRouteId: Boolean): RunRoutine {
+    if (hasRouteId) value.exact("intervals", "routeId") else value.exact("intervals")
+    val intervals = value.strictArray("intervals").objects { interval ->
         interval.exact("id", "kind", "durationSeconds")
         RunInterval(
             id = interval.strictString("id"),
             kind = RunIntervalKind.valueOf(interval.strictString("kind")),
             durationSeconds = interval.strictInt("durationSeconds"),
         )
-    })
+    }
+    return RunRoutine(intervals, if (hasRouteId) value.nullableString("routeId") else null)
 }
 
 private fun encodeRunRoute(value: RunRoute) = JSONObject().apply {
@@ -504,7 +515,11 @@ private fun legacyAutomaticOutcome(beforeJson: JSONObject, choice: String): Exer
 
 private fun detectDocumentSchema(root: JSONObject): DocumentSchema {
     val fields = root.keys().asSequence().toSet()
-    if (fields == CURRENT_DOCUMENT_FIELDS) return DocumentSchema.CURRENT
+    if (fields == CURRENT_DOCUMENT_FIELDS) return when (root.strictInt("schemaVersion")) {
+        CURRENT_SCHEMA_VERSION -> DocumentSchema.CURRENT
+        3 -> DocumentSchema.RELEASED_V02820
+        else -> throw IllegalArgumentException("Unsupported document schema version.")
+    }
     if (fields == V2_DOCUMENT_FIELDS) return DocumentSchema.RELEASED_V02817
     if (fields == V025_DOCUMENT_FIELDS) return DocumentSchema.RELEASED_V025
     require(fields == PREVERSION_DOCUMENT_FIELDS) { "Unexpected or missing fields." }
@@ -533,7 +548,7 @@ private fun detectDocumentSchema(root: JSONObject): DocumentSchema {
     return shapes.singleOrNull() ?: DocumentSchema.RELEASED_V02731
 }
 
-private enum class DocumentSchema { CURRENT, RELEASED_V02817, RELEASED_V02731, RELEASED_V02730, RELEASED_V025 }
+private enum class DocumentSchema { CURRENT, RELEASED_V02820, RELEASED_V02817, RELEASED_V02731, RELEASED_V02730, RELEASED_V025 }
 
 private val PREVERSION_DOCUMENT_FIELDS = setOf(
     "format", "generation", "plan", "preferences", "partialSessions", "history", "occurrenceExceptions", "progressionReceipts",

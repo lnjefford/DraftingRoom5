@@ -46,6 +46,31 @@ class RunDataTest {
         }
     }
 
+    @Test fun missingSelectedRouteIsRejected() {
+        val base = defaultAppDocument()
+        val run = Routine("run", 1, "Park run", "running_shoe", RoutineExecution.RUN,
+            emptyList(), null, RunRoutine(listOf(RunInterval("first", RunIntervalKind.RUN, 60)), "missing"))
+        assertThrows(IllegalArgumentException::class.java) {
+            validateAppDocument(base.copy(plan = base.plan.copy(routines = base.plan.routines + run)))
+        }
+    }
+
+    @Test fun deletingRouteClearsAssignmentsWithoutChangingOtherRoutines() {
+        val base = defaultAppDocument()
+        val selected = Routine("run", 1, "Park run", "running_shoe", RoutineExecution.RUN,
+            emptyList(), null, RunRoutine(listOf(RunInterval("first", RunIntervalKind.RUN, 60)), "route"))
+        val document = base.copy(
+            plan = base.plan.copy(routines = base.plan.routines + selected),
+            runRoutes = listOf(routeFixture()),
+        )
+        val cleared = document.withoutRunRoute("route")
+        validateAppDocument(cleared)
+        org.junit.Assert.assertEquals(emptyList<RunRoute>(), cleared.runRoutes)
+        org.junit.Assert.assertEquals(2, cleared.plan.routines.last().revision)
+        org.junit.Assert.assertEquals(null, cleared.plan.routines.last().run!!.routeId)
+        org.junit.Assert.assertEquals(base.plan.routines, cleared.plan.routines.dropLast(1))
+    }
+
     private fun routeFixture() = RunRoute(
         id = "route",
         revision = 1,

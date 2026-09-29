@@ -35,12 +35,12 @@ class AppDocumentCodecTest {
         val encoded = encodeAppDocument(document)
         val restored = decodeAppDocument(encoded)
         assertEquals(document, restored)
-        assertEquals(3, JSONObject(encoded).getInt("schemaVersion"))
+        assertEquals(4, JSONObject(encoded).getInt("schemaVersion"))
         assertEquals(3, restored.plan.routines.single { it.id == "routine-forearm" }.exercises.first().setCount)
     }
 
     @Test fun futureSchemaVersionsFailClosedInsteadOfGuessing() {
-        val root = JSONObject(encodeAppDocument(defaultAppDocument())).put("schemaVersion", 4)
+        val root = JSONObject(encodeAppDocument(defaultAppDocument())).put("schemaVersion", 5)
         assertThrows(IllegalArgumentException::class.java) { decodeAppDocument(root.toString()) }
     }
 
@@ -57,7 +57,7 @@ class AppDocumentCodecTest {
                 RunInterval("warmup", RunIntervalKind.WALK, 300),
                 RunInterval("run-1", RunIntervalKind.RUN, 120),
                 RunInterval("walk-1", RunIntervalKind.WALK, 60),
-            )),
+            ), routeId = "route-neighborhood"),
         )
         val route = RunRoute(
             id = "route-neighborhood",

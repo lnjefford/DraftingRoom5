@@ -228,7 +228,7 @@ internal fun RunRouteScreen(
     }
     if (selected != null && delete) AppConfirmationDialog(
         title = "Delete ${selected.name}?",
-        message = "This removes the saved route and its turn cues.",
+        message = "This removes the saved route and its turn cues. Run routines using it will have no route selected.",
         confirmLabel = "Delete route",
         onConfirm = { if (onDelete(selected.id)) { selectedId = null; delete = false } else message = "Could not delete route." },
         onDismiss = { delete = false },
