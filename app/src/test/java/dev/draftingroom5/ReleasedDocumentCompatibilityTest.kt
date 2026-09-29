@@ -8,11 +8,11 @@ import org.junit.Test
 
 class ReleasedDocumentCompatibilityTest {
     @Test fun everyReleasedCompatibilityFixtureLoadsAndReencodesAsCurrentSchema() {
-        listOf("v0.25.1.json", "v0.27.30.json", "v0.27.31.json", "v0.28.17.json", "v0.28.20.json").forEach { release ->
+        listOf("v0.25.1.json", "v0.27.30.json", "v0.27.31.json", "v0.28.17.json", "v0.28.20.json", "v0.28.21.json").forEach { release ->
             val decoded = decodeAppDocument(compatibilityFixture(release))
             val current = encodeAppDocument(decoded)
 
-            assertEquals(4, JSONObject(current).getInt("schemaVersion"))
+            assertEquals(5, JSONObject(current).getInt("schemaVersion"))
             assertEquals(decoded, decodeAppDocument(current))
         }
     }
@@ -70,7 +70,7 @@ class ReleasedDocumentCompatibilityTest {
 
         assertTrue(loaded is LoadState.Ready)
         assertEquals(1, storage.writes)
-        assertEquals(4, JSONObject(storage.value).getInt("schemaVersion"))
+        assertEquals(5, JSONObject(storage.value).getInt("schemaVersion"))
         assertEquals(42, decodeAppDocument(storage.value).generation)
     }
 
@@ -85,7 +85,7 @@ class ReleasedDocumentCompatibilityTest {
         assertEquals(123L, restored.createdAtMillis)
         assertEquals(42, restored.document.generation)
         assertEquals("legacy-session", restored.document.partialSessions.single().id)
-        assertEquals(4, JSONObject(encodeAppDocument(restored.document)).getInt("schemaVersion"))
+        assertEquals(5, JSONObject(encodeAppDocument(restored.document)).getInt("schemaVersion"))
     }
 
     private fun compatibilityFixture(release: String): String = checkNotNull(

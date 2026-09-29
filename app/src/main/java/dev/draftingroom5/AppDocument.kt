@@ -50,6 +50,8 @@ internal data class AppDocument(
     val occurrenceExceptions: List<OccurrenceException> = emptyList(),
     val progressionReceipts: List<ProgressionReceipt> = emptyList(),
     val runRoutes: List<RunRoute> = emptyList(),
+    val runSessions: List<RunSession> = emptyList(),
+    val lastRunRouteId: String? = null,
 )
 
 internal fun defaultAppDocument() = AppDocument()
@@ -62,6 +64,21 @@ internal fun validateAppDocument(document: AppDocument) {
     document.plan.routines.forEach(::validateRoutine)
     require(document.runRoutes.map { it.id }.distinct().size == document.runRoutes.size) { "Run route IDs must be unique." }
     document.runRoutes.forEach(::validateRunRoute)
+    require(document.runSessions.map { it.id }.distinct().size == document.runSessions.size)
+    require(document.runSessions.count { it.completedAtMillis == null } <= 1)
+    document.runSessions.forEach(::validateRunSession)
+    require(document.runSessions.map { it.occurrence }.distinct().size == document.runSessions.size)
+    require(document.runSessions.filter { it.completedAtMillis == null }.none { run ->
+        document.history.any { it.occurrence == run.occurrence } ||
+            document.partialSessions.any { it.occurrence == run.occurrence }
+    }) { "An active run conflicts with another session." }
+    document.runSessions.filter { it.completedAtMillis != null }.forEach { run ->
+        require(document.history.any { it.id == run.id && it.occurrence == run.occurrence &&
+            it.completedAtMillis == run.completedAtMillis && it.snapshot.execution == RoutineExecution.RUN }) {
+            "Completed run history is missing."
+        }
+    }
+    require(document.lastRunRouteId == null || document.runRoutes.any { it.id == document.lastRunRouteId })
     val routeIds = document.runRoutes.mapTo(hashSetOf()) { it.id }
     document.plan.routines.forEach { routine ->
         require(routine.run?.routeId == null || routine.run.routeId in routeIds) {

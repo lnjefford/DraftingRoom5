@@ -1,6 +1,6 @@
 # Wear OS companion specification
 
-Status: implemented for the v0.28.0 release.
+Status: guided companion plus standalone run capture.
 
 ## Product boundary
 
@@ -14,6 +14,8 @@ The watch app is a wrist-first controller for today's guided workout, not a copy
 6. Finish after every required set is complete.
 
 Routine editing, progression decisions, correction of earlier sets, linked-app routines, history, Health Connect, dashboard customization, backup, updates, and Finance remain on the phone.
+
+For runs, the watch caches the next seven days of scheduled walk/run plans and bounded route geometry. It can choose a route, request GPS permission, record a run in a foreground service, display elapsed time, distance, intervals and the next turn cue, and provide interval haptics without the phone. Its journal and pending result survive process death and a disconnected network. The phone imports the result idempotently into run history and acknowledges it; the watch keeps the pending result until that acknowledgement arrives. Spotify status uses local media sessions after the user enables notification-listener access, and the unstyled logo/status row opens Spotify.
 
 ## Visual system
 
@@ -46,7 +48,7 @@ The phone is the durable authority. Offline watch projection provides immediate 
 
 ## Availability and recovery
 
-- Requires Wear OS 3 (API 30) or newer, an Android-paired watch, Google Play services, and the matching phone app.
+- Requires Wear OS 3 (API 30) or newer and Google Play services. Phone setup is needed to cache a run plan, but the watch can record that run without the phone nearby.
 - The watch can continue an already-cached guided routine through a temporary disconnect.
 - Starting without any cached snapshot requires the phone to publish one first.
 - If today's plan changes on the phone, the next synchronized phone snapshot replaces stale base data while retaining unacknowledged watch commands for safe replay.

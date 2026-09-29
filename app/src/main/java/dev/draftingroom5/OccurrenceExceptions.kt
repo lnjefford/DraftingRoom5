@@ -25,7 +25,7 @@ internal fun AppDocument.occurrenceDate(key: OccurrenceKey): LocalDate? {
 /** Removed schedules cancel unstarted exceptions; snapshots keep started/completed dates durable. */
 internal fun AppDocument.pruneOccurrenceExceptions(): AppDocument {
     val liveIds = plan.schedule.mapTo(hashSetOf()) { it.id }
-    val durableKeys = partialSessions.map { it.occurrence }.toSet() + history.map { it.occurrence }
+    val durableKeys = partialSessions.map { it.occurrence }.toSet() + history.map { it.occurrence } + runSessions.map { it.occurrence }
     return copy(occurrenceExceptions = occurrenceExceptions.filter {
         it.occurrence.scheduleEntryId in liveIds || it.occurrence in durableKeys
     })
@@ -36,7 +36,7 @@ internal fun validateOccurrenceExceptions(document: AppDocument) {
     require(exceptions.map { it.occurrence }.distinct().size == exceptions.size) { "Occurrence exceptions must be unique." }
     val liveIds = document.plan.schedule.mapTo(hashSetOf()) { it.id }
     val durableDates = document.partialSessions.map { it.occurrence to it.effectiveDate } +
-        document.history.map { it.occurrence to it.effectiveDate }
+        document.history.map { it.occurrence to it.effectiveDate } + document.runSessions.map { it.occurrence to it.effectiveDate }
     exceptions.forEach { exception ->
         val key = exception.occurrence
         require(key.scheduleEntryId.isNotBlank() && key.scheduleEntryId.length <= 128) { "Occurrence ID is invalid." }

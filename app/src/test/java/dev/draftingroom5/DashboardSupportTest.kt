@@ -35,19 +35,24 @@ class DashboardSupportTest {
         assertEquals("FITBOD", linkedAppDisplayName(sessions.first().routine.appLink!!.packageName))
     }
 
-    @Test fun runRoutineUsesTheEditorActionUntilExecutionIsAvailable() {
+    @Test fun runRoutineStartsAndResumesAnActiveRun() {
         val run = Routine(
             "run", 1, "Intervals", "running_shoe", RoutineExecution.RUN, emptyList(), null,
             RunRoutine(listOf(RunInterval("run", RunIntervalKind.RUN, 60))),
         )
         val date = LocalDate.of(2026, 9, 7)
         val runEntry = ScheduleEntry("run-entry", run.id, setOf(date.dayOfWeek))
+        val runPlan = TrainingPlan(listOf(run), listOf(runEntry))
         val session = dashboardSessions(
-            TrainingPlan(listOf(run), listOf(runEntry)), emptyList(), emptyList(), date,
+            runPlan, emptyList(), emptyList(), date,
         ).single()
 
-        assertEquals("Edit intervals", session.actionLabel)
-        assertEquals("Edit intervals Intervals", session.accessibilityAction)
+        assertEquals("Start run", session.actionLabel)
+        assertEquals("Start run Intervals", session.accessibilityAction)
+        val active = startRunSession("session", OccurrenceKey(runEntry.id, date), run, null, 1_000)
+        val resumed = dashboardSessions(runPlan, emptyList(), emptyList(), date, runSessions = listOf(active)).single()
+        assertEquals(SessionAction.RESUME, resumed.action)
+        assertEquals("Run in progress", resumed.progressLabel)
     }
 
     @Test

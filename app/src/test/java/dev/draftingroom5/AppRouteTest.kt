@@ -21,6 +21,8 @@ class AppRouteTest {
             AppRoute.DashboardCustomization,
             AppRoute.PlanManagement,
             AppRoute.RoutineEditor("routine-1"),
+            AppRoute.RunStart("run-1", "schedule-1", java.time.LocalDate.of(2026, 9, 10)),
+            AppRoute.RunSession("run-session-1"),
             AppRoute.ScheduleEditor(null, "draft-1", java.time.DayOfWeek.THURSDAY),
             AppRoute.ScheduleEditor("schedule-1", "draft-2", java.time.DayOfWeek.MONDAY),
             AppRoute.InstalledAppPicker("draft-3"),
@@ -78,6 +80,7 @@ class AppRouteTest {
         assertEquals(AppRoute.Dashboard, decodeAppRoute("metric:WEIGHT"))
         assertNull(decodeAppRoute("routine:"))
         assertNull(decodeAppRoute("session:only-one-id"))
+        assertNull(decodeAppRoute("run-session"))
         assertNull(decodeAppRoute("future:screen"))
         assertEquals(listOf(AppRoute.Dashboard), normalizeRouteStack(emptyList()))
         assertEquals(listOf(AppRoute.Dashboard), normalizeRouteStack(listOf(AppRoute.Settings)))

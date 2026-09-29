@@ -22,6 +22,7 @@ internal fun Routine.withRunRoute(routeId: String?): Routine? {
 
 internal fun AppDocument.withoutRunRoute(routeId: String): AppDocument = copy(
     runRoutes = runRoutes.filterNot { it.id == routeId },
+    lastRunRouteId = lastRunRouteId.takeUnless { it == routeId },
     plan = plan.copy(routines = plan.routines.map { routine ->
         if (routine.run?.routeId == routeId) checkNotNull(routine.withRunRoute(null)) else routine
     }),
@@ -106,6 +107,26 @@ internal data class RunRoute(
     val waypointIndices: List<Int>,
     val turnCues: List<RunTurnCue>,
 )
+
+/** Keep turn locations and endpoints while bounding offline transfer and session snapshots. */
+internal fun RunRoute.forRunSnapshot(maxPoints: Int = 2_000): RunRoute {
+    if (points.size <= maxPoints) return this
+    require(maxPoints >= 2)
+    val required = (listOf(0, points.lastIndex) + turnCues.map { it.pointIndex }).distinct().sorted()
+    val retainedRequired = if (required.size <= maxPoints) required else
+        (listOf(0) + required.drop(1).dropLast(1).take(maxPoints - 2) + points.lastIndex).distinct().sorted()
+    val room = maxPoints - retainedRequired.size
+    val supplemental = if (room <= 0) emptyList() else {
+        val step = (points.size / room).coerceAtLeast(1)
+        val requiredSet = retainedRequired.toHashSet()
+        points.indices.step(step).filterNot { it in requiredSet }.take(room)
+    }
+    val selected = (retainedRequired + supplemental).distinct().sorted()
+    val mapped = selected.withIndex().associate { it.value to it.index }
+    return copy(points = selected.map(points::get),
+        waypointIndices = (listOf(0) + waypointIndices.mapNotNull(mapped::get) + selected.lastIndex).distinct().sorted(),
+        turnCues = turnCues.mapNotNull { cue -> mapped[cue.pointIndex]?.let { cue.copy(pointIndex = it) } })
+}
 
 internal fun RunRoute.renamed(name: String): RunRoute? {
     val clean = name.trim()

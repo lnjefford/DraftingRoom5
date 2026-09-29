@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.type.watch" android:required="true" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <queries><package android:name="com.spotify.music" /></queries>
 
     <application
         android:allowBackup="false"
@@ -12,7 +17,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.DraftingRoom5.Wear">
         <uses-library android:name="com.google.android.wearable" android:required="true" />
-        <meta-data android:name="com.google.android.wearable.standalone" android:value="false" />
+        <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />
 
         <activity
             android:name=".WatchActivity"
@@ -30,6 +35,17 @@
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <data android:scheme="wear" android:host="*" android:path="/draftingroom5/phone/snapshot" />
+                <data android:scheme="wear" android:host="*" android:path="/draftingroom5/phone/run-catalog" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/draftingroom5/phone/run-ack/" />
+            </intent-filter>
+        </service>
+        <service android:name=".WatchRunService" android:exported="false"
+            android:foregroundServiceType="location" />
+        <service android:name=".WatchSpotifyNotificationListener" android:exported="true"
+            android:label="DraftingRoom5 music status"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
     </application>

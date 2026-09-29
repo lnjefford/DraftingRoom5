@@ -587,3 +587,49 @@ fun RunRouteDetailScreenshots() {
     )
     DraftingRoom5Theme { RunRouteScreen(listOf(route), { true }, { true }, {}, initialSelectedId = route.id) }
 }
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Composable
+fun RunStartScreenshots() {
+    val route = RunRoute("preview-route", 1, "Neighborhood loop", listOf(
+        RunRoutePoint(410_000_000, -870_000_000), RunRoutePoint(410_001_000, -870_001_000)),
+        listOf(0, 1), emptyList())
+    val routine = Routine("preview-run", 1, "Morning intervals", "running_shoe", RoutineExecution.RUN,
+        emptyList(), null, RunRoutine(listOf(RunInterval("walk", RunIntervalKind.WALK, 300),
+            RunInterval("run", RunIntervalKind.RUN, 120)), route.id))
+    DraftingRoom5Theme { RunStartScreen(routine, listOf(route), route.id, { true }, {}) }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Composable
+fun RunActiveScreenshots() {
+    val routine = Routine("preview-run", 1, "Morning intervals", "running_shoe", RoutineExecution.RUN,
+        emptyList(), null, RunRoutine(listOf(RunInterval("walk", RunIntervalKind.WALK, 300),
+            RunInterval("run", RunIntervalKind.RUN, 120))))
+    val session = RunSession("preview-session", OccurrenceKey("preview-schedule", java.time.LocalDate.parse("2026-09-29")),
+        routine, null, 1_000, 0, 1_000, 820,
+        listOf(RunLocationSample(RunRoutePoint(410_000_000, -870_000_000), 2_000, 5)))
+    DraftingRoom5Theme { RunSessionScreen(session, { true }, { true }, { true }, {},
+        music = { SpotifyPreviewRow() }, reviewNow = 61_000) }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Composable
+fun RunCompletionScreenshots() {
+    val routine = Routine("preview-run", 1, "Morning intervals", "running_shoe", RoutineExecution.RUN,
+        emptyList(), null, RunRoutine(listOf(RunInterval("run", RunIntervalKind.RUN, 120))))
+    val occurrence = OccurrenceKey("preview-schedule", java.time.LocalDate.parse("2026-09-29"))
+    val session = RunSession("preview-session", occurrence, routine, null, 1_000, 120_000, null, 840,
+        listOf(RunLocationSample(RunRoutePoint(410_000_000, -870_000_000), 2_000, 5),
+            RunLocationSample(RunRoutePoint(410_001_000, -870_001_000), 60_000, 5)), 121_000)
+    val history = WorkoutHistoryEntry(session.id, occurrence, routine, 1_000, 121_000)
+    DraftingRoom5Theme { RunCompletionScreen(history, session, {}) }
+}

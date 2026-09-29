@@ -1,11 +1,15 @@
 package dev.draftingroom5.wear
 
 import android.content.Context
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,24 +63,39 @@ import androidx.compose.foundation.text.BasicText
 import dev.draftingroom5.watch.WatchExercise
 import dev.draftingroom5.watch.WatchSnapshot
 import dev.draftingroom5.watch.WatchWorkoutStatus
+import dev.draftingroom5.watch.WatchRunCapture
+import dev.draftingroom5.watch.WatchRunCatalog
+import dev.draftingroom5.watch.WatchRunPlan
+import dev.draftingroom5.watch.WatchRunInterval
+import dev.draftingroom5.watch.WatchRunRoute
+import dev.draftingroom5.watch.WatchRunPoint
+import dev.draftingroom5.watch.WatchRunSample
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
 
 class WatchActivity : ComponentActivity() {
     private val repository by lazy { WatchSyncRepository.get(this) }
+    private val runRepository by lazy { WatchRunRepository.get(this) }
+    private val runRecorder by lazy { WatchRunRecorder.get(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { DraftingRoom5Watch(repository, onClose = ::finish) }
+        setContent { DraftingRoom5Watch(repository, runRepository, runRecorder, onClose = ::finish) }
     }
 
     override fun onStart() {
         super.onStart()
         repository.start()
+        runRepository.start()
+        runRecorder.resendPending()
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            runRecorder.capture.value?.takeIf { it.isRunning }?.let { WatchRunService.start(this, it.id) }
+        }
     }
 
     override fun onStop() {
         repository.stop()
+        runRepository.stop()
         super.onStop()
     }
 }
@@ -119,17 +138,43 @@ private class LocalTimerStore(context: Context) {
 }
 
 @Composable
-private fun DraftingRoom5Watch(repository: WatchSyncRepository, onClose: () -> Unit) {
+private fun DraftingRoom5Watch(
+    repository: WatchSyncRepository,
+    runRepository: WatchRunRepository,
+    runRecorder: WatchRunRecorder,
+    onClose: () -> Unit,
+) {
     val context = LocalContext.current
     val snapshot by repository.state.collectAsState()
+    val runCatalog by runRepository.catalog.collectAsState()
+    val runCapture by runRecorder.capture.collectAsState()
+    val pendingRuns by runRecorder.pendingCount.collectAsState()
+    var dismissedRunId by remember { mutableStateOf<String?>(null) }
+    var runPicker by remember { mutableStateOf(false) }
+    var selectedRun by remember { mutableStateOf<WatchRunPlan?>(null) }
+    var selectedRouteId by remember { mutableStateOf<String?>(null) }
+    var runError by remember { mutableStateOf<String?>(null) }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            selectedRun?.let { plan ->
+                val route = runCatalog?.routes?.firstOrNull { it.id == selectedRouteId }
+                val started = runRecorder.start(plan, route, System.currentTimeMillis())
+                if (started == null) runError = "Could not start run."
+                else {
+                    WatchRunService.start(context, started.id)
+                    runPicker = false
+                }
+            }
+        } else runError = "Location permission is needed to record a run."
+    }
     val timerStore = remember { LocalTimerStore(context) }
     var timer by remember { mutableStateOf(timerStore.read()) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var celebration by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val exercise = snapshot?.focusedExercise
 
-    LaunchedEffect(timer) {
-        while (timer != null) {
+    LaunchedEffect(timer, runCapture?.id, runCapture?.isRunning) {
+        while (timer != null || runCapture?.isRunning == true) {
             now = System.currentTimeMillis()
             delay(200)
         }
@@ -152,6 +197,33 @@ private fun DraftingRoom5Watch(repository: WatchSyncRepository, onClose: () -> U
 
     Box(Modifier.fillMaxSize().background(Ink), contentAlignment = Alignment.Center) {
         when {
+            runCapture != null && runCapture?.completedAtMillis == null -> WatchActiveRunScreen(
+                checkNotNull(runCapture), now,
+                onPause = { runRecorder.pause(System.currentTimeMillis()); WatchRunService.stop(context) },
+                onResume = { runRecorder.resume(System.currentTimeMillis())?.let { WatchRunService.start(context, it.id) } },
+                onFinish = { runRecorder.finish(System.currentTimeMillis()); WatchRunService.stop(context) },
+            )
+            runCapture?.completedAtMillis != null && runCapture?.id != dismissedRunId -> WatchRunCompleteScreen(
+                checkNotNull(runCapture), pendingRuns, onDone = { dismissedRunId = runCapture?.id })
+            runPicker -> WatchRunPickerScreen(
+                runCatalog,
+                selectedRun,
+                selectedRouteId,
+                runError,
+                onSelectPlan = { plan -> selectedRun = plan; selectedRouteId = plan.preferredRouteId ?: runCatalog?.lastRouteId },
+                onSelectRoute = { selectedRouteId = it },
+                onStart = {
+                    if (selectedRun != null) {
+                        runError = null
+                        if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                            val started = runRecorder.start(checkNotNull(selectedRun), runCatalog?.routes?.firstOrNull { it.id == selectedRouteId }, System.currentTimeMillis())
+                            if (started == null) runError = "Could not start run."
+                            else { WatchRunService.start(context, started.id); runPicker = false }
+                        } else locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }
+                },
+                onBack = { runPicker = false },
+            )
             celebration != null -> SetCompleteScreen(checkNotNull(celebration))
             timer != null && exercise != null -> {
                 val currentTimer = checkNotNull(timer)
@@ -174,14 +246,15 @@ private fun DraftingRoom5Watch(repository: WatchSyncRepository, onClose: () -> U
                     },
                 )
             }
-            snapshot == null -> MessageScreen("CONNECTING", "Open DraftingRoom5 on your phone", "Sync", repository::sync)
+            snapshot == null -> WatchHomeScreen("CONNECTING", "Open DraftingRoom5 on your phone", repository::sync,
+                runCatalog != null, { runPicker = true })
             snapshot?.status == WatchWorkoutStatus.NONE -> MessageScreen(
-                "TODAY", snapshot?.message ?: "No guided workout today.", "Sync", repository::sync,
+                "TODAY", snapshot?.message ?: "No guided workout today.", "Runs", { runPicker = true },
             )
             snapshot?.status == WatchWorkoutStatus.ERROR -> MessageScreen(
-                "PHONE NEEDED", snapshot?.message ?: "Workout data is unavailable.", "Retry", repository::sync,
+                "PHONE NEEDED", snapshot?.message ?: "Workout data is unavailable.", "Runs", { runPicker = true },
             )
-            snapshot?.status == WatchWorkoutStatus.AVAILABLE -> TodayScreen(checkNotNull(snapshot), repository::startToday)
+            snapshot?.status == WatchWorkoutStatus.AVAILABLE -> TodayScreen(checkNotNull(snapshot), repository::startToday) { runPicker = true }
             snapshot?.status == WatchWorkoutStatus.COMPLETE -> CompletionScreen(checkNotNull(snapshot), onClose)
             exercise != null -> ExerciseScreen(
                 snapshot = checkNotNull(snapshot),
@@ -206,22 +279,109 @@ private fun DraftingRoom5Watch(repository: WatchSyncRepository, onClose: () -> U
 }
 
 @Composable
-private fun TodayScreen(snapshot: WatchSnapshot, onStart: () -> Unit) {
+private fun WatchRunCompleteScreen(capture: WatchRunCapture, pendingRuns: Int, onDone: () -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 25.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Eyebrow("RUN COMPLETE")
+        WatchText("%02d:%02d".format(capture.elapsedBeforeResumeMillis / 60_000,
+            (capture.elapsedBeforeResumeMillis / 1_000) % 60), 30, Ivory, FontWeight.Bold, serifFamily())
+        WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 17, Mint)
+        WatchText(if (pendingRuns > 0) "Sync pending" else "Saved on phone", 11, Secondary)
+        PrimaryButton("Done", onDone)
+    }
+}
+
+@Composable
+private fun WatchHomeScreen(eyebrow: String, message: String, onSync: () -> Unit,
+    hasRuns: Boolean, onRuns: () -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 25.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Eyebrow(eyebrow)
+        WatchText(message, 17, Ivory, maxLines = 3)
+        Spacer(Modifier.height(10.dp))
+        if (hasRuns) { PrimaryButton("Runs", onRuns); Spacer(Modifier.height(5.dp)) }
+        SecondaryButton("Sync", onSync)
+    }
+}
+
+@Composable
+private fun WatchRunPickerScreen(catalog: WatchRunCatalog?, selected: WatchRunPlan?, routeId: String?,
+    error: String?, onSelectPlan: (WatchRunPlan) -> Unit, onSelectRoute: (String?) -> Unit,
+    onStart: () -> Unit, onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Eyebrow("RUNS")
+        val plans = catalog?.plans.orEmpty()
+        if (plans.isEmpty()) WatchText("No runs cached yet. Sync with your phone first.", 15, Secondary, maxLines = 3)
+        else {
+            plans.take(8).forEach { plan ->
+                SecondaryButton((if (plan == selected) "✓ " else "") + plan.routineName, { onSelectPlan(plan) })
+                Spacer(Modifier.height(4.dp))
+            }
+            if (selected != null) {
+                WatchText("Route", 12, Gold)
+                SecondaryButton(if (routeId == null) "✓ No route" else "No route", { onSelectRoute(null) })
+                catalog?.routes?.take(12)?.forEach { route ->
+                    SecondaryButton((if (route.id == routeId) "✓ " else "") + route.name, { onSelectRoute(route.id) })
+                }
+                Spacer(Modifier.height(5.dp))
+                PrimaryButton("Start run", onStart)
+            }
+        }
+        if (error != null) WatchText(error, 12, Gold, maxLines = 3)
+        Spacer(Modifier.height(5.dp))
+        SecondaryButton("Back", onBack)
+    }
+}
+
+@Composable
+private fun WatchActiveRunScreen(capture: WatchRunCapture, now: Long, onPause: () -> Unit,
+    onResume: () -> Unit, onFinish: () -> Unit, music: @Composable () -> Unit = { WatchSpotifyRow() }) {
+    val elapsed = capture.elapsedMillis(now) / 1_000
+    val interval = capture.intervalAt(now)
+    val total = capture.plan.intervals.sumOf { it.durationSeconds }.coerceAtLeast(1)
+    RoundProgress((elapsed.toFloat() / total).coerceIn(0f, 1f)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Eyebrow(if (capture.isRunning) "RUNNING" else "PAUSED")
+            WatchText("%02d:%02d".format(elapsed / 60, elapsed % 60), 36, Ivory, FontWeight.Bold, serifFamily())
+            WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 16, Mint)
+            if (capture.samples.isEmpty()) WatchText("Waiting for GPS", 11, Secondary)
+            WatchText(interval?.second?.kind ?: "Plan complete", 14, Gold)
+            capture.routePosition()?.let { (point, offRouteMeters) ->
+                WatchText(if (offRouteMeters > 50) "Off route · ${offRouteMeters} m" else "Route point ${point + 1}", 11, Secondary)
+                capture.route?.cues?.firstOrNull { it.pointIndex >= point }?.let { cue ->
+                    WatchText(cue.instruction, 11, Mint, maxLines = 2)
+                }
+            }
+            music()
+            Spacer(Modifier.height(4.dp))
+            PrimaryButton(if (capture.isRunning) "Pause" else "Resume", if (capture.isRunning) onPause else onResume)
+            Spacer(Modifier.height(4.dp))
+            SecondaryButton("Finish", onFinish)
+        }
+    }
+}
+
+@Composable
+private fun TodayScreen(snapshot: WatchSnapshot, onStart: () -> Unit, onRuns: () -> Unit) {
     val art = snapshot.exercises.firstOrNull()?.artworkId
     RoundProgress(0f) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 7.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            ArtworkHero(artworkResource(art), 48)
+            ArtworkHero(artworkResource(art), 30)
             Eyebrow("TODAY")
             WatchText(
-                snapshot.routineName.orEmpty(), 20, Ivory, FontWeight.Normal, serifFamily(),
+                snapshot.routineName.orEmpty(), 18, Ivory, FontWeight.Normal, serifFamily(),
                 maxLines = 2, modifier = Modifier.semantics { heading() },
             )
             WatchText("${snapshot.exercises.size} exercises", 13, Secondary)
-            Spacer(Modifier.height(5.dp))
+            Spacer(Modifier.height(2.dp))
             PrimaryButton("▶  Start", onStart)
+            Spacer(Modifier.height(3.dp))
+            WatchText("Runs", 14, Mint, modifier = Modifier.clickable(onClick = onRuns))
         }
     }
 }
@@ -509,7 +669,28 @@ internal fun WatchReviewPreview(screen: String) {
     )
     Box(Modifier.fillMaxSize().background(Ink), contentAlignment = Alignment.Center) {
         when (screen) {
-            "Today" -> TodayScreen(snapshot, {})
+            "Run picker" -> {
+                val plan = WatchRunPlan("run", "Morning intervals", "schedule", "2026-09-29", "2026-09-29",
+                    listOf(WatchRunInterval("WALK", 300), WatchRunInterval("RUN", 120)), "route")
+                val route = WatchRunRoute("route", "Neighborhood loop", listOf(
+                    WatchRunPoint(410_000_000, -870_000_000), WatchRunPoint(410_000_100, -870_000_100)), emptyList())
+                WatchRunPickerScreen(WatchRunCatalog(1, listOf(plan), listOf(route), "route"), plan, "route", null,
+                    {}, {}, {}, {})
+            }
+            "Run active" -> {
+                val plan = WatchRunPlan("run", "Morning intervals", "schedule", "2026-09-29", "2026-09-29",
+                    listOf(WatchRunInterval("WALK", 300), WatchRunInterval("RUN", 120)), null)
+                WatchActiveRunScreen(WatchRunCapture("run", plan, null, 1_000, 0, 1_000, 820,
+                    listOf(WatchRunSample(WatchRunPoint(410_000_000, -870_000_000), 2_000, 5))),
+                    61_000, {}, {}, {}, music = { WatchSpotifyStatus("Nothing playing", {}) })
+            }
+            "Run complete" -> {
+                val plan = WatchRunPlan("run", "Morning intervals", "schedule", "2026-09-29", "2026-09-29",
+                    listOf(WatchRunInterval("RUN", 120)), null)
+                WatchRunCompleteScreen(WatchRunCapture("run", plan, null, 1_000, 60_000, null, 820,
+                    emptyList(), 61_000), 1, {})
+            }
+            "Today" -> TodayScreen(snapshot, {}, {})
             "Exercise" -> ExerciseScreen(snapshot, exercises.first(), {}, {})
             "Ready" -> TimerScreen(exercises.first(), LocalTimer("hang", 4_000, 24_000), 1_000, true, {}, {})
             "Running" -> TimerScreen(exercises.first(), LocalTimer("hang", 1_000, 21_000), 7_000, true, {}, {})

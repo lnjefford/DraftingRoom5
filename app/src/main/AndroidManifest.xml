@@ -3,12 +3,17 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
         <package android:name="com.google.android.apps.healthdata" />
+        <package android:name="com.spotify.music" />
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
@@ -61,6 +66,16 @@
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/draftingroom5/watch/command/" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/draftingroom5/watch/run-result/" />
+            </intent-filter>
+        </service>
+        <service android:name=".RunLocationService" android:exported="false"
+            android:foregroundServiceType="location" />
+        <service android:name=".SpotifyNotificationListener" android:exported="true"
+            android:label="DraftingRoom5 music status"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
         <receiver android:name=".LivingIconWidgetProvider" android:exported="true"

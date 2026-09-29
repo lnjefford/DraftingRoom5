@@ -2,6 +2,7 @@ package dev.draftingroom5
 
 import android.content.Context
 import android.util.AtomicFile
+import dev.draftingroom5.watch.withWatchRunResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
@@ -143,6 +144,76 @@ internal class AppRepository(
         RepositoryResult.Success(candidate)
     }
 
+    fun startRun(occurrence: OccurrenceKey, routineId: String, routeId: String?, atMillis: Long): RepositoryResult<AppDocument> = synchronized(processLock) {
+        val current = (mutableState.value as? LoadState.Ready)?.value
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
+        update(current.generation) { document ->
+            require(document.runSessions.none { it.completedAtMillis == null }) { "Finish or resume the current run first." }
+            require(document.history.none { it.occurrence == occurrence }) { "This run is already complete." }
+            require(document.partialSessions.none { it.occurrence == occurrence }) { "This workout is already in progress." }
+            val schedule = document.plan.schedule.firstOrNull { it.id == occurrence.scheduleEntryId }
+            val routine = document.plan.routines.firstOrNull { it.id == routineId }
+            require(schedule?.routineId == routineId && routine?.execution == RoutineExecution.RUN &&
+                document.occurrenceDate(occurrence) != null) { "This scheduled run is no longer available." }
+            val route = routeId?.let { selected ->
+                requireNotNull(document.runRoutes.firstOrNull { it.id == selected }) { "The selected route is unavailable." }
+            }?.forRunSnapshot()
+            require(atMillis >= 0)
+            document.copy(
+                runSessions = document.runSessions + startRunSession(UUID.randomUUID().toString(), occurrence,
+                    routine.copy(run = checkNotNull(routine.run).copy(routeId = routeId)), route,
+                    atMillis, requireNotNull(document.occurrenceDate(occurrence))),
+                lastRunRouteId = routeId,
+            )
+        }
+    }
+
+    fun pauseRun(sessionId: String, atMillis: Long): RepositoryResult<AppDocument> = changeRun(sessionId) { it.pause(atMillis) }
+
+    fun resumeRun(sessionId: String, atMillis: Long): RepositoryResult<AppDocument> = changeRun(sessionId) { it.resume(atMillis) }
+
+    fun recordRunLocation(sessionId: String, sample: RunLocationSample): RepositoryResult<AppDocument> = changeRun(sessionId) { it.record(sample) }
+
+    fun finishRun(sessionId: String, atMillis: Long): RepositoryResult<AppDocument> = synchronized(processLock) {
+        val current = (mutableState.value as? LoadState.Ready)?.value
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
+        val existing = current.runSessions.firstOrNull { it.id == sessionId }
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Run session is unavailable."))
+        if (existing.completedAtMillis != null) return@synchronized RepositoryResult.Success(current)
+        update(current.generation) { document ->
+            val finished = existing.finish(atMillis)
+            document.copy(
+                runSessions = document.runSessions.map { if (it.id == sessionId) finished else it },
+                history = document.history + WorkoutHistoryEntry(
+                    sessionId, existing.occurrence, existing.routine,
+                    existing.startedAtMillis, checkNotNull(finished.completedAtMillis),
+                    existing.effectiveDate,
+                ),
+            )
+        }
+    }
+
+    fun importWatchRun(result: dev.draftingroom5.watch.WatchRunResult): RepositoryResult<AppDocument> = synchronized(processLock) {
+        val current = (mutableState.value as? LoadState.Ready)?.value
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
+        if (current.runSessions.any { it.id == result.id } && current.history.any { it.id == result.id }) {
+            return@synchronized RepositoryResult.Success(current)
+        }
+        update(current.generation) { it.withWatchRunResult(result) }
+    }
+
+    private fun changeRun(sessionId: String, transform: (RunSession) -> RunSession): RepositoryResult<AppDocument> = synchronized(processLock) {
+        val current = (mutableState.value as? LoadState.Ready)?.value
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
+        val session = current.runSessions.firstOrNull { it.id == sessionId && it.completedAtMillis == null }
+            ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Run session is unavailable."))
+        val changed = transform(session)
+        if (changed == session) return@synchronized RepositoryResult.Success(current)
+        update(current.generation) { document ->
+            document.copy(runSessions = document.runSessions.map { if (it.id == sessionId) changed else it })
+        }
+    }
+
     fun deferOccurrence(occurrence: OccurrenceKey, today: java.time.LocalDate): RepositoryResult<AppDocument> =
         changeOccurrence(occurrence, today, OccurrenceDisposition.DEFERRED)
 
@@ -156,7 +227,8 @@ internal class AppRepository(
     ): RepositoryResult<AppDocument> = synchronized(processLock) {
         val current = (mutableState.value as? LoadState.Ready)?.value
             ?: return@synchronized RepositoryResult.Invalid(IllegalArgumentException("App data is not ready."))
-        if (current.history.any { it.occurrence == occurrence } || current.partialSessions.any { it.occurrence == occurrence }) {
+        if (current.history.any { it.occurrence == occurrence } || current.partialSessions.any { it.occurrence == occurrence } ||
+            current.runSessions.any { it.occurrence == occurrence && it.completedAtMillis == null }) {
             return@synchronized RepositoryResult.Invalid(IllegalArgumentException("Started or completed occurrences cannot be moved or skipped."))
         }
         val existing = current.occurrenceExceptions.firstOrNull { it.occurrence == occurrence }
@@ -180,7 +252,8 @@ internal class AppRepository(
             ?: return@synchronized RepositoryResult.Success(current)
         update(current.generation) {
             require(existing == exception) { "Occurrence exception changed; refresh before undoing." }
-            require(it.partialSessions.none { session -> session.occurrence == exception.occurrence } &&
+            require(it.runSessions.none { session -> session.occurrence == exception.occurrence && session.completedAtMillis == null } &&
+                it.partialSessions.none { session -> session.occurrence == exception.occurrence } &&
                 it.history.none { history -> history.occurrence == exception.occurrence }) { "Started or completed occurrences cannot be moved back." }
             it.copy(occurrenceExceptions = it.occurrenceExceptions - existing)
         }
@@ -270,7 +343,8 @@ internal class AppRepository(
 
     fun resetPlan(expectedGeneration: Long): RepositoryResult<AppDocument> = synchronized(processLock) {
         val result = update(expectedGeneration) {
-            it.copy(plan = defaultTrainingPlan(), partialSessions = emptyList(), history = emptyList(), occurrenceExceptions = emptyList(), progressionReceipts = emptyList())
+            it.copy(plan = defaultTrainingPlan(), partialSessions = emptyList(), history = emptyList(), runSessions = emptyList(),
+                lastRunRouteId = null, occurrenceExceptions = emptyList(), progressionReceipts = emptyList())
         }
         if (result is RepositoryResult.Success) {
             nextLease()

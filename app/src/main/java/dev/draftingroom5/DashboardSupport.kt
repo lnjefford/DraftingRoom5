@@ -20,7 +20,7 @@ internal data class DashboardSession(
             SessionAction.START -> when (routine.execution) {
                 RoutineExecution.GUIDED -> "Start"
                 RoutineExecution.LINKED_APP -> "Open & complete"
-                RoutineExecution.RUN -> "Edit intervals"
+                RoutineExecution.RUN -> "Start run"
             }
             SessionAction.RESUME -> "Resume"
             SessionAction.DONE -> "Done"
@@ -36,7 +36,8 @@ internal data class DashboardSession(
 
     val progressLabel: String?
         get() = if (action == SessionAction.RESUME) {
-            "$completedExerciseCount of $totalExerciseCount exercises complete"
+            if (routine.execution == RoutineExecution.RUN) "Run in progress" else
+                "$completedExerciseCount of $totalExerciseCount exercises complete"
         } else null
 }
 
@@ -46,8 +47,10 @@ internal fun dashboardSessions(
     history: List<WorkoutHistoryEntry>,
     date: LocalDate,
     occurrenceExceptions: List<OccurrenceException> = emptyList(),
+    runSessions: List<RunSession> = emptyList(),
 ): List<DashboardSession> {
     val partialByOccurrence = partialSessions.associateBy { it.occurrence }
+    val runByOccurrence = runSessions.filter { it.completedAtMillis == null }.associateBy { it.occurrence }
     val completedByOccurrence = history.associateBy { it.occurrence }
     val exceptionsByOccurrence = occurrenceExceptions.associateBy { it.occurrence }
     val occurrences = plan.forDay(date.dayOfWeek).map { OccurrenceKey(it.id, date) }
@@ -57,19 +60,20 @@ internal fun dashboardSessions(
         .map { it.occurrence }
     return occurrences.mapNotNull { occurrence ->
         val partial = partialByOccurrence[occurrence]
+        val run = runByOccurrence[occurrence]
         val completed = completedByOccurrence[occurrence]
         val entry = plan.schedule.firstOrNull { it.id == occurrence.scheduleEntryId }
             ?: completed?.let { ScheduleEntry(occurrence.scheduleEntryId, it.snapshot.id, setOf(date.dayOfWeek)) }
             ?: return@mapNotNull null // Orphaned partials remain reachable in Saved sessions.
-        val liveRoutine = completed?.snapshot ?: partial?.snapshot ?: plan.routineFor(entry)
+        val liveRoutine = completed?.snapshot ?: partial?.snapshot ?: run?.routine ?: plan.routineFor(entry)
         val action = when {
             occurrence in completedByOccurrence -> SessionAction.DONE
-            partial != null -> SessionAction.RESUME
+            partial != null || run != null -> SessionAction.RESUME
             else -> SessionAction.START
         }
         DashboardSession(
             scheduleEntry = if (partial != null) entry.copy(routineId = partial.routineId) else entry,
-            routine = completedByOccurrence[occurrence]?.snapshot ?: partial?.snapshot ?: liveRoutine,
+            routine = completedByOccurrence[occurrence]?.snapshot ?: partial?.snapshot ?: run?.routine ?: liveRoutine,
             action = action,
             completedExerciseCount = partial?.snapshot?.exercises?.count { exercise ->
                 partial.completedSets.getValue(exercise.id) == exercise.setCount
@@ -82,7 +86,7 @@ internal fun dashboardSessions(
 }
 
 internal fun dashboardSessions(document: AppDocument, date: LocalDate): List<DashboardSession> =
-    dashboardSessions(document.plan, document.partialSessions, document.history, date, document.occurrenceExceptions)
+    dashboardSessions(document.plan, document.partialSessions, document.history, date, document.occurrenceExceptions, document.runSessions)
 
 internal fun savedDashboardSessions(
     plan: TrainingPlan,

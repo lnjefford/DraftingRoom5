@@ -35,12 +35,12 @@ class AppDocumentCodecTest {
         val encoded = encodeAppDocument(document)
         val restored = decodeAppDocument(encoded)
         assertEquals(document, restored)
-        assertEquals(4, JSONObject(encoded).getInt("schemaVersion"))
+        assertEquals(5, JSONObject(encoded).getInt("schemaVersion"))
         assertEquals(3, restored.plan.routines.single { it.id == "routine-forearm" }.exercises.first().setCount)
     }
 
     @Test fun futureSchemaVersionsFailClosedInsteadOfGuessing() {
-        val root = JSONObject(encodeAppDocument(defaultAppDocument())).put("schemaVersion", 5)
+        val root = JSONObject(encodeAppDocument(defaultAppDocument())).put("schemaVersion", 6)
         assertThrows(IllegalArgumentException::class.java) { decodeAppDocument(root.toString()) }
     }
 
@@ -81,6 +81,21 @@ class AppDocumentCodecTest {
         )
 
         assertEquals(document, decodeAppDocument(encodeAppDocument(document)))
+    }
+
+    @Test fun activeAndFinishedRunSessionsRoundTrip() {
+        val base = defaultAppDocument()
+        val routine = Routine("run", 1, "Run", "running_shoe", RoutineExecution.RUN,
+            emptyList(), null, RunRoutine(listOf(RunInterval("interval", RunIntervalKind.RUN, 90))))
+        val session = startRunSession("run-session", OccurrenceKey("schedule", java.time.LocalDate.parse("2026-09-29")),
+            routine, null, 1_000).record(RunLocationSample(RunRoutePoint(410_000_000, -870_000_000), 2_000, 5))
+        val document = base.copy(runSessions = listOf(session))
+        assertEquals(document, decodeAppDocument(encodeAppDocument(document)))
+        val finished = document.copy(
+            runSessions = listOf(session.finish(10_000)),
+            history = listOf(WorkoutHistoryEntry(session.id, session.occurrence, routine, 1_000, 10_000)),
+        )
+        assertEquals(finished, decodeAppDocument(encodeAppDocument(finished)))
     }
 
     @Test fun mixedReleasedExerciseSchemasAreRejected() {

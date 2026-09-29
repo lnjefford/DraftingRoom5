@@ -70,11 +70,16 @@ internal fun RunRouteScreen(
     var selectedId by rememberSaveable { mutableStateOf(initialSelectedId) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     var importing by remember { mutableStateOf(false) }
+    var drawing by remember { mutableStateOf(false) }
     var rename by rememberSaveable { mutableStateOf(false) }
     var delete by rememberSaveable { mutableStateOf(false) }
     var addWaypoint by rememberSaveable { mutableStateOf(false) }
     var cuePoint by rememberSaveable { mutableStateOf<Int?>(null) }
     val selected = routes.firstOrNull { it.id == selectedId }
+    if (drawing) {
+        RunMapEditor(onSave = onSave, onBack = { drawing = false })
+        return
+    }
     val largeText = LocalDensity.current.fontScale > 1.3f
     val narrow = LocalConfiguration.current.screenWidthDp < 360
     val goBack = { if (selectedId != null) selectedId = null else onBack() }
@@ -113,8 +118,12 @@ internal fun RunRouteScreen(
                     Text("RUN ROUTES", color = AppGold, style = MaterialTheme.typography.labelMedium)
                     Text("Your saved routes", style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onSurface)
-                    Text("Import a GPX track or route to use as an offline route plan.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Draw on a map or import a GPX file to create an offline route plan.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(16.dp))
+                    Button(onClick = { drawing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Icon(Icons.Default.Add, null); Text(" Draw on map")
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Button(
                         onClick = { picker.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "*/*")) },
                         enabled = !importing,

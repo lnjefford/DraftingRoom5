@@ -6,6 +6,7 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import com.google.android.gms.tasks.Tasks
 import dev.draftingroom5.AppDocument
 import dev.draftingroom5.AppRepository
 import dev.draftingroom5.DashboardSession
@@ -16,15 +17,19 @@ import dev.draftingroom5.RoutineExecution
 import dev.draftingroom5.SessionAction
 import dev.draftingroom5.SessionEvent
 import dev.draftingroom5.SessionRepositoryResult
+import dev.draftingroom5.RepositoryResult
 import dev.draftingroom5.dashboardSessions
 import dev.draftingroom5.durableState
 import java.time.LocalDate
+import java.io.ByteArrayOutputStream
+import java.util.concurrent.TimeUnit
 import java.util.UUID
 
 /** Phone-side authority for the compact, private watch protocol. */
 class PhoneWatchDataService : WearableListenerService() {
     override fun onDataChanged(dataEvents: DataEventBuffer) {
         val commands = mutableListOf<Pair<WatchCommand, Uri>>()
+        val runResults = mutableListOf<Pair<com.google.android.gms.wearable.DataItemAsset, String>>()
         try {
             dataEvents.forEach { event ->
                 val item = event.dataItem
@@ -32,11 +37,47 @@ class PhoneWatchDataService : WearableListenerService() {
                     runCatching { decodeWatchCommand(checkNotNull(item.data)) }
                         .onSuccess { commands += it to item.uri }
                 }
+                if (event.type == DataEvent.TYPE_CHANGED && item.uri.path?.startsWith(WATCH_RUN_RESULT_PATH_PREFIX) == true) {
+                    val id = item.uri.path?.removePrefix(WATCH_RUN_RESULT_PATH_PREFIX).orEmpty()
+                    item.assets[WATCH_RUN_ASSET_KEY]?.let { asset -> runResults.add(asset to id) }
+                }
             }
         } finally {
             dataEvents.release()
         }
         commands.sortedBy { it.first.createdAtMillis }.forEach { (command, uri) -> process(command, uri) }
+        runResults.forEach { (asset, id) -> runCatching { importRun(asset, id) } }
+    }
+
+    private fun importRun(asset: com.google.android.gms.wearable.DataItemAsset, pathId: String) {
+        val response = Tasks.await(Wearable.getDataClient(this).getFdForAsset(asset), 30, TimeUnit.SECONDS)
+        val bytes = try {
+            response.inputStream.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    require(output.size() + count <= 16 * 1024 * 1024) { "Run result is too large." }
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray()
+            }
+        } finally { response.release() }
+        val result = decodeWatchRunResult(bytes)
+        require(result.id == pathId)
+        val repository = AppRepository.get(applicationContext)
+        check(repository.ensureLoaded() is LoadState.Ready)
+        when (val imported = repository.importWatchRun(result)) {
+            is RepositoryResult.Success -> {
+                Wearable.getDataClient(this).putDataItem(PutDataRequest.create(WATCH_RUN_ACK_PATH_PREFIX + result.id)
+                    .setData(result.id.toByteArray(Charsets.UTF_8)).setUrgent())
+                runCatching { publishWatchRunCatalog(this, imported.value) }
+            }
+            is RepositoryResult.Invalid -> throw imported.error
+            is RepositoryResult.Failed -> throw imported.error
+            is RepositoryResult.Conflict -> error("Run import changed concurrently.")
+        }
     }
 
     private fun process(command: WatchCommand, commandUri: Uri) = synchronized(processLock) {
@@ -60,6 +101,9 @@ class PhoneWatchDataService : WearableListenerService() {
             .setUrgent()
         Wearable.getDataClient(this).putDataItem(request).addOnSuccessListener {
             if (command.id in acknowledgements) Wearable.getDataClient(this).deleteDataItems(commandUri)
+        }
+        (AppRepository.get(applicationContext).state.value as? LoadState.Ready)?.value?.let { document ->
+            runCatching { publishWatchRunCatalog(this, document) }
         }
     }
 

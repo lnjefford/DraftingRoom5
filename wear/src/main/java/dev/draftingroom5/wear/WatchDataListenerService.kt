@@ -5,6 +5,8 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.WearableListenerService
 import dev.draftingroom5.watch.WATCH_SNAPSHOT_PATH
 import dev.draftingroom5.watch.decodeWatchSnapshot
+import dev.draftingroom5.watch.WATCH_RUN_CATALOG_PATH
+import dev.draftingroom5.watch.WATCH_RUN_ACK_PATH_PREFIX
 
 class WatchDataListenerService : WearableListenerService() {
     override fun onDataChanged(dataEvents: DataEventBuffer) {
@@ -13,6 +15,13 @@ class WatchDataListenerService : WearableListenerService() {
                 if (event.type == DataEvent.TYPE_CHANGED && event.dataItem.uri.path == WATCH_SNAPSHOT_PATH) {
                     runCatching { decodeWatchSnapshot(checkNotNull(event.dataItem.data)) }
                         .onSuccess { WatchSyncRepository.storeIncoming(applicationContext, it) }
+                }
+                if (event.type == DataEvent.TYPE_CHANGED && event.dataItem.uri.path == WATCH_RUN_CATALOG_PATH) {
+                    WatchRunRepository.get(applicationContext).acceptDataItem(event.dataItem.freeze())
+                }
+                if (event.type == DataEvent.TYPE_CHANGED && event.dataItem.uri.path?.startsWith(WATCH_RUN_ACK_PATH_PREFIX) == true) {
+                    val id = event.dataItem.uri.path?.removePrefix(WATCH_RUN_ACK_PATH_PREFIX).orEmpty()
+                    WatchRunRecorder.get(applicationContext).acknowledge(id)
                 }
             }
         } finally {

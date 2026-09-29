@@ -1,6 +1,7 @@
 package dev.draftingroom5
 
 import android.content.ActivityNotFoundException
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -225,6 +226,20 @@ private fun DraftingRoom5App() {
     }
     var launchBrandAnimationPending by rememberSaveable { mutableStateOf(true) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    var pendingRunTrackingId by remember { mutableStateOf<String?>(null) }
+    val runLocationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) pendingRunTrackingId?.let { id -> runCatching { RunLocationService.start(context, id) } }
+        pendingRunTrackingId = null
+    }
+    val startRunTracking: (String) -> Unit = { id ->
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            runCatching { RunLocationService.start(context, id) }
+        } else {
+            pendingRunTrackingId = id
+            runLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
     val backupManager = remember { AutomaticBackupManager(context) }
     remember { backupManager.restoreAfterAndroidTransferIfNeeded() }
     val appRepository = remember { AppRepository.get(context) }
@@ -233,6 +248,12 @@ private fun DraftingRoom5App() {
     var pendingCompletionCue by remember { mutableStateOf<String?>(null) }
     val workoutVoice = remember { WorkoutVoiceAnnouncements(context) { voiceAvailability = it } }
     var appDocument by remember { mutableStateOf(appRepository.currentOrDefaults()) }
+    LaunchedEffect(appDocument.plan, appDocument.runRoutes, appDocument.lastRunRouteId,
+        appDocument.history, appDocument.occurrenceExceptions) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { dev.draftingroom5.watch.publishWatchRunCatalog(context, appDocument) }
+        }
+    }
     val repositoryState by appRepository.state.collectAsState()
     var documentError by remember { mutableStateOf<String?>(
         if (appRepository.state.value is LoadState.Ready) null else "App data could not be loaded. Changes cannot be saved. Restore a recovery snapshot from Settings or retry loading.") }
@@ -249,6 +270,18 @@ private fun DraftingRoom5App() {
     var workoutHistory by remember { mutableStateOf(appDocument.history) }
     var hapticsEnabled by remember { mutableStateOf(appDocument.preferences.hapticsEnabled) }
     var voiceSettings by remember { mutableStateOf(appDocument.preferences.voice) }
+    LaunchedEffect(repositoryState) {
+        val latest = (repositoryState as? LoadState.Ready)?.value ?: return@LaunchedEffect
+        if (latest.generation != appDocument.generation) {
+            appDocument = latest
+            trainingPlan = latest.plan
+            dashboardLayout = latest.preferences.dashboardLayout
+            healthDateRange = latest.preferences.healthDateRange
+            workoutHistory = latest.history
+            hapticsEnabled = latest.preferences.hapticsEnabled
+            voiceSettings = latest.preferences.voice
+        }
+    }
     var backupStatus by remember { mutableStateOf(backupManager.status()) }
     var backupActionMessage by remember { mutableStateOf<String?>(null) }
     val updateManager = remember { AppUpdateManager(context) }
@@ -367,6 +400,14 @@ private fun DraftingRoom5App() {
         }
     }
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
+    val runningRunId = appDocument.runSessions.firstOrNull { it.isRunning }?.id
+    LaunchedEffect(windowFocused, runningRunId) {
+        if (windowFocused && runningRunId != null &&
+            androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            runCatching { RunLocationService.start(context, runningRunId) }
+        }
+    }
     var healthRefreshJob by remember { mutableStateOf<Job?>(null) }
     var healthUi by remember { mutableStateOf(HealthUiState()) }
     val healthPermissions = remember {
@@ -578,6 +619,7 @@ private fun DraftingRoom5App() {
                 trainingPlan = trainingPlan,
                 occurrenceExceptions = appDocument.occurrenceExceptions,
                 partialSessions = appDocument.partialSessions,
+                runSessions = appDocument.runSessions,
                 workoutHistory = workoutHistory,
                 animateBrandOnEntry = launchBrandAnimationPending,
                 onBrandAnimationFinished = { launchBrandAnimationPending = false },
@@ -623,7 +665,10 @@ private fun DraftingRoom5App() {
                 },
                 onOpenCustom = { session ->
                     if (session.routine.execution == RoutineExecution.RUN) {
-                        navigation.navigate(AppRoute.RoutineEditor(session.routine.id))
+                        val active = appDocument.runSessions.firstOrNull { it.occurrence == session.occurrence && it.completedAtMillis == null }
+                        if (active != null) navigation.navigate(AppRoute.RunSession(active.id)) else
+                            navigation.navigate(AppRoute.RunStart(session.routine.id,
+                                session.occurrence.scheduleEntryId, session.occurrence.scheduledDate))
                     } else navigation.navigate(AppRoute.GuidedSession(
                         session.routine.id, session.occurrence.scheduleEntryId, session.occurrence.scheduledDate))
                 },
@@ -1038,6 +1083,55 @@ private fun DraftingRoom5App() {
                 },
                 onBack = { navigation.back() },
             )
+            is AppRoute.RunStart -> {
+                val routine = trainingPlan.routines.firstOrNull { it.id == screen.routineId && it.execution == RoutineExecution.RUN }
+                if (routine == null) navigation.dashboard() else RunStartScreen(
+                    routine = routine,
+                    routes = appDocument.runRoutes,
+                    lastRouteId = appDocument.lastRunRouteId,
+                    onStart = { routeId ->
+                        val saved = acceptDocumentResult(appRepository.startRun(
+                            OccurrenceKey(screen.scheduleEntryId, screen.scheduledDate), routine.id, routeId,
+                            System.currentTimeMillis().coerceAtLeast(0L),
+                        ))
+                        if (saved) {
+                            requestAutomaticBackup()
+                            appDocument.runSessions.lastOrNull()?.let {
+                                startRunTracking(it.id)
+                                navigation.navigate(AppRoute.RunSession(it.id))
+                            }
+                        }
+                        saved
+                    },
+                    onBack = { navigation.back() },
+                )
+            }
+            is AppRoute.RunSession -> {
+                val session = appDocument.runSessions.firstOrNull { it.id == screen.sessionId && it.completedAtMillis == null }
+                if (session == null) navigation.dashboard() else RunSessionScreen(
+                    session = session,
+                    onPause = {
+                        acceptDocumentResult(appRepository.pauseRun(session.id, System.currentTimeMillis().coerceAtLeast(0L))).also {
+                            if (it) RunLocationService.stop(context)
+                        }
+                    },
+                    onResume = {
+                        acceptDocumentResult(appRepository.resumeRun(session.id, System.currentTimeMillis().coerceAtLeast(0L))).also {
+                            if (it) startRunTracking(session.id)
+                        }
+                    },
+                    onFinish = {
+                        val saved = acceptDocumentResult(appRepository.finishRun(session.id, System.currentTimeMillis().coerceAtLeast(0L)))
+                        if (saved) { RunLocationService.stop(context); requestAutomaticBackup(); navigation.dashboard() }
+                        saved
+                    },
+                    onBack = { navigation.dashboard() },
+                    locationEnabled = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED,
+                    onRequestLocation = { startRunTracking(session.id) },
+                    music = { SpotifyNowPlayingRow() },
+                )
+            }
             is AppRoute.ScheduleEditor -> {
                 val original = screen.entryId?.let { id -> trainingPlan.schedule.firstOrNull { it.id == id } }
                 if (screen.entryId != null && original == null) navigation.back() else ScheduleEditorScreen(
@@ -1064,10 +1158,10 @@ private fun DraftingRoom5App() {
                         workoutVoice.announce(VoiceCue.WorkoutCompleted, voiceSettings)
                     }
                 }
-                if (history == null) navigation.dashboard() else SessionCompletionScreen(
-                    history = history,
-                    onReturnToDashboard = navigation::dashboard,
-                )
+                if (history == null) navigation.dashboard()
+                else if (history.snapshot.execution == RoutineExecution.RUN) RunCompletionScreen(
+                    history, appDocument.runSessions.firstOrNull { it.id == history.id }, navigation::dashboard)
+                else SessionCompletionScreen(history = history, onReturnToDashboard = navigation::dashboard)
             }
             AppRoute.RetirementOverview,
             AppRoute.RetirementForecast,
@@ -1136,6 +1230,7 @@ private fun Dashboard(
     trainingPlan: TrainingPlan,
     occurrenceExceptions: List<OccurrenceException> = emptyList(),
     partialSessions: List<GuidedSession>,
+    runSessions: List<RunSession> = emptyList(),
     workoutHistory: List<WorkoutHistoryEntry>,
     animateBrandOnEntry: Boolean,
     onBrandAnimationFinished: () -> Unit,
@@ -1181,7 +1276,7 @@ private fun Dashboard(
         previousTodayEpochDay = today.toEpochDay()
     }
     val week = dashboardWeek(today)
-    val sessions = dashboardSessions(trainingPlan, partialSessions, workoutHistory, selectedDate, occurrenceExceptions)
+    val sessions = dashboardSessions(trainingPlan, partialSessions, workoutHistory, selectedDate, occurrenceExceptions, runSessions)
     val savedSessions = savedDashboardSessions(trainingPlan, partialSessions, selectedDate, occurrenceExceptions)
     var pendingEntryId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
