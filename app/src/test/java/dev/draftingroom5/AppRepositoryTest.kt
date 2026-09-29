@@ -7,6 +7,19 @@ import org.junit.Test
 import java.io.IOException
 
 class AppRepositoryTest {
+    @Test fun savedRouteSurvivesReloadAndConflictingGenerationCannotOverwriteIt() {
+        val storage = FakeDocumentStorage()
+        val repository = AppRepository(storage)
+        val before = (repository.load() as LoadState.Ready).value
+        val route = RunRoute("park", 1, "Park loop", listOf(RunRoutePoint(0, 0), RunRoutePoint(1, 1)),
+            listOf(0, 1), emptyList())
+        val saved = repository.update(before.generation) { it.copy(runRoutes = it.runRoutes + route) }
+        assertTrue(saved is RepositoryResult.Success)
+        assertTrue(repository.update(before.generation) { it.copy(runRoutes = emptyList()) } is RepositoryResult.Conflict)
+        val reloaded = (AppRepository(storage).load() as LoadState.Ready).value
+        assertEquals(listOf(route), reloaded.runRoutes)
+    }
+
     @Test fun routineEditsRequireRevisionAndSavedSessionAcknowledgement() {
         val session = partialFixture()
         val original = defaultAppDocument().copy(partialSessions = listOf(session))

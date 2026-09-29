@@ -93,6 +93,36 @@ internal data class RunRoute(
     val turnCues: List<RunTurnCue>,
 )
 
+internal fun RunRoute.renamed(name: String): RunRoute? {
+    val clean = name.trim()
+    if (clean.isEmpty() || clean.length > 200) return null
+    return if (clean == this.name) this else copy(name = clean, revision = revision + 1)
+}
+
+internal fun RunRoute.withWaypoint(pointIndex: Int): RunRoute? {
+    if (pointIndex !in points.indices || waypointIndices.size >= 10_000) return null
+    if (pointIndex in waypointIndices) return this
+    return copy(waypointIndices = (waypointIndices + pointIndex).sorted(), revision = revision + 1)
+}
+
+internal fun RunRoute.withoutWaypoint(pointIndex: Int): RunRoute? {
+    if (pointIndex == 0 || pointIndex == points.lastIndex || pointIndex !in waypointIndices) return null
+    return copy(waypointIndices = waypointIndices - pointIndex, revision = revision + 1)
+}
+
+internal fun RunRoute.withTurnCue(cue: RunTurnCue): RunRoute? {
+    val instruction = cue.instruction.trim()
+    if (cue.pointIndex !in points.indices || instruction.isEmpty() || instruction.length > 500) return null
+    val normalized = cue.copy(instruction = instruction)
+    val next = (turnCues.filterNot { it.pointIndex == cue.pointIndex } + normalized).sortedBy { it.pointIndex }
+    return if (next == turnCues) this else copy(turnCues = next, revision = revision + 1)
+}
+
+internal fun RunRoute.withoutTurnCue(pointIndex: Int): RunRoute? {
+    if (turnCues.none { it.pointIndex == pointIndex }) return null
+    return copy(turnCues = turnCues.filterNot { it.pointIndex == pointIndex }, revision = revision + 1)
+}
+
 internal fun validateRunRoutine(run: RunRoutine) {
     require(run.intervals.isNotEmpty() && run.intervals.size <= 512) {
         "Run routines need between 1 and 512 intervals."

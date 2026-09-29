@@ -548,3 +548,35 @@ fun RunRoutineEditorScreenshots() {
         RunRoutineEditorScreen(routine, "Scheduled Mon · Wed · Fri", false, { true }, {}, {})
     }
 }
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun RunRoutesScreenshots() {
+    val route = RunRoute(
+        "preview-route", 1, "Neighborhood loop",
+        listOf(RunRoutePoint(410_000_000, -870_000_000), RunRoutePoint(410_001_000, -870_001_000),
+            RunRoutePoint(410_002_000, -870_000_500)),
+        listOf(0, 1, 2), listOf(RunTurnCue(1, RunTurnKind.LEFT, "Turn left at the path")),
+    )
+    DraftingRoom5Theme { RunRouteScreen(listOf(route), { true }, { true }, {}) }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+fun RunRouteDetailScreenshots() {
+    val route = RunRoute(
+        "preview-route", 1, "Neighborhood loop",
+        listOf(RunRoutePoint(410_000_000, -870_000_000), RunRoutePoint(410_001_000, -870_001_000),
+            RunRoutePoint(410_002_000, -870_000_500)),
+        listOf(0, 1, 2), listOf(RunTurnCue(1, RunTurnKind.LEFT, "Turn left at the path")),
+    )
+    DraftingRoom5Theme { RunRouteScreen(listOf(route), { true }, { true }, {}, initialSelectedId = route.id) }
+}

@@ -18,6 +18,7 @@ internal sealed interface AppRoute {
     data object DashboardCustomization : AppRoute
     data object PlanManagement : AppRoute
     data class RoutineEditor(val routineId: String) : AppRoute
+    data object RunRoutes : AppRoute
     data class ScheduleEditor(val entryId: String?, val draftId: String, val anchor: DayOfWeek) : AppRoute
     data class InstalledAppPicker(val ownerDraftId: String) : AppRoute
     // The destination binds a durable session id after resolving this exact occurrence.
@@ -175,6 +176,7 @@ internal fun encodeAppRoute(route: AppRoute): String = when (route) {
     AppRoute.DashboardCustomization -> "customization"
     AppRoute.PlanManagement -> "planning"
     is AppRoute.RoutineEditor -> "routine:${route.routineId}"
+    AppRoute.RunRoutes -> "run-routes"
     is AppRoute.ScheduleEditor -> "schedule:${route.entryId.orEmpty()}:${route.draftId}:${route.anchor.name}"
     is AppRoute.InstalledAppPicker -> "apps:${route.ownerDraftId}"
     is AppRoute.GuidedSession -> "session:${route.routineId}:${route.scheduleEntryId}:${route.scheduledDate}"
@@ -211,6 +213,7 @@ internal fun decodeAppRoute(value: String): AppRoute? {
         "customization" -> AppRoute.DashboardCustomization.takeIf { parts.size == 1 }
         "planning" -> AppRoute.PlanManagement.takeIf { parts.size == 1 }
         "routine" -> parts.getOrNull(1)?.takeIf(String::isNotBlank)?.let { AppRoute.RoutineEditor(it) }
+        "run-routes" -> AppRoute.RunRoutes.takeIf { parts.size == 1 }
         "schedule" -> if (parts.size == 4 && parts[2].isNotBlank()) {
             runCatching { DayOfWeek.valueOf(parts[3]) }.getOrNull()?.let {
                 AppRoute.ScheduleEditor(parts[1].ifBlank { null }, parts[2], it)

@@ -8,6 +8,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppRouteTest {
+    @Test fun runRouteLibraryRestoresWithinFitnessWorkspace() {
+        assertEquals(AppRoute.RunRoutes, decodeAppRoute(encodeAppRoute(AppRoute.RunRoutes)))
+        assertEquals(AppWorkspace.FITNESS, AppRoute.RunRoutes.workspace)
+        assertNull(decodeAppRoute("run-routes:unexpected"))
+    }
     @Test
     fun everyDestinationRoundTripsThroughSavedPrimitiveState() {
         val routes = listOf(

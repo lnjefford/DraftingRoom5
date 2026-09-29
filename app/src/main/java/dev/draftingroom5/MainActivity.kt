@@ -832,6 +832,7 @@ private fun DraftingRoom5App() {
                         }
                     },
                     onBack = { navigation.back() },
+                    onOpenRoutes = { navigation.navigate(AppRoute.RunRoutes) },
                 ) else if (routine != null) GuidedRoutineEditorScreen(
                     routine = routine,
                     scheduleSummary = trainingPlan.routineScheduleSummary(routine.id),
@@ -917,6 +918,7 @@ private fun DraftingRoom5App() {
                         clearRoutineDraft()
                         navigation.back()
                     },
+                    onOpenRoutes = { navigation.navigate(AppRoute.RunRoutes) },
                 ) else if (draft != null) NewRoutineDraftScreen(
                     draft = draft,
                     onChooseApp = {
@@ -1013,6 +1015,27 @@ private fun DraftingRoom5App() {
                     },
                 )
             }
+            AppRoute.RunRoutes -> RunRouteScreen(
+                routes = appDocument.runRoutes,
+                onSave = { route ->
+                    val saved = persistDocument { current ->
+                        val existing = current.runRoutes.firstOrNull { it.id == route.id }
+                        require(existing == null || route.revision == existing.revision + 1 || route == existing) {
+                            "Route changed. Review its latest version and retry."
+                        }
+                        current.copy(runRoutes = if (existing == null) current.runRoutes + route
+                            else current.runRoutes.map { if (it.id == route.id) route else it })
+                    }
+                    if (saved) requestAutomaticBackup()
+                    saved
+                },
+                onDelete = { routeId ->
+                    val saved = persistDocument { current -> current.copy(runRoutes = current.runRoutes.filterNot { it.id == routeId }) }
+                    if (saved) requestAutomaticBackup()
+                    saved
+                },
+                onBack = { navigation.back() },
+            )
             is AppRoute.ScheduleEditor -> {
                 val original = screen.entryId?.let { id -> trainingPlan.schedule.firstOrNull { it.id == id } }
                 if (screen.entryId != null && original == null) navigation.back() else ScheduleEditorScreen(
