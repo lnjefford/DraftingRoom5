@@ -3,6 +3,7 @@ package dev.draftingroom5
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -43,14 +43,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -81,6 +85,10 @@ internal fun RunRoutineEditorScreen(
     var overflowExpanded by remember { mutableStateOf(false) }
     var routePicker by remember { mutableStateOf(false) }
     var actionMessage by rememberSaveable(routine.id) { mutableStateOf<String?>(null) }
+    var draggedIntervalId by remember { mutableStateOf<String?>(null) }
+    var dragOrigin by remember { mutableStateOf<Routine?>(null) }
+    val haptics = LocalHapticFeedback.current
+    val dragThreshold = with(LocalDensity.current) { 54.dp.toPx() }
     val changed = working != routine
 
     fun applyChange(updated: Routine, message: String): Boolean {
@@ -183,6 +191,34 @@ internal fun RunRoutineEditorScreen(
                         total = intervals.size,
                         onEdit = { editingIntervalId = interval.id },
                         onMove = { offset -> applyChange(working.moveRunInterval(interval.id, offset), "Interval order saved.") },
+                        dragged = draggedIntervalId == interval.id,
+                        dragThreshold = dragThreshold,
+                        onDragStart = {
+                            dragOrigin = working
+                            draggedIntervalId = interval.id
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        onDragStep = { offset -> working = working.moveRunInterval(interval.id, offset) },
+                        onDragEnd = {
+                            val origin = dragOrigin
+                            if (origin != null) {
+                                val updated = working.forRunEditorSave(origin, isNew)
+                                working = updated
+                                if (origin.run?.intervals != updated.run?.intervals) {
+                                    if (!isNew && !onPersist(updated)) {
+                                        working = origin
+                                        actionMessage = "Couldn’t save the new order."
+                                    } else actionMessage = if (isNew) "Draft order updated · not saved" else "Interval order saved."
+                                }
+                            }
+                            dragOrigin = null
+                            draggedIntervalId = null
+                        },
+                        onDragCancel = {
+                            dragOrigin?.let { working = it }
+                            dragOrigin = null
+                            draggedIntervalId = null
+                        },
                         onDelete = {
                             working.withoutRunInterval(interval.id, allowEmpty = isNew)?.let {
                                 applyChange(it, "Interval deleted.")
@@ -280,12 +316,12 @@ private fun RunIntervalSectionHeader() {
     if (stackLabels) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("INTERVALS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-            Text("Use arrows to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text("Drag to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     } else {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("INTERVALS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-            Text("Use arrows to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text("Drag to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -297,9 +333,19 @@ private fun RunIntervalRow(
     total: Int,
     onEdit: () -> Unit,
     onMove: (Int) -> Unit,
+    dragged: Boolean,
+    dragThreshold: Float,
+    onDragStart: () -> Unit,
+    onDragStep: (Int) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
     onDelete: () -> Unit,
     deleteEnabled: Boolean,
 ) {
+    val currentStart by rememberUpdatedState(onDragStart)
+    val currentStep by rememberUpdatedState(onDragStep)
+    val currentEnd by rememberUpdatedState(onDragEnd)
+    val currentCancel by rememberUpdatedState(onDragCancel)
     AppSurfaceCard(
         Modifier.fillMaxWidth().clickable(onClickLabel = "Edit ${interval.kind.displayName()} interval", onClick = onEdit)
             .semantics {
@@ -309,13 +355,29 @@ private fun RunIntervalRow(
                 }
             },
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.DragIndicator,
+                contentDescription = "Reorder ${interval.kind.displayName()} interval, position ${position + 1} of $total",
+                tint = if (dragged) AppBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(48.dp).pointerInput(interval.id) {
+                    var distance = 0f
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { distance = 0f; currentStart() },
+                        onDragCancel = { currentCancel() },
+                        onDragEnd = { currentEnd() },
+                    ) { change, amount ->
+                        change.consume()
+                        distance += amount.y
+                        while (distance <= -dragThreshold) { currentStep(-1); distance += dragThreshold }
+                        while (distance >= dragThreshold) { currentStep(1); distance -= dragThreshold }
+                    }
+                }.padding(10.dp),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text("${position + 1}. ${interval.kind.displayName()}", fontWeight = FontWeight.Bold)
                 Text(formatRunDuration(interval.durationSeconds), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            IconButton(enabled = position > 0, onClick = { onMove(-1) }) { Icon(Icons.Default.ArrowUpward, "Move interval up") }
-            IconButton(enabled = position < total - 1, onClick = { onMove(1) }) { Icon(Icons.Default.ArrowDownward, "Move interval down") }
             IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, "Edit interval") }
             IconButton(enabled = deleteEnabled, onClick = onDelete) { Icon(Icons.Default.Delete, "Delete interval") }
         }

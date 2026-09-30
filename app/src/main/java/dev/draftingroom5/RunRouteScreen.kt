@@ -275,6 +275,8 @@ private fun RunRoutePreview(route: RunRoute) {
             }
             Text("Route shape preview", color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall)
+            Text("Map-drawn routes: openrouteservice / HeiGIT · © OpenStreetMap contributors",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
