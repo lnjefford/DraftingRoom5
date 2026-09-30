@@ -1,6 +1,7 @@
 package dev.draftingroom5
 
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RunDataTest {
@@ -27,6 +28,26 @@ class RunDataTest {
                 this[1] = RunRoutePoint(900_000_001, 0)
             }))
         }
+    }
+
+    @Test fun reversingRoutePreservesShapeButClearsUnsafeTurnInstructions() {
+        val route = routeFixture().copy(waypointIndices = listOf(0, 1, 2))
+        val reversed = route.reversedDirection()
+        validateRunRoute(reversed)
+        assertEquals(route.points.reversed(), reversed.points)
+        assertEquals(listOf(0, 1, 2), reversed.waypointIndices)
+        assertEquals(emptyList<RunTurnCue>(), reversed.turnCues)
+        assertEquals(route.revision + 1, reversed.revision)
+    }
+
+    @Test fun duplicatedRouteGetsIndependentIdentity() {
+        val route = routeFixture()
+        val copy = route.duplicate("new-route")
+        validateRunRoute(copy)
+        assertEquals("new-route", copy.id)
+        assertEquals("Test route copy", copy.name)
+        assertEquals(1L, copy.revision)
+        assertEquals(route.points, copy.points)
     }
 
     @Test fun routineExecutionShapesCannotBeMixed() {

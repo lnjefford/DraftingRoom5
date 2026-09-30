@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -73,6 +75,7 @@ internal fun RunRoutineEditorScreen(
     onDelete: () -> Unit,
     onBack: () -> Unit,
     onOpenRoutes: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
 ) {
     var working by rememberSaveable(routine.id, stateSaver = RoutineDraftSaver) { mutableStateOf(routine) }
     LaunchedEffect(routine) { if (!isNew) working = routine }
@@ -111,7 +114,7 @@ internal fun RunRoutineEditorScreen(
             SecondaryTopBar("Run routine", requestBack) {
                 Box {
                     IconButton(onClick = { overflowExpanded = true }, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.MoreVert, "More options")
+                        Icon(Icons.Default.MoreVert, "More options", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     DropdownMenu(expanded = overflowExpanded, onDismissRequest = { overflowExpanded = false }) {
                         DropdownMenuItem(
@@ -148,6 +151,7 @@ internal fun RunRoutineEditorScreen(
                     )
                 }
                 RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
+                if (!isNew) TextButton(onClick = onOpenHistory) { Text("Previous runs") }
             }
             item {
                 AppSurfaceCard(Modifier.fillMaxWidth()) {
@@ -229,13 +233,26 @@ internal fun RunRoutineEditorScreen(
                 }
             }
             item {
-                Button(
+                OutlinedButton(
                     onClick = { addingInterval = true },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 ) {
                     Icon(Icons.Default.Add, null)
                     Spacer(Modifier.width(8.dp))
                     Text("Add interval")
+                }
+            }
+            if (!working.run?.intervals.isNullOrEmpty()) item {
+                AppSurfaceCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("TOTAL", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                        Text(formatRunClock(checkNotNull(working.run).totalDurationSeconds),
+                            style = MaterialTheme.typography.displaySmall)
+                        val walk = checkNotNull(working.run).intervals.count { it.kind == RunIntervalKind.WALK }
+                        val run = checkNotNull(working.run).intervals.size - walk
+                        Text("$run run intervals · $walk walk intervals",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
             actionMessage?.let { message -> item { Text(message, color = AppMint, style = MaterialTheme.typography.bodySmall) } }
@@ -342,6 +359,7 @@ private fun RunIntervalRow(
     onDelete: () -> Unit,
     deleteEnabled: Boolean,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     val currentStart by rememberUpdatedState(onDragStart)
     val currentStep by rememberUpdatedState(onDragStep)
     val currentEnd by rememberUpdatedState(onDragEnd)
@@ -374,12 +392,21 @@ private fun RunIntervalRow(
                     }
                 }.padding(10.dp),
             )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("${position + 1}. ${interval.kind.displayName()}", fontWeight = FontWeight.Bold)
-                Text(formatRunDuration(interval.durationSeconds), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box(Modifier.width(4.dp).height(42.dp).background(
+                if (interval.kind == RunIntervalKind.WALK) AppMint else AppBlue, RoundedCornerShape(4.dp)))
+            Spacer(Modifier.width(12.dp))
+            Text(interval.kind.displayName(), Modifier.weight(1f), fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium)
+            Text(formatRunClock(interval.durationSeconds), style = MaterialTheme.typography.titleMedium)
+            Box {
+                IconButton(onClick = { menuExpanded = true }) { Icon(Icons.Default.MoreVert, "Interval options") }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(text = { Text("Edit") }, leadingIcon = { Icon(Icons.Default.Edit, null) },
+                        onClick = { menuExpanded = false; onEdit() })
+                    DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Default.Delete, null) },
+                        enabled = deleteEnabled, onClick = { menuExpanded = false; onDelete() })
+                }
             }
-            IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, "Edit interval") }
-            IconButton(enabled = deleteEnabled, onClick = onDelete) { Icon(Icons.Default.Delete, "Delete interval") }
         }
     }
 }
@@ -458,6 +485,9 @@ internal fun formatRunDuration(seconds: Int): String {
         if (remainder > 0 || isEmpty()) add("${remainder}s")
     }.joinToString(" ")
 }
+
+internal fun formatRunClock(seconds: Int): String =
+    java.lang.String.format(java.util.Locale.US, "%d:%02d", seconds / 60, seconds % 60)
 
 internal fun runRoutineSummary(run: RunRoutine, scheduleSummary: String): String {
     val duration = if (run.intervals.isEmpty()) "No duration" else formatRunDuration(run.totalDurationSeconds)

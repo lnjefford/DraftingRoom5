@@ -21,6 +21,7 @@ class AppRouteTest {
             AppRoute.DashboardCustomization,
             AppRoute.PlanManagement,
             AppRoute.RoutineEditor("routine-1"),
+            AppRoute.RunHistory("run-1"),
             AppRoute.RunStart("run-1", "schedule-1", java.time.LocalDate.of(2026, 9, 10)),
             AppRoute.RunSession("run-session-1"),
             AppRoute.ScheduleEditor(null, "draft-1", java.time.DayOfWeek.THURSDAY),

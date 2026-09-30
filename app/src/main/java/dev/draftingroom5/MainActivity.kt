@@ -879,6 +879,7 @@ private fun DraftingRoom5App() {
                     },
                     onBack = { navigation.back() },
                     onOpenRoutes = { navigation.navigate(AppRoute.RunRoutes) },
+                    onOpenHistory = { navigation.navigate(AppRoute.RunHistory(routine.id)) },
                 ) else if (routine != null) GuidedRoutineEditorScreen(
                     routine = routine,
                     scheduleSummary = trainingPlan.routineScheduleSummary(routine.id),
@@ -1064,6 +1065,7 @@ private fun DraftingRoom5App() {
             }
             AppRoute.RunRoutes -> RunRouteScreen(
                 routes = appDocument.runRoutes,
+                lastUsedRouteId = appDocument.lastRunRouteId,
                 onSave = { route ->
                     val saved = persistDocument { current ->
                         val existing = current.runRoutes.firstOrNull { it.id == route.id }
@@ -1083,6 +1085,16 @@ private fun DraftingRoom5App() {
                 },
                 onBack = { navigation.back() },
             )
+            is AppRoute.RunHistory -> {
+                val routine = trainingPlan.routines.firstOrNull { it.id == screen.routineId }
+                if (routine == null) navigation.back() else RunHistoryScreen(
+                    routine = routine,
+                    history = workoutHistory.filter { it.snapshot.id == routine.id },
+                    sessions = appDocument.runSessions,
+                    onSelect = { navigation.navigate(AppRoute.Completion(it)) },
+                    onBack = { navigation.back() },
+                )
+            }
             is AppRoute.RunStart -> {
                 val routine = trainingPlan.routines.firstOrNull { it.id == screen.routineId && it.execution == RoutineExecution.RUN }
                 if (routine == null) navigation.dashboard() else RunStartScreen(
@@ -1122,7 +1134,11 @@ private fun DraftingRoom5App() {
                     },
                     onFinish = {
                         val saved = acceptDocumentResult(appRepository.finishRun(session.id, System.currentTimeMillis().coerceAtLeast(0L)))
-                        if (saved) { RunLocationService.stop(context); requestAutomaticBackup(); navigation.dashboard() }
+                        if (saved) {
+                            RunLocationService.stop(context)
+                            requestAutomaticBackup()
+                            navigation.navigate(AppRoute.Completion(session.id))
+                        }
                         saved
                     },
                     onBack = { navigation.dashboard() },

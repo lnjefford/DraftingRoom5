@@ -134,6 +134,26 @@ internal fun RunRoute.renamed(name: String): RunRoute? {
     return if (clean == this.name) this else copy(name = clean, revision = revision + 1)
 }
 
+internal fun RunRoute.reversedDirection(): RunRoute = copy(
+    revision = revision + 1,
+    points = points.reversed(),
+    waypointIndices = waypointIndices.map { points.lastIndex - it }.sorted(),
+    // A saved instruction's direction does not remain valid when traveling the other way.
+    turnCues = emptyList(),
+)
+
+internal fun RunRoute.duplicate(copyId: String): RunRoute = copy(
+    id = copyId,
+    revision = 1,
+    name = "$name copy".take(200),
+)
+
+internal val RunRoute.distanceMeters: Double
+    get() = points.zipWithNext().sumOf { (a, b) -> geoDistanceMeters(a, b) }
+
+internal fun RunRoute.distanceLabel(): String =
+    java.lang.String.format(java.util.Locale.US, "%.1f mi", distanceMeters / 1609.344)
+
 internal fun RunRoute.withWaypoint(pointIndex: Int): RunRoute? {
     if (pointIndex !in points.indices || waypointIndices.size >= 10_000) return null
     if (pointIndex in waypointIndices) return this

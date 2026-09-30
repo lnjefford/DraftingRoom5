@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,13 +16,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -34,6 +41,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,13 +54,21 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.BoundingBox
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.views.overlay.Marker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,6 +80,7 @@ internal fun RunRouteScreen(
     onDelete: (String) -> Boolean,
     onBack: () -> Unit,
     initialSelectedId: String? = null,
+    lastUsedRouteId: String? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -71,11 +88,16 @@ internal fun RunRouteScreen(
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     var importing by remember { mutableStateOf(false) }
     var drawing by remember { mutableStateOf(false) }
+    var editingMap by remember { mutableStateOf(false) }
     var rename by rememberSaveable { mutableStateOf(false) }
     var delete by rememberSaveable { mutableStateOf(false) }
     var addWaypoint by rememberSaveable { mutableStateOf(false) }
     var cuePoint by rememberSaveable { mutableStateOf<Int?>(null) }
     val selected = routes.firstOrNull { it.id == selectedId }
+    if (editingMap && selected != null) {
+        RunMapEditor(onSave = onSave, onBack = { editingMap = false }, initial = selected)
+        return
+    }
     if (drawing) {
         RunMapEditor(onSave = onSave, onBack = { drawing = false })
         return
@@ -106,7 +128,7 @@ internal fun RunRouteScreen(
     }
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
-        topBar = { SecondaryTopBar(if (selected == null) "Run routes" else "Route details", goBack) },
+        topBar = { SecondaryTopBar(selected?.name ?: "Routes", goBack) },
         containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
@@ -115,23 +137,8 @@ internal fun RunRouteScreen(
         ) {
             if (selected == null) {
                 item {
-                    Text("RUN ROUTES", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                    Text("Your saved routes", style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurface)
-                    Text("Draw on a map or import a GPX file to create an offline route plan.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = { drawing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Icon(Icons.Default.Add, null); Text(" Draw on map")
-                    }
+                    EditorialHeading("RUN ROUTES", "Designed routes", "Choose, edit, or create a route for your run.")
                     Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = { picker.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "*/*")) },
-                        enabled = !importing,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    ) {
-                        Icon(Icons.Default.Add, null)
-                        Text(if (importing) " Importing…" else " Import GPX")
-                    }
                 }
                 if (routes.isEmpty()) item {
                     AppSurfaceCard(Modifier.fillMaxWidth()) {
@@ -143,36 +150,52 @@ internal fun RunRouteScreen(
                 }
                 items(routes, key = { it.id }) { route ->
                     AppSurfaceCard(Modifier.fillMaxWidth().clickable(onClickLabel = "Edit ${route.name}") { selectedId = route.id; message = null }) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(route.name, fontWeight = FontWeight.Bold)
-                            Text("${route.points.size} track points · ${route.waypointIndices.size} waypoints · ${route.turnCues.size} turn cues",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            RunRouteShape(route, Modifier.size(if (narrow) 78.dp else 104.dp))
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(route.name, style = if (narrow) MaterialTheme.typography.titleMedium else
+                                    MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+                                Text(route.distanceLabel(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(if (route.id == lastUsedRouteId) "LAST USED" else "${route.waypointIndices.size} waypoints",
+                                    color = if (route.id == lastUsedRouteId) AppMint else AppBlue,
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text("›", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
                         }
+                    }
+                }
+                item {
+                    OutlinedButton(onClick = { drawing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Icon(Icons.Default.Add, null); Text(" Design a new route")
+                    }
+                    TextButton(onClick = { picker.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "*/*")) },
+                        enabled = !importing, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (importing) "Importing…" else "Import GPX route")
                     }
                 }
             } else {
                 item {
-                    Text("SAVED ROUTE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                    Text(selected.name, style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurface)
-                    Text("${selected.points.size} track points · ${selected.waypointIndices.size} waypoints · ${selected.turnCues.size} turn cues",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    RunRouteMap(selected, Modifier.fillMaxWidth().height(320.dp))
                 }
-                item { RunRoutePreview(selected) }
                 item {
-                    if (largeText || narrow) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { rename = true }, modifier = Modifier.fillMaxWidth()) {
-                                Icon(Icons.Default.Edit, null); Text(" Rename")
-                            }
-                            OutlinedButton(onClick = { delete = true }, modifier = Modifier.fillMaxWidth()) {
-                                Icon(Icons.Default.Delete, null); Text(" Delete")
-                            }
-                        }
-                    } else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { rename = true }) { Icon(Icons.Default.Edit, null); Text(" Rename") }
-                        OutlinedButton(onClick = { delete = true }) { Icon(Icons.Default.Delete, null); Text(" Delete") }
+                    EditorialHeading("SAVED ROUTE", selected.name, selected.distanceLabel())
+                    Spacer(Modifier.height(10.dp))
+                    Text("MANAGE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                    RunRouteAction("Edit route", "Change points or redraw", Icons.Default.Edit) { editingMap = true }
+                    RunRouteAction("Reverse direction", "Travel the route the other way", Icons.Default.SwapHoriz) {
+                        if (onSave(selected.reversedDirection())) message = "Direction reversed. Turn cues cleared for safety."
+                        else message = "Could not reverse route."
                     }
+                    RunRouteAction("Duplicate route", "Create an editable copy", Icons.Default.ContentCopy) {
+                        val copy = selected.duplicate(newId())
+                        if (onSave(copy)) { selectedId = copy.id; message = "Route duplicated." }
+                        else message = "Could not duplicate route."
+                    }
+                    OutlinedButton(onClick = { delete = true }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.Delete, null); Text(" Delete route")
+                    }
+                    TextButton(onClick = { rename = true }) { Text("Rename route") }
                 }
                 item {
                     if (largeText) Column {
@@ -245,38 +268,94 @@ internal fun RunRouteScreen(
 }
 
 @Composable
-private fun RunRoutePreview(route: RunRoute) {
-    val track = AppBlue
-    val marker = AppGold
-    AppSurfaceCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp)) {
-            Text("Track preview", style = MaterialTheme.typography.labelMedium)
-            Canvas(Modifier.fillMaxWidth().height(190.dp)) {
-                val minX = route.points.minOf { it.longitudeE7 }.toDouble()
-                val maxX = route.points.maxOf { it.longitudeE7 }.toDouble()
-                val minY = route.points.minOf { it.latitudeE7 }.toDouble()
-                val maxY = route.points.maxOf { it.latitudeE7 }.toDouble()
-                val width = (maxX - minX).coerceAtLeast(1.0)
-                val height = (maxY - minY).coerceAtLeast(1.0)
-                val scale = minOf((size.width - 24f) / width, (size.height - 24f) / height)
-                val offsetX = (size.width - width * scale) / 2
-                val offsetY = (size.height - height * scale) / 2
-                fun position(point: RunRoutePoint) = Offset(
-                    (offsetX + (point.longitudeE7 - minX) * scale).toFloat(),
-                    (size.height - offsetY - (point.latitudeE7 - minY) * scale).toFloat(),
-                )
-                val path = Path()
-                route.points.forEachIndexed { index, point ->
-                    val p = position(point)
-                    if (index == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
-                }
-                drawPath(path, track, style = Stroke(width = 4.dp.toPx()))
-                route.waypointIndices.forEach { index -> drawCircle(marker, 5.dp.toPx(), position(route.points[index])) }
+internal fun RunRouteShape(route: RunRoute, modifier: Modifier = Modifier) {
+    Canvas(modifier.clip(RoundedCornerShape(14.dp)).background(AppBackgroundDeep)
+        .border(1.dp, AppBorder, RoundedCornerShape(14.dp))) {
+        val minX = route.points.minOf { it.longitudeE7 }.toDouble()
+        val maxX = route.points.maxOf { it.longitudeE7 }.toDouble()
+        val minY = route.points.minOf { it.latitudeE7 }.toDouble()
+        val maxY = route.points.maxOf { it.latitudeE7 }.toDouble()
+        val width = (maxX - minX).coerceAtLeast(1.0)
+        val height = (maxY - minY).coerceAtLeast(1.0)
+        val scale = minOf((size.width - 32f) / width, (size.height - 32f) / height)
+        val offsetX = (size.width - width * scale) / 2
+        val offsetY = (size.height - height * scale) / 2
+        fun position(point: RunRoutePoint) = Offset(
+            (offsetX + (point.longitudeE7 - minX) * scale).toFloat(),
+            (size.height - offsetY - (point.latitudeE7 - minY) * scale).toFloat(),
+        )
+        val path = Path()
+        route.points.forEachIndexed { index, point ->
+            val p = position(point)
+            if (index == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
+        }
+        drawPath(path, AppBlueStrong.copy(alpha = 0.25f), style = Stroke(width = 11.dp.toPx()))
+        drawPath(path, AppBlue, style = Stroke(width = 3.dp.toPx()))
+        drawCircle(AppMint, 6.dp.toPx(), position(route.points.first()))
+        drawCircle(Color.White, 7.dp.toPx(), position(route.points.first()), style = Stroke(width = 2.dp.toPx()))
+    }
+}
+
+@Composable
+private fun RunRouteMap(route: RunRoute, modifier: Modifier = Modifier) {
+    if (LocalInspectionMode.current) {
+        RunRouteShape(route, modifier)
+        return
+    }
+    val context = LocalContext.current
+    val map = remember(context, route.id, route.revision) {
+        MapView(context).apply {
+            configureRunTiles(context, this)
+            setMultiTouchControls(true)
+            val latitudes = route.points.map { it.latitudeE7 / 10_000_000.0 }
+            val longitudes = route.points.map { it.longitudeE7 / 10_000_000.0 }
+            val bounds = BoundingBox(
+                latitudes.max() + 0.001, longitudes.max() + 0.001,
+                latitudes.min() - 0.001, longitudes.min() - 0.001)
+            post { zoomToBoundingBox(bounds, false, 48) }
+        }
+    }
+    DisposableEffect(map) {
+        map.onResume()
+        onDispose { map.onPause(); map.onDetach() }
+    }
+    Box(modifier.clip(RoundedCornerShape(18.dp))) {
+        AndroidView(factory = { map }, modifier = Modifier.fillMaxSize(), update = { view ->
+            view.overlays.clear()
+            view.overlays.add(Polyline().apply {
+                setPoints(route.points.map { GeoPoint(it.latitudeE7 / 10_000_000.0, it.longitudeE7 / 10_000_000.0) })
+                outlinePaint.color = android.graphics.Color.rgb(96, 163, 255)
+                outlinePaint.strokeWidth = 6f * context.resources.displayMetrics.density
+            })
+            route.waypointIndices.forEachIndexed { position, index ->
+                view.overlays.add(Marker(view).apply {
+                    val point = route.points[index]
+                    this.position = GeoPoint(point.latitudeE7 / 10_000_000.0, point.longitudeE7 / 10_000_000.0)
+                    icon = routeMarker(context, position)
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                })
             }
-            Text("Route shape preview", color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall)
-            Text("Map-drawn routes: openrouteservice / HeiGIT · © OpenStreetMap contributors",
-                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            view.invalidate()
+        })
+        Text("© OpenStreetMap contributors", Modifier.align(Alignment.BottomStart)
+            .background(AppBackground.copy(alpha = 0.85f)).padding(5.dp),
+            color = Color.White, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun RunRouteAction(label: String, detail: String,
+                           icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    AppSurfaceCard(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(icon, null, tint = AppBlue)
+            Column(Modifier.weight(1f)) {
+                Text(label, fontWeight = FontWeight.SemiBold)
+                Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            Text("›", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
         }
     }
 }
