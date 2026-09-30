@@ -160,7 +160,9 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
     }
     Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = { SecondaryTopBar(if (initial == null) "Design route" else "Edit route", onBack) {
-            TextButton(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank()) { Text("Save") }
+            TextButton(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank(),
+                colors = ButtonDefaults.textButtonColors(contentColor = AppBlue,
+                    disabledContentColor = Color(0xFFB9C8DB))) { Text("Save") }
             Box {
                 IconButton(onClick = { menuExpanded = true }) { Icon(Icons.Default.MoreVert, "More route options") }
                 DropdownMenu(menuExpanded, onDismissRequest = { menuExpanded = false }) {
@@ -293,7 +295,9 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
                         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         Button(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank(),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AppBlue, contentColor = AppBackgroundDeep)) {
+                            colors = ButtonDefaults.buttonColors(containerColor = AppBlue,
+                                contentColor = AppBackgroundDeep, disabledContainerColor = AppSurfaceRaised,
+                                disabledContentColor = Color(0xFFB9C8DB))) {
                             Text("Save route")
                         }
                     }
@@ -341,13 +345,15 @@ private fun RunRoutingKeyDialog(onDismiss: () -> Unit, onSave: (String) -> Boole
 @Composable
 private fun RunMapMode(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(modifier.clip(RoundedCornerShape(28.dp))
-        .background(if (selected) AppBlueStrong else AppBackground.copy(alpha = 0.94f))
-        .border(1.dp, if (selected) AppBlue else AppBorder, RoundedCornerShape(28.dp))
+        .background(if (selected) AppBlueStrong else AppSurface.copy(alpha = 0.97f))
+        .border(1.dp, if (selected) AppBlue else Color(0xFF496783), RoundedCornerShape(28.dp))
         .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        Icon(if (label == "Draw") Icons.Default.Edit else Icons.Default.Place, null, Modifier.size(18.dp))
+        val contentColor = if (selected) AppBackgroundDeep else Color(0xFFF1F5FC)
+        Icon(if (label == "Draw") Icons.Default.Edit else Icons.Default.Place, null,
+            Modifier.size(18.dp), tint = contentColor)
         Spacer(Modifier.size(5.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = contentColor)
     }
 }
 
@@ -393,11 +399,11 @@ internal fun configureRunTiles(context: Context, map: MapView) {
     Configuration.getInstance().osmdroidTileCache = java.io.File(context.cacheDir, "osm-tiles")
     map.setTileSource(XYTileSource("OpenStreetMap", 0, 19, 256, ".png",
         arrayOf("https://tile.openstreetmap.org/")))
-    map.setBackgroundColor(android.graphics.Color.rgb(6, 20, 34))
+    map.setBackgroundColor(android.graphics.Color.rgb(22, 43, 62))
     map.overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(floatArrayOf(
-        -0.07f, -0.17f, -0.03f, 0f, 75f,
-        -0.08f, -0.14f, -0.03f, 0f, 94f,
-        -0.08f, -0.10f, -0.07f, 0f, 117f,
+        -0.11f, -0.25f, -0.08f, 0f, 142f,
+        -0.14f, -0.25f, -0.09f, 0f, 167f,
+        -0.14f, -0.20f, -0.17f, 0f, 194f,
         0f, 0f, 0f, 1f, 0f,
     )))
 }
