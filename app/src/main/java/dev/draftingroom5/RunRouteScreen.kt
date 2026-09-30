@@ -132,7 +132,7 @@ internal fun RunRouteScreen(
         containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            Modifier.fillMaxSize().padding(padding).padding(horizontal = if (selected == null) 20.dp else 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (selected == null) {
@@ -176,39 +176,44 @@ internal fun RunRouteScreen(
                 }
             } else {
                 item {
-                    RunRouteMap(selected, Modifier.fillMaxWidth().height(320.dp))
+                    RunRouteMap(selected, Modifier.fillMaxWidth().height(350.dp))
                 }
                 item {
-                    EditorialHeading("SAVED ROUTE", selected.name, selected.distanceLabel())
-                    Spacer(Modifier.height(10.dp))
-                    Text("MANAGE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                    RunRouteAction("Edit route", "Change points or redraw", Icons.Default.Edit) { editingMap = true }
-                    RunRouteAction("Reverse direction", "Travel the route the other way", Icons.Default.SwapHoriz) {
-                        if (onSave(selected.reversedDirection())) message = "Direction reversed. Turn cues cleared for safety."
-                        else message = "Could not reverse route."
+                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                        .background(AppBackground).padding(horizontal = 20.dp, vertical = 18.dp),
+                        verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Box(Modifier.align(Alignment.CenterHorizontally).width(42.dp).height(5.dp)
+                            .clip(RoundedCornerShape(5.dp)).background(AppBorder))
+                        EditorialHeading("SAVED ROUTE", selected.name, selected.distanceLabel())
+                        Text("MANAGE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                        RunRouteAction("Edit route", "Change points or redraw", Icons.Default.Edit) { editingMap = true }
+                        RunRouteAction("Reverse direction", "Travel the route the other way", Icons.Default.SwapHoriz) {
+                            if (onSave(selected.reversedDirection())) message = "Direction reversed. Turn cues cleared for safety."
+                            else message = "Could not reverse route."
+                        }
+                        RunRouteAction("Duplicate route", "Create an editable copy", Icons.Default.ContentCopy) {
+                            val copy = selected.duplicate(newId())
+                            if (onSave(copy)) { selectedId = copy.id; message = "Route duplicated." }
+                            else message = "Could not duplicate route."
+                        }
+                        OutlinedButton(onClick = { delete = true }, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Delete, null); Text(" Delete route")
+                        }
+                        TextButton(onClick = { rename = true }) { Text("Rename route") }
                     }
-                    RunRouteAction("Duplicate route", "Create an editable copy", Icons.Default.ContentCopy) {
-                        val copy = selected.duplicate(newId())
-                        if (onSave(copy)) { selectedId = copy.id; message = "Route duplicated." }
-                        else message = "Could not duplicate route."
-                    }
-                    OutlinedButton(onClick = { delete = true }, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Default.Delete, null); Text(" Delete route")
-                    }
-                    TextButton(onClick = { rename = true }) { Text("Rename route") }
                 }
                 item {
-                    if (largeText) Column {
+                    if (largeText) Column(Modifier.padding(horizontal = 20.dp)) {
                         Text("WAYPOINTS", color = AppGold, style = MaterialTheme.typography.labelMedium)
                         TextButton(onClick = { addWaypoint = true }) { Text("Add waypoint") }
-                    } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    } else Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("WAYPOINTS", color = AppGold, style = MaterialTheme.typography.labelMedium)
                         TextButton(onClick = { addWaypoint = true }) { Text("Add waypoint") }
                     }
                 }
                 items(selected.waypointIndices, key = { "waypoint-$it" }) { index ->
-                    AppSurfaceCard(Modifier.fillMaxWidth()) {
+                    AppSurfaceCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Text(when (index) { 0 -> "Start"; selected.points.lastIndex -> "Finish"; else -> "Point ${index + 1}" },
@@ -220,12 +225,13 @@ internal fun RunRouteScreen(
                         }
                     }
                 }
-                item { Text("TURN CUES", color = AppGold, style = MaterialTheme.typography.labelMedium) }
+                item { Text("TURN CUES", Modifier.padding(horizontal = 20.dp), color = AppGold, style = MaterialTheme.typography.labelMedium) }
                 if (selected.turnCues.isEmpty()) item {
-                    Text("No turn cues yet. Add one at a waypoint.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No turn cues yet. Add one at a waypoint.", Modifier.padding(horizontal = 20.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 items(selected.turnCues, key = { "cue-${it.pointIndex}" }) { cue ->
-                    AppSurfaceCard(Modifier.fillMaxWidth().clickable { cuePoint = cue.pointIndex }) {
+                    AppSurfaceCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp).clickable { cuePoint = cue.pointIndex }) {
                         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Point ${cue.pointIndex + 1} · ${cue.kind.label()}", fontWeight = FontWeight.Bold)
@@ -238,7 +244,7 @@ internal fun RunRouteScreen(
                     }
                 }
             }
-            message?.let { notice -> item { Text(notice, color = AppMint) } }
+            message?.let { notice -> item { Text(notice, Modifier.padding(horizontal = if (selected == null) 0.dp else 20.dp), color = AppMint) } }
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
@@ -271,13 +277,41 @@ internal fun RunRouteScreen(
 internal fun RunRouteShape(route: RunRoute, modifier: Modifier = Modifier) {
     Canvas(modifier.clip(RoundedCornerShape(14.dp)).background(AppBackgroundDeep)
         .border(1.dp, AppBorder, RoundedCornerShape(14.dp))) {
+        drawRect(Color(0xFF0A1C2C))
+        drawCircle(Color(0xFF16372E).copy(alpha = .8f), radius = size.minDimension * .27f,
+            center = Offset(size.width * .78f, size.height * .28f))
+        drawCircle(Color(0xFF16372E).copy(alpha = .55f), radius = size.minDimension * .2f,
+            center = Offset(size.width * .15f, size.height * .86f))
+        val road = Color(0xFF29445D).copy(alpha = .8f)
+        val localRoad = Color(0xFF20394F).copy(alpha = .85f)
+        repeat(6) { index ->
+            val start = size.height * (index + .4f) / 6f
+            val roadPath = Path().apply {
+                moveTo(0f, start)
+                cubicTo(size.width * .3f, start - size.height * .11f,
+                    size.width * .56f, start + size.height * .1f,
+                    size.width, start - size.height * .04f)
+            }
+            drawPath(roadPath, if (index % 2 == 0) road else localRoad,
+                style = Stroke(width = (if (index % 2 == 0) 1.7f else 1.2f).dp.toPx()))
+        }
+        repeat(5) { index ->
+            val start = size.width * (index + .4f) / 5f
+            val roadPath = Path().apply {
+                moveTo(start, 0f)
+                cubicTo(start + size.width * .1f, size.height * .3f,
+                    start - size.width * .08f, size.height * .66f,
+                    start + size.width * .06f, size.height)
+            }
+            drawPath(roadPath, localRoad, style = Stroke(width = 1.2.dp.toPx()))
+        }
         val minX = route.points.minOf { it.longitudeE7 }.toDouble()
         val maxX = route.points.maxOf { it.longitudeE7 }.toDouble()
         val minY = route.points.minOf { it.latitudeE7 }.toDouble()
         val maxY = route.points.maxOf { it.latitudeE7 }.toDouble()
         val width = (maxX - minX).coerceAtLeast(1.0)
         val height = (maxY - minY).coerceAtLeast(1.0)
-        val scale = minOf((size.width - 32f) / width, (size.height - 32f) / height)
+        val scale = minOf(size.width * .78f / width, size.height * .78f / height)
         val offsetX = (size.width - width * scale) / 2
         val offsetY = (size.height - height * scale) / 2
         fun position(point: RunRoutePoint) = Offset(

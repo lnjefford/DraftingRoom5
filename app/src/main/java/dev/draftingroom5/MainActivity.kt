@@ -620,6 +620,8 @@ private fun DraftingRoom5App() {
                 occurrenceExceptions = appDocument.occurrenceExceptions,
                 partialSessions = appDocument.partialSessions,
                 runSessions = appDocument.runSessions,
+                runRoutes = appDocument.runRoutes,
+                lastRunRouteId = appDocument.lastRunRouteId,
                 workoutHistory = workoutHistory,
                 animateBrandOnEntry = launchBrandAnimationPending,
                 onBrandAnimationFinished = { launchBrandAnimationPending = false },
@@ -1247,6 +1249,8 @@ private fun Dashboard(
     occurrenceExceptions: List<OccurrenceException> = emptyList(),
     partialSessions: List<GuidedSession>,
     runSessions: List<RunSession> = emptyList(),
+    runRoutes: List<RunRoute> = emptyList(),
+    lastRunRouteId: String? = null,
     workoutHistory: List<WorkoutHistoryEntry>,
     animateBrandOnEntry: Boolean,
     onBrandAnimationFinished: () -> Unit,
@@ -1436,6 +1440,9 @@ private fun Dashboard(
                             items(sessions, key = { "schedule-$sectionIndex-${it.occurrence.scheduleEntryId}-${it.occurrence.scheduledDate}" }) { session ->
                                 SessionCard(
                                     session = session,
+                                    runSession = runSessions.firstOrNull { it.occurrence == session.occurrence && it.completedAtMillis == null },
+                                    runRoute = runSessions.firstOrNull { it.occurrence == session.occurrence && it.completedAtMillis == null }?.route
+                                        ?: runRoutes.firstOrNull { it.id == (lastRunRouteId ?: session.routine.run?.routeId) },
                                     onClick = {
                                         if (session.action != SessionAction.DONE) {
                                             if (session.routine.execution != RoutineExecution.LINKED_APP) onOpenCustom(session)
@@ -2722,6 +2729,8 @@ internal fun occurrenceMenuDescription(session: DashboardSession): String =
 private fun SessionCard(
     session: DashboardSession,
     onClick: () -> Unit,
+    runSession: RunSession? = null,
+    runRoute: RunRoute? = null,
     onUndoLinked: (() -> Unit)? = null,
     onOccurrenceMenu: ((OccurrenceDisposition) -> Unit)? = null,
     initialMenuExpanded: Boolean = false,
@@ -2738,6 +2747,16 @@ private fun SessionCard(
     )
     val progress = session.progressLabel
     val metadata = when {
+        routine.execution == RoutineExecution.RUN && runSession != null -> {
+            val elapsed = (runSession.elapsedMillis(System.currentTimeMillis()) / 1_000).toInt()
+            val intervals = checkNotNull(routine.run).intervals
+            val finished = intervals.runningFold(0) { total, interval -> total + interval.durationSeconds }
+                .drop(1).count { elapsed >= it }
+            "${(finished + 1).coerceAtMost(intervals.size)} of ${intervals.size} intervals"
+        }
+        routine.execution == RoutineExecution.RUN && !completed ->
+            "${formatRunDuration(checkNotNull(routine.run).totalDurationSeconds)} timing" +
+                (if (runRoute == null) " · No route selected" else "")
         session.effectiveDate != session.occurrence.scheduledDate -> "Moved from ${session.occurrence.scheduledDate.format(DateTimeFormatter.ofPattern("MMM d", locale))} · ${routine.dashboardMetadata()}"
         progress != null && session.savedOriginDate != null -> "$progress · ${session.savedOriginDate.format(DateTimeFormatter.ofPattern("MMM d", locale))}"
         progress != null -> progress
@@ -2747,7 +2766,7 @@ private fun SessionCard(
     val eyebrow = when (routine.execution) {
         RoutineExecution.GUIDED -> "GUIDED ROUTINE"
         RoutineExecution.LINKED_APP -> "LINKED APP · ${linkedAppDisplayName(checkNotNull(routine.appLink).packageName)}"
-        RoutineExecution.RUN -> "RUN ROUTINE"
+        RoutineExecution.RUN -> if (runSession == null) "RUN · ${checkNotNull(routine.run).intervalCountLabel().uppercase()}" else "RUN · IN PROGRESS"
     }
     BrandedCard(
         Modifier
@@ -2761,25 +2780,30 @@ private fun SessionCard(
             .then(if (completed) Modifier.border(1.dp, AppMint.copy(alpha = .7f), MaterialTheme.shapes.large) else Modifier),
         containerColor = cardColor,
     ) {
-        Box(Modifier.fillMaxWidth().heightIn(min = 168.dp)) {
+        Box(Modifier.fillMaxWidth().heightIn(min = if (routine.execution == RoutineExecution.RUN) 200.dp else 168.dp)) {
             Box(Modifier.matchParentSize()) {
-            Image(
+            if (routine.execution == RoutineExecution.RUN && runRoute != null) {
+                RunRouteShape(runRoute, Modifier.align(Alignment.CenterEnd).fillMaxWidth(.5f)
+                    .fillMaxHeight().padding(8.dp))
+            } else Image(
                 painter = painterResource(RoutineArtworkCatalog.resolve(routine.artworkId).cardAsset),
                 contentDescription = null,
                 modifier = Modifier.align(Alignment.CenterEnd).fillMaxWidth(.7f).fillMaxHeight(),
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.CenterEnd,
             )
-            Box(
-                Modifier.align(Alignment.CenterEnd).fillMaxWidth(.7f).fillMaxHeight().background(
-                    Brush.horizontalGradient(
-                        listOf(cardColor, Color.Transparent),
-                    ),
-                ),
-            )
+            if (routine.execution == RoutineExecution.RUN && runRoute != null) {
+                Box(Modifier.matchParentSize().background(Brush.horizontalGradient(
+                    0f to cardColor, .64f to cardColor.copy(alpha = .96f), 1f to Color.Transparent,
+                )))
+            } else {
+                Box(Modifier.align(Alignment.CenterEnd).fillMaxWidth(.7f).fillMaxHeight()
+                    .background(Brush.horizontalGradient(listOf(cardColor, Color.Transparent))))
+            }
             }
             Column(
-                Modifier.fillMaxWidth(.72f).heightIn(min = 168.dp)
+                Modifier.fillMaxWidth(if (routine.execution == RoutineExecution.RUN) .94f else .72f)
+                    .heightIn(min = if (routine.execution == RoutineExecution.RUN) 200.dp else 168.dp)
                     .padding(horizontal = 20.dp, vertical = 18.dp)
                     .padding(bottom = if (routine.execution == RoutineExecution.LINKED_APP) 56.dp else 0.dp),
             ) {
@@ -2790,9 +2814,34 @@ private fun SessionCard(
                     letterSpacing = 1.8.sp,
                 )
                 Spacer(Modifier.height(8.dp))
-                Text(routine.name, color = Color(0xFFF4F0E7), style = MaterialTheme.typography.headlineLarge)
+                Text(routine.name, color = Color(0xFFF4F0E7),
+                    style = if (routine.execution == RoutineExecution.RUN) MaterialTheme.typography.headlineSmall
+                    else MaterialTheme.typography.headlineLarge,
+                    maxLines = if (routine.execution == RoutineExecution.RUN) 2 else Int.MAX_VALUE,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Spacer(Modifier.height(12.dp))
-                Text(metadata, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(metadata, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = if (routine.execution == RoutineExecution.RUN) Modifier.fillMaxWidth(.62f) else Modifier,
+                    maxLines = if (routine.execution == RoutineExecution.RUN) 2 else Int.MAX_VALUE,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                if (routine.execution == RoutineExecution.RUN && runSession != null) {
+                    Spacer(Modifier.height(10.dp))
+                    val elapsed = (runSession.elapsedMillis(System.currentTimeMillis()) / 1_000).toInt()
+                    val runPlan = checkNotNull(routine.run)
+                    Row(Modifier.fillMaxWidth(.62f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        runPlan.intervals.forEachIndexed { index, interval ->
+                            val start = runPlan.intervals.take(index).sumOf(RunInterval::durationSeconds)
+                            val fraction = ((elapsed - start).toFloat() / interval.durationSeconds).coerceIn(0f, 1f)
+                            Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(5.dp)).background(AppBorder)) {
+                                Box(Modifier.fillMaxWidth(fraction).height(5.dp).background(
+                                    if (interval.kind == RunIntervalKind.WALK) AppMint else AppBlue))
+                            }
+                        }
+                    }
+                    Text(if (runSession.isRunning) "Run in progress" else "Paused · ${formatRunClock(elapsed)} elapsed",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
             if (onOccurrenceMenu != null) {
                 Box(Modifier.align(Alignment.TopEnd)) {
@@ -2874,14 +2923,22 @@ private fun SessionActionLabel(action: SessionAction, label: String, modifier: M
 }
 
 @Composable
-private fun DashboardSessionPreviewContent(sessions: List<DashboardSession>) {
+internal fun DashboardSessionPreviewContent(
+    sessions: List<DashboardSession>,
+    runRoute: RunRoute? = null,
+    runSession: RunSession? = null,
+    showHero: Boolean = false,
+) {
     DraftingRoom5Theme {
         Column(
             Modifier.fillMaxSize().appScreenBackground().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (showHero) TrainingHero(sessions.firstOrNull()?.effectiveDate ?: LocalDate.of(2026, 9, 29), sessions)
             EditorialSectionLabel("TODAY'S SESSION")
-            if (sessions.isEmpty()) EmptySchedule(true) else sessions.forEach { SessionCard(it, onClick = {}) }
+            if (sessions.isEmpty()) EmptySchedule(true) else sessions.forEach {
+                SessionCard(it, onClick = {}, runRoute = runRoute, runSession = runSession)
+            }
             WeekSelector(
                 dashboardWeek(LocalDate.of(2026, 9, 10)),
                 LocalDate.of(2026, 9, 10),

@@ -543,9 +543,16 @@ private fun ManagedRoutineRow(
     ) {
         Row(Modifier.fillMaxWidth().heightIn(min = 116.dp).padding(start = 16.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(routine.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(routine.routineListMetadata(), color = AppBlue, style = MaterialTheme.typography.labelLarge)
-                Text(scheduleSummary, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(routine.name, style = if (routine.execution == RoutineExecution.RUN)
+                    MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(if (routine.execution == RoutineExecution.RUN)
+                    "RUN · ${checkNotNull(routine.run).intervalCountLabel().uppercase()}" else routine.routineListMetadata(),
+                    color = AppBlue, style = MaterialTheme.typography.labelLarge)
+                Text(if (routine.execution == RoutineExecution.RUN)
+                    "${formatRunDuration(checkNotNull(routine.run).totalDurationSeconds)} timing · $scheduleSummary"
+                    else scheduleSummary, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall)
             }
             if (showArtwork) {
                 Image(

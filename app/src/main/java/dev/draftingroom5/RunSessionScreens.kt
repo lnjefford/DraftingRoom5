@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +31,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Path
@@ -40,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -140,14 +146,16 @@ internal fun RunSessionScreen(
     onRequestLocation: () -> Unit = {},
     music: @Composable () -> Unit = {},
     reviewNow: Long? = null,
+    reviewConfirmFinish: Boolean = false,
 ) {
     var now by remember { mutableLongStateOf(reviewNow ?: System.currentTimeMillis()) }
-    var confirmFinish by remember { mutableStateOf(false) }
+    var confirmFinish by remember { mutableStateOf(reviewConfirmFinish) }
     var message by remember { mutableStateOf<String?>(null) }
+    var recenterTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(session.id, reviewNow) {
         if (reviewNow == null) while (true) { now = System.currentTimeMillis(); delay(500) }
     }
-    BackHandler(onBack = onBack)
+    BackHandler { if (confirmFinish) confirmFinish = false else onBack() }
     val plan = checkNotNull(session.routine.run)
     val interval = session.intervalAt(now)
     val elapsed = session.elapsedMillis(now)
@@ -165,6 +173,7 @@ internal fun RunSessionScreen(
         if (complete) { if (!onFinish()) message = "Couldn’t finish the run." }
         else confirmFinish = true
     }
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
@@ -193,8 +202,8 @@ internal fun RunSessionScreen(
         containerColor = Color.Transparent,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
-            RunLiveMap(session, Modifier.fillMaxSize())
-            if (cue != null && session.isRunning) {
+            RunLiveMap(session, Modifier.fillMaxSize(), recenterTick)
+            if (cue != null && (session.isRunning || complete)) {
                 Column(Modifier.fillMaxWidth().padding(14.dp).clip(RoundedCornerShape(18.dp))
                     .background(AppBackground.copy(alpha = 0.96f)).border(1.dp, AppBorder, RoundedCornerShape(18.dp))
                     .padding(14.dp)) {
@@ -203,8 +212,26 @@ internal fun RunSessionScreen(
                         color = MaterialTheme.colorScheme.onSurface)
                     cueDistance?.let { Text("${it} m ahead", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
+            } else if (!session.isRunning && !complete) {
+                Column(Modifier.align(Alignment.TopCenter).padding(14.dp)
+                    .clip(RoundedCornerShape(18.dp)).background(AppBackground.copy(alpha = .94f))
+                    .border(1.dp, AppBorder, RoundedCornerShape(18.dp))
+                    .padding(horizontal = 22.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Run paused", color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Tracking and timers are stopped", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().padding(end = 16.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.End) {
+                    IconButton(onClick = { recenterTick++ }, modifier = Modifier.size(52.dp)
+                        .clip(CircleShape).background(AppBackground.copy(alpha = .95f))
+                        .border(1.dp, AppBorder, CircleShape)) {
+                        Icon(Icons.Default.MyLocation, "Recenter map", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
                 if (!locationEnabled) Text("Location is off · tap to enable GPS tracking",
                     Modifier.fillMaxWidth().clickable(onClick = onRequestLocation).background(AppBackground.copy(alpha = 0.95f))
                         .padding(10.dp), color = MaterialTheme.colorScheme.error)
@@ -223,8 +250,14 @@ internal fun RunSessionScreen(
                             color = if (complete || interval?.second?.kind == RunIntervalKind.WALK) AppMint else AppBlue,
                             style = MaterialTheme.typography.displaySmall)
                         Column {
-                            Text(if (complete) formatRunClock(plan.totalDurationSeconds) else formatRunClock(remaining),
-                                style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(if (complete) formatRunClock(plan.totalDurationSeconds) else formatRunClock(remaining),
+                                    style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.onSurface)
+                                if (!complete) Text("of ${formatRunClock(interval!!.second.durationSeconds)}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(bottom = 8.dp))
+                            }
                             Text(if (complete) "All ${plan.intervals.size} intervals complete" else
                                 next?.let { "Next: ${it.kind.name.lowercase().replaceFirstChar(Char::uppercase)} ${formatRunClock(it.durationSeconds)}" }
                                     ?: "Final interval", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -240,18 +273,23 @@ internal fun RunSessionScreen(
                         style = MaterialTheme.typography.bodySmall)
                     music()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(onClick = {
-                            if (complete) { if (!onFinish()) message = "Couldn’t finish the run." }
-                            else requestFinish()
-                        }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                            Text(if (complete) "Finish & save" else "End")
-                        }
-                        Button(onClick = {
-                            if (complete) message = "Tracking continues until you finish and save."
-                            else if (!(if (session.isRunning) onPause() else onResume())) message = "Couldn’t update the run."
-                        }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AppBlue, contentColor = AppBackgroundDeep)) {
-                            Text(if (complete) "Keep navigating" else if (session.isRunning) "Pause" else "Resume")
+                        if (complete) {
+                            OutlinedButton(onClick = { message = "Tracking continues until you finish and save." },
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Keep navigating") }
+                            Button(onClick = { if (!onFinish()) message = "Couldn’t finish the run." },
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AppBlue,
+                                    contentColor = AppBackgroundDeep)) { Text("Finish & save") }
+                        } else {
+                            OutlinedButton(onClick = requestFinish,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("End") }
+                            Button(onClick = {
+                                if (!(if (session.isRunning) onPause() else onResume())) message = "Couldn’t update the run."
+                            }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AppBlue,
+                                    contentColor = AppBackgroundDeep)) {
+                                Text(if (session.isRunning) "Pause" else "Resume")
+                            }
                         }
                     }
                     message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -259,13 +297,40 @@ internal fun RunSessionScreen(
             }
         }
     }
-    if (confirmFinish) AppConfirmationDialog(
-        title = "Finish this run?",
-        message = "This saves your elapsed time and recorded route to run history.",
-        confirmLabel = "Finish run",
-        onConfirm = { if (!onFinish()) { message = "Couldn’t finish the run."; confirmFinish = false } },
-        onDismiss = { confirmFinish = false },
-    )
+    if (confirmFinish) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .56f))
+            .clickable { confirmFinish = false })
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            .background(AppSurface).border(1.dp, AppBorder,
+                RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.align(Alignment.CenterHorizontally).width(42.dp).height(5.dp)
+                .clip(RoundedCornerShape(5.dp)).background(AppBorder))
+            Text("END RUN", color = AppGold, style = MaterialTheme.typography.labelMedium)
+            Text("Finish this run?", color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.headlineLarge)
+            Text("Your route, completed intervals, and timing will be saved.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val completedIntervals = plan.intervals.runningFold(0) { total, item -> total + item.durationSeconds }
+                .drop(1).count { elapsedSeconds >= it }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                RunMetric("Intervals", "$completedIntervals of ${plan.intervals.size}", Modifier.weight(1f))
+                RunMetric("Elapsed", formatRunClock(elapsedSeconds.toInt()), Modifier.weight(1f))
+                RunMetric("Distance", java.lang.String.format(java.util.Locale.US, "%.1f mi", session.distanceMeters / 1609.344),
+                    Modifier.weight(1f))
+            }
+            Button(onClick = { if (!onFinish()) { message = "Couldn’t finish the run."; confirmFinish = false } },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = AppBlue, contentColor = AppBackgroundDeep)) {
+                Text("Finish & save")
+            }
+            OutlinedButton(onClick = { confirmFinish = false },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Keep running") }
+        }
+    }
+    }
 }
 
 @Composable
@@ -277,7 +342,7 @@ private fun RunMetric(label: String, value: String, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun RunLiveMap(session: RunSession, modifier: Modifier = Modifier) {
+private fun RunLiveMap(session: RunSession, modifier: Modifier = Modifier, recenterTick: Int = 0) {
     if (LocalInspectionMode.current) {
         if (session.route != null) RunRouteShape(session.route, modifier)
         else Box(modifier.background(AppBackgroundDeep)) {
@@ -301,8 +366,8 @@ private fun RunLiveMap(session: RunSession, modifier: Modifier = Modifier) {
         map.onResume()
         onDispose { map.onPause(); map.onDetach() }
     }
-    LaunchedEffect(map, session.samples.size) {
-        session.samples.lastOrNull()?.point?.let {
+    LaunchedEffect(map, session.samples.size, recenterTick) {
+        (session.samples.lastOrNull()?.point ?: session.route?.points?.firstOrNull())?.let {
             map.controller.animateTo(GeoPoint(it.latitudeE7 / 10_000_000.0, it.longitudeE7 / 10_000_000.0))
         }
     }
@@ -359,6 +424,8 @@ internal fun RunHistoryScreen(
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
+    val byMonth = history.sortedByDescending { it.completedAtMillis }
+        .groupBy { it.effectiveDate.withDayOfMonth(1) }
     Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = { SecondaryTopBar("Run history", onBack) }, containerColor = Color.Transparent) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
@@ -370,28 +437,43 @@ internal fun RunHistoryScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            items(history.sortedByDescending { it.completedAtMillis }, key = { it.id }) { entry ->
+            byMonth.forEach { (month, entries) ->
+                item(key = "month-$month") {
+                    Text(month.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy")).uppercase(),
+                        color = AppGold, style = MaterialTheme.typography.labelMedium)
+                }
+                items(entries, key = { it.id }) { entry ->
                 val session = sessions.firstOrNull { it.id == entry.id }
                 val elapsed = ((session?.elapsedBeforeResumeMillis ?: (entry.completedAtMillis - entry.startedAtMillis)) / 1_000).toInt()
                 val complete = elapsed >= (entry.snapshot.run?.totalDurationSeconds ?: Int.MAX_VALUE)
+                val narrow = LocalConfiguration.current.screenWidthDp < 360
                 AppSurfaceCard(Modifier.fillMaxWidth().clickable { onSelect(entry.id) }) {
                     Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        session?.route?.let { RunRouteShape(it, Modifier.size(96.dp)) }
+                        horizontalArrangement = Arrangement.spacedBy(if (narrow) 10.dp else 12.dp)) {
+                        session?.route?.let { RunRouteShape(it, Modifier.size(if (narrow) 78.dp else 96.dp)) } ?: Box(
+                            Modifier.size(if (narrow) 78.dp else 96.dp).clip(RoundedCornerShape(14.dp)).background(AppBackgroundDeep),
+                            contentAlignment = Alignment.Center,
+                        ) { Text("RUN", color = AppBlue, style = MaterialTheme.typography.labelLarge) }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(entry.effectiveDate.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMMM d")),
+                            Text(entry.effectiveDate.format(java.time.format.DateTimeFormatter.ofPattern(
+                                if (narrow) "EEE, MMM d" else "EEEE, MMMM d")),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall)
                             Text(if (complete) "✓ Timing complete" else "Ended early",
-                                color = if (complete) AppMint else AppGold)
+                                color = if (complete) AppMint else AppGold,
+                                style = if (narrow) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium)
                             Text(session?.route?.name ?: entry.snapshot.name,
-                                style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                                style = if (narrow)
+                                    MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurface, maxLines = 2,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                             Text("${formatRunClock(elapsed)} · " + java.lang.String.format(java.util.Locale.US,
                                 "%.1f mi", (session?.distanceMeters ?: 0) / 1609.344),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("›", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
+                        if (!narrow) Text("›", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
                     }
+                }
                 }
             }
             item { Spacer(Modifier.size(24.dp)) }
@@ -402,6 +484,7 @@ internal fun RunHistoryScreen(
 @Composable
 internal fun RunCompletionScreen(history: WorkoutHistoryEntry, session: RunSession?, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
+    var recenterTick by remember { mutableIntStateOf(0) }
     val elapsedSeconds = ((session?.elapsedBeforeResumeMillis ?: (history.completedAtMillis - history.startedAtMillis)) / 1_000).toInt()
     val intervals = history.snapshot.run?.intervals.orEmpty()
     val timingComplete = elapsedSeconds >= intervals.sumOf(RunInterval::durationSeconds)
@@ -411,7 +494,12 @@ internal fun RunCompletionScreen(history: WorkoutHistoryEntry, session: RunSessi
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (session != null) item {
                 Box(Modifier.fillMaxWidth().height(270.dp).clip(RoundedCornerShape(18.dp))) {
-                    RunLiveMap(session, Modifier.fillMaxSize())
+                    RunLiveMap(session, Modifier.fillMaxSize(), recenterTick)
+                    IconButton(onClick = { recenterTick++ }, modifier = Modifier.align(Alignment.BottomEnd)
+                        .padding(12.dp).size(48.dp).clip(CircleShape)
+                        .background(AppBackground.copy(alpha = .95f)).border(1.dp, AppBorder, CircleShape)) {
+                        Icon(Icons.Default.MyLocation, "Recenter map", tint = MaterialTheme.colorScheme.onSurface)
+                    }
                     Column(Modifier.align(Alignment.BottomStart).padding(10.dp)
                         .clip(RoundedCornerShape(12.dp)).background(AppBackground.copy(alpha = 0.92f))
                         .padding(8.dp)) {
@@ -482,6 +570,18 @@ internal fun RunCompletionScreen(history: WorkoutHistoryEntry, session: RunSessi
                                 Text(route.name, style = MaterialTheme.typography.titleLarge)
                                 Text("Planned route · actual trace saved", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                        }
+                    }
+                    AppSurfaceCard(Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("♡", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
+                            Column(Modifier.weight(1f)) {
+                                Text("Health Connect", style = MaterialTheme.typography.titleMedium)
+                                Text("Run saved in DraftingRoom5", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text("Not synced", color = AppGold, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                     Button(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),

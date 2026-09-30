@@ -50,6 +50,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -111,7 +112,7 @@ internal fun RunRoutineEditorScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = {
-            SecondaryTopBar("Run routine", requestBack) {
+            SecondaryTopBar(if (isNew) "New run routine" else "Run routine", requestBack) {
                 Box {
                     IconButton(onClick = { overflowExpanded = true }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.MoreVert, "More options", tint = MaterialTheme.colorScheme.onSurface)
@@ -133,25 +134,56 @@ internal fun RunRoutineEditorScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("RUN ROUTINE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            working.name.ifBlank { "New run" },
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
+                if (isNew) {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        OutlinedTextField(
+                            value = working.name,
+                            onValueChange = { working = working.copy(name = it.take(200)); actionMessage = null },
+                            label = { Text("Routine name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
                         )
-                        Text(runRoutineSummary(checkNotNull(working.run), scheduleSummary), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        AppSurfaceCard(Modifier.fillMaxWidth()) {
+                            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Image(
+                                    painter = painterResource(RoutineArtworkCatalog.resolve(working.artworkId).resource(RoutineArtworkCrop.HEADER)),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(66.dp).clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop,
+                                )
+                                Column(Modifier.weight(1f)) {
+                                    Text("Run", style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                                    Text("Route and timed intervals", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodySmall)
+                                }
+                                TextButton(onClick = { artworkPicker = true }) { Text("Artwork") }
+                            }
+                        }
+                        Text("RUN PLAN", color = AppGold, style = MaterialTheme.typography.labelMedium)
                     }
-                    if (LocalDensity.current.fontScale <= 1.3f && LocalConfiguration.current.screenWidthDp >= 360) Image(
-                        painter = painterResource(RoutineArtworkCatalog.resolve(working.artworkId).resource(RoutineArtworkCrop.HEADER)),
-                        contentDescription = null,
-                        modifier = Modifier.size(104.dp),
-                        contentScale = ContentScale.Crop,
-                    )
+                } else {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Text("RUN ROUTINE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                working.name.ifBlank { "New run" },
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(runRoutineSummary(checkNotNull(working.run), scheduleSummary), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (LocalDensity.current.fontScale <= 1.3f && LocalConfiguration.current.screenWidthDp >= 360) Image(
+                            painter = painterResource(RoutineArtworkCatalog.resolve(working.artworkId).resource(RoutineArtworkCrop.HEADER)),
+                            contentDescription = null,
+                            modifier = Modifier.size(104.dp),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                    RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
+                    TextButton(onClick = onOpenHistory) { Text("Previous runs") }
                 }
-                RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
-                if (!isNew) TextButton(onClick = onOpenHistory) { Text("Previous runs") }
             }
             item {
                 AppSurfaceCard(Modifier.fillMaxWidth()) {
@@ -173,6 +205,17 @@ internal fun RunRoutineEditorScreen(
             item {
                 OutlinedButton(onClick = onOpenRoutes, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Manage run routes")
+                }
+            }
+            if (isNew) item {
+                AppSurfaceCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("TIMING", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                        Text(if (working.run?.intervals.isNullOrEmpty()) "Add your first interval" else
+                            "${formatRunDuration(checkNotNull(working.run).totalDurationSeconds)} · ${checkNotNull(working.run).intervalCountLabel()}",
+                            color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                        Text("Set the walk and run order below.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
             item {
@@ -257,15 +300,20 @@ internal fun RunRoutineEditorScreen(
             }
             actionMessage?.let { message -> item { Text(message, color = AppMint, style = MaterialTheme.typography.bodySmall) } }
             if (isNew) item {
-                Button(
-                    enabled = working.isSaveableRunRoutine(),
-                    onClick = {
-                        val saved = working.forRunEditorSave(routine, true)
-                        if (saved.isSaveableRunRoutine() && onPersist(saved)) onBack()
-                        else actionMessage = "Couldn’t save routine. Try again."
-                    },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                ) { Text("Save routine") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = requestBack, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        enabled = working.isSaveableRunRoutine(),
+                        onClick = {
+                            val saved = working.forRunEditorSave(routine, true)
+                            if (saved.isSaveableRunRoutine() && onPersist(saved)) onBack()
+                            else actionMessage = "Couldn’t save routine. Try again."
+                        },
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    ) { Text("Save routine") }
+                }
             }
             item { Spacer(Modifier.size(24.dp)) }
         }

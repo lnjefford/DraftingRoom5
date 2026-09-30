@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -123,7 +124,7 @@ internal fun ScheduleEditorScreen(
         draft.toEntry(original?.id, draftId, plan.routines) != null
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
-        topBar = { SecondaryTopBar(if (original == null) "Add activity" else "Change activity", ::requestBack) },
+        topBar = { SecondaryTopBar(if (original == null) "Add scheduled item" else "Change scheduled item", ::requestBack) },
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
     ) { padding ->
         LazyColumn(
@@ -133,9 +134,9 @@ internal fun ScheduleEditorScreen(
         ) {
             item {
                 EditorialHeading(
-                    eyebrow = requestedAnchor.getDisplayName(TextStyle.FULL, locale),
-                    title = if (original == null) "Choose an activity" else "Change this activity",
-                    supportingText = "Pick an activity for ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}. You can choose another day when you return to the schedule.",
+                    eyebrow = "ROUTINE",
+                    title = if (original == null) "Choose a routine" else "Change routine",
+                    supportingText = "Select the activity to schedule for ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}.",
                 )
             }
             if (plan.routines.isEmpty()) {
@@ -152,20 +153,35 @@ internal fun ScheduleEditorScreen(
                     RoutineChoiceRow(routine, selected = routine.id == draft.routineId) { routineId = routine.id }
                 }
             }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("REPEATS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                    AppSurfaceCard(Modifier.fillMaxWidth()) {
+                        Text("Every ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}",
+                            Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
             if (saveFailed) item { Text("Couldn’t save these changes. Try again.", color = MaterialTheme.colorScheme.error) }
             if (stale) item { Text("This scheduled item changed elsewhere. Go back and reopen it to review the current values.", color = MaterialTheme.colorScheme.error) }
             item {
-                Button(
-                    onClick = {
-                        if (hasSavedSessions && original != null && draft.routineId != original.routineId) confirmReassignment = true
-                        else {
-                            val updated = plan.saveScheduleDraft(original?.id, draft, draftId)
-                            if (updated != null && onSave(updated)) onBack() else saveFailed = true
-                        }
-                    },
-                    enabled = valid,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                ) { Text(if (original == null) "Add to ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}" else "Save ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = ::requestBack, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = {
+                            if (hasSavedSessions && original != null && draft.routineId != original.routineId) confirmReassignment = true
+                            else {
+                                val updated = plan.saveScheduleDraft(original?.id, draft, draftId)
+                                if (updated != null && onSave(updated)) onBack() else saveFailed = true
+                            }
+                        },
+                        enabled = valid,
+                        modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                    ) { Text("Save schedule") }
+                }
             }
         }
     }
@@ -206,8 +222,14 @@ private fun RoutineChoiceRow(routine: Routine, selected: Boolean, onSelect: () -
                 contentScale = ContentScale.Crop,
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(routine.name, fontWeight = FontWeight.Bold)
-                Text(routine.scheduleEditorMetadata(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(routine.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(if (routine.execution == RoutineExecution.RUN)
+                    "RUN · ${checkNotNull(routine.run).intervalCountLabel().uppercase()}" else routine.scheduleEditorMetadata(),
+                    color = if (routine.execution == RoutineExecution.RUN) AppBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall)
+                if (routine.execution == RoutineExecution.RUN) Text(
+                    "${formatRunDuration(checkNotNull(routine.run).totalDurationSeconds)} timing",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
             RadioButton(selected = selected, onClick = null)
         }

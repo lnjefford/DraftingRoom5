@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -89,6 +90,7 @@ import java.util.Locale
 @Composable
 internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, initial: RunRoute? = null) {
     val context = LocalContext.current
+    val inspectionMode = LocalInspectionMode.current
     val keyStore = remember(context) { RunRoutingKeyStore(context) }
     var name by remember(initial?.id) { mutableStateOf(initial?.name.orEmpty()) }
     var anchors by remember(initial?.id) { mutableStateOf(initial?.let { source -> source.waypointIndices.map(source.points::get) } ?: emptyList()) }
@@ -97,7 +99,7 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
     var routingMessage by remember { mutableStateOf<String?>(null) }
     var keyReady by remember { mutableStateOf(keyStore.load() != null) }
     var keyVersion by remember { mutableIntStateOf(0) }
-    var keyDialog by remember { mutableStateOf(!keyReady) }
+    var keyDialog by remember { mutableStateOf(!keyReady && !inspectionMode) }
     var message by remember { mutableStateOf<String?>(null) }
     var drawMode by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -264,19 +266,36 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                     .background(AppSurface).border(1.dp, AppBorder, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                     .padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("ROUTE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                    OutlinedTextField(name, { name = it.take(200) }, placeholder = { Text("Name this route") },
-                        singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = MaterialTheme.typography.headlineMedium)
-                    Text("$distanceLabel · ${anchors.size} ${if (anchors.size == 1) "stop" else "stops"}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (routing) Text("Finding walking path…", color = AppMint)
-                    if (!keyReady) Text("Set up routing to follow walking paths.", color = AppGold)
-                    routingMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    Button(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = AppBlue, contentColor = AppBackgroundDeep)) {
-                        Text("Save route")
+                    Box(Modifier.align(Alignment.CenterHorizontally).size(width = 44.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(8.dp)).background(AppBorder))
+                    if (drawMode) {
+                        Text("DRAW MODE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                        Text("Trace the path you want", style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface)
+                        Text("Drag across the map to add stops. The walking route follows streets and paths once routing completes.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("$distanceLabel · ${anchors.size} ${if (anchors.size == 1) "stop" else "stops"}",
+                            color = AppMint, style = MaterialTheme.typography.labelLarge)
+                        Button(onClick = { drawMode = false; stroke = emptyList() },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AppBlue, contentColor = AppBackgroundDeep)) {
+                            Text("Finish drawing")
+                        }
+                    } else {
+                        Text("ROUTE", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                        OutlinedTextField(name, { name = it.take(200) }, placeholder = { Text("Name this route") },
+                            singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = MaterialTheme.typography.headlineMedium)
+                        Text("$distanceLabel · ${anchors.size} ${if (anchors.size == 1) "stop" else "stops"}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (routing) Text("Finding walking path…", color = AppMint)
+                        if (!keyReady && !inspectionMode) Text("Set up routing to follow walking paths.", color = AppGold)
+                        routingMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        Button(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AppBlue, contentColor = AppBackgroundDeep)) {
+                            Text("Save route")
+                        }
                     }
                 }
             }
