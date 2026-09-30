@@ -75,7 +75,7 @@ internal fun RunRoutineEditorScreen(
     onPersist: (Routine) -> Boolean,
     onDelete: () -> Unit,
     onBack: () -> Unit,
-    onOpenRoutes: () -> Unit = {},
+    onSaveRoute: (RunRoute) -> Boolean,
     onOpenHistory: () -> Unit = {},
 ) {
     var working by rememberSaveable(routine.id, stateSaver = RoutineDraftSaver) { mutableStateOf(routine) }
@@ -108,6 +108,21 @@ internal fun RunRoutineEditorScreen(
     }
 
     val requestBack = { if (isNew && changed) discardRequested = true else onBack() }
+    if (routePicker) {
+        RunRouteScreen(
+            routes = routes,
+            onSave = onSaveRoute,
+            onDelete = { false },
+            onBack = { routePicker = false },
+            initialSelectedId = null,
+            onSelectRoute = { routeId ->
+                working.withRunRoute(routeId)?.let {
+                    if (applyChange(it, if (routeId == null) "Route cleared." else "Route saved.")) routePicker = false
+                }
+            },
+        )
+        return
+    }
     BackHandler(onBack = requestBack)
     Scaffold(
         modifier = Modifier.fillMaxSize().appScreenBackground(),
@@ -192,34 +207,18 @@ internal fun RunRoutineEditorScreen(
                         val selected = routes.firstOrNull { it.id == working.run?.routeId }
                         Text(selected?.name ?: "No route selected", fontWeight = FontWeight.Bold)
                         Text(
-                            if (selected == null) "Choose a saved route for this run routine." else
+                            if (selected == null) "Select or design a route for this run." else
                                 "${selected.points.size} route points · ${selected.turnCues.size} turn cues",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         OutlinedButton(onClick = { routePicker = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Text(if (selected == null) "Choose route" else "Change route")
+                            Text("Change route")
                         }
                     }
                 }
             }
             item {
-                OutlinedButton(onClick = onOpenRoutes, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Manage run routes")
-                }
-            }
-            if (isNew) item {
-                AppSurfaceCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text("TIMING", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        Text(if (working.run?.intervals.isNullOrEmpty()) "Add your first interval" else
-                            "${formatRunDuration(checkNotNull(working.run).totalDurationSeconds)} · ${checkNotNull(working.run).intervalCountLabel()}",
-                            color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
-                        Text("Set the walk and run order below.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-            item {
-                RunIntervalSectionHeader()
+                RunIntervalSectionHeader(working.run?.totalDurationSeconds)
             }
             if (working.run?.intervals.isNullOrEmpty()) item {
                 AppSurfaceCard(Modifier.fillMaxWidth()) {
@@ -285,19 +284,6 @@ internal fun RunRoutineEditorScreen(
                     Text("Add interval")
                 }
             }
-            if (!working.run?.intervals.isNullOrEmpty()) item {
-                AppSurfaceCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("TOTAL", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        Text(formatRunClock(checkNotNull(working.run).totalDurationSeconds),
-                            style = MaterialTheme.typography.displaySmall)
-                        val walk = checkNotNull(working.run).intervals.count { it.kind == RunIntervalKind.WALK }
-                        val run = checkNotNull(working.run).intervals.size - walk
-                        Text("$run run intervals · $walk walk intervals",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
             actionMessage?.let { message -> item { Text(message, color = AppMint, style = MaterialTheme.typography.bodySmall) } }
             if (isNew) item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -354,40 +340,25 @@ internal fun RunRoutineEditorScreen(
         onConfirm = onBack,
         onDismiss = { discardRequested = false },
     )
-    if (routePicker) AlertDialog(
-        onDismissRequest = { routePicker = false },
-        title = { Text("Choose a route") },
-        text = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    TextButton(onClick = {
-                        working.withRunRoute(null)?.let { if (applyChange(it, "Route cleared.")) routePicker = false }
-                    }, modifier = Modifier.fillMaxWidth()) { Text("No route") }
-                }
-                items(routes, key = { it.id }) { route ->
-                    TextButton(onClick = {
-                        working.withRunRoute(route.id)?.let { if (applyChange(it, "Route saved.")) routePicker = false }
-                    }, modifier = Modifier.fillMaxWidth()) { Text(route.name) }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = { routePicker = false }) { Text("Cancel") } },
-    )
 }
 
 @Composable
-private fun RunIntervalSectionHeader() {
+private fun RunIntervalSectionHeader(totalSeconds: Int?) {
     val stackLabels = LocalConfiguration.current.screenWidthDp < 360 || LocalDensity.current.fontScale > 1.3f
     if (stackLabels) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("INTERVALS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+            if (totalSeconds != null && totalSeconds > 0) Text("Total ${formatRunClock(totalSeconds)}",
+                color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
             Text("Drag to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     } else {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("INTERVALS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-            Text("Drag to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            if (totalSeconds != null && totalSeconds > 0) Text("Total ${formatRunClock(totalSeconds)}",
+                color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
         }
+        Text("Drag to reorder", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     }
 }
 

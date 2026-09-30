@@ -880,7 +880,18 @@ private fun DraftingRoom5App() {
                         }
                     },
                     onBack = { navigation.back() },
-                    onOpenRoutes = { navigation.navigate(AppRoute.RunRoutes) },
+                    onSaveRoute = { route ->
+                        val saved = persistDocument { current ->
+                            val existing = current.runRoutes.firstOrNull { it.id == route.id }
+                            require(existing == null || route.revision == existing.revision + 1 || route == existing) {
+                                "Route changed. Review its latest version and retry."
+                            }
+                            current.copy(runRoutes = if (existing == null) current.runRoutes + route
+                                else current.runRoutes.map { if (it.id == route.id) route else it })
+                        }
+                        if (saved) requestAutomaticBackup()
+                        saved
+                    },
                     onOpenHistory = { navigation.navigate(AppRoute.RunHistory(routine.id)) },
                 ) else if (routine != null) GuidedRoutineEditorScreen(
                     routine = routine,
@@ -968,7 +979,18 @@ private fun DraftingRoom5App() {
                         clearRoutineDraft()
                         navigation.back()
                     },
-                    onOpenRoutes = { navigation.navigate(AppRoute.RunRoutes) },
+                    onSaveRoute = { route ->
+                        val saved = persistDocument { current ->
+                            val existing = current.runRoutes.firstOrNull { it.id == route.id }
+                            require(existing == null || route.revision == existing.revision + 1 || route == existing) {
+                                "Route changed. Review its latest version and retry."
+                            }
+                            current.copy(runRoutes = if (existing == null) current.runRoutes + route
+                                else current.runRoutes.map { if (it.id == route.id) route else it })
+                        }
+                        if (saved) requestAutomaticBackup()
+                        saved
+                    },
                 ) else if (draft != null) NewRoutineDraftScreen(
                     draft = draft,
                     onChooseApp = {

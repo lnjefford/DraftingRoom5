@@ -174,19 +174,6 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
         Box(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
             AndroidView(factory = { map }, modifier = Modifier.fillMaxSize().graphicsLayer { clip = true }, update = { view ->
                 view.overlays.clear()
-                view.overlays.add(MapEventsOverlay(object : MapEventsReceiver {
-                    override fun singleTapConfirmedHelper(point: GeoPoint): Boolean {
-                        if (!drawMode) {
-                            if (anchors.size < 50) {
-                                anchors = anchors + RunRoutePoint((point.latitude * 10_000_000).toInt(),
-                                    (point.longitude * 10_000_000).toInt())
-                                route = null
-                            } else message = "The routing service allows up to 50 stops."
-                        }
-                        return true
-                    }
-                    override fun longPressHelper(point: GeoPoint): Boolean = false
-                }))
                 route?.let { planned ->
                     val points = planned.points.map { GeoPoint(it.latitudeE7 / 10_000_000.0, it.longitudeE7 / 10_000_000.0) }
                     view.overlays.add(Polyline().apply {
@@ -206,6 +193,21 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
                     icon = routeMarker(context, index)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 }) }
+                // osmdroid dispatches taps from the last overlay backwards. Keep waypoint taps
+                // above both markers and the route line so an out-and-back can retrace a road.
+                view.overlays.add(MapEventsOverlay(object : MapEventsReceiver {
+                    override fun singleTapConfirmedHelper(point: GeoPoint): Boolean {
+                        if (!drawMode) {
+                            if (anchors.size < 50) {
+                                anchors = anchors + RunRoutePoint((point.latitude * 10_000_000).toInt(),
+                                    (point.longitude * 10_000_000).toInt())
+                                route = null
+                            } else message = "The routing service allows up to 50 stops."
+                        }
+                        return true
+                    }
+                    override fun longPressHelper(point: GeoPoint): Boolean = false
+                }))
                 view.invalidate()
             })
             if (drawMode) {

@@ -543,8 +543,7 @@ private fun ManagedRoutineRow(
     ) {
         Row(Modifier.fillMaxWidth().heightIn(min = 116.dp).padding(start = 16.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(routine.name, style = if (routine.execution == RoutineExecution.RUN)
-                    MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                Text(routine.name, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Text(if (routine.execution == RoutineExecution.RUN)
                     "RUN · ${checkNotNull(routine.run).intervalCountLabel().uppercase()}" else routine.routineListMetadata(),

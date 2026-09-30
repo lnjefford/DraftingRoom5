@@ -570,7 +570,7 @@ fun RunRoutineEditorScreenshots() {
             routine = routine,
             routes = listOf(previewRunRoute()),
             scheduleSummary = "Scheduled Mon · Wed · Fri", isNew = false,
-            onPersist = { true }, onDelete = {}, onBack = {},
+            onPersist = { true }, onDelete = {}, onBack = {}, onSaveRoute = { true },
         )
     }
 }
@@ -586,7 +586,7 @@ fun RunNewRoutineScreenshots() {
             RunInterval("run", RunIntervalKind.RUN, 600)), previewRunRoute().id))
     DraftingRoom5Theme {
         RunRoutineEditorScreen(routine, listOf(previewRunRoute()), "Not scheduled", true,
-            { true }, {}, {})
+            { true }, {}, {}, onSaveRoute = { true })
     }
 }
 
@@ -648,6 +648,16 @@ fun RunScheduleScreenshots() {
 fun RunRoutesScreenshots() {
     val route = previewRunRoute()
     DraftingRoom5Theme { RunRouteScreen(listOf(route), { true }, { true }, {}) }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Composable
+fun RunRoutePickerScreenshots() {
+    DraftingRoom5Theme {
+        RunRouteScreen(listOf(previewRunRoute()), { true }, { true }, {}, onSelectRoute = {})
+    }
 }
 
 @PreviewTest

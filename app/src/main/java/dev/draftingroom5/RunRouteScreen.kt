@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
@@ -81,6 +82,7 @@ internal fun RunRouteScreen(
     onBack: () -> Unit,
     initialSelectedId: String? = null,
     lastUsedRouteId: String? = null,
+    onSelectRoute: ((String?) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -99,7 +101,11 @@ internal fun RunRouteScreen(
         return
     }
     if (drawing) {
-        RunMapEditor(onSave = onSave, onBack = { drawing = false })
+        RunMapEditor(onSave = { route ->
+            val saved = onSave(route)
+            if (saved) onSelectRoute?.invoke(route.id)
+            saved
+        }, onBack = { drawing = false })
         return
     }
     val largeText = LocalDensity.current.fontScale > 1.3f
@@ -119,8 +125,10 @@ internal fun RunRouteScreen(
                 importing = false
                 result.onSuccess { route ->
                     if (onSave(route)) {
-                        selectedId = route.id
-                        message = "Route imported."
+                        if (onSelectRoute == null) {
+                            selectedId = route.id
+                            message = "Route imported."
+                        } else onSelectRoute(route.id)
                     } else message = "Could not save route. Try again."
                 }.onFailure { error -> message = error.message ?: "Could not read this GPX file." }
             }
@@ -137,19 +145,26 @@ internal fun RunRouteScreen(
         ) {
             if (selected == null) {
                 item {
-                    EditorialHeading("RUN ROUTES", "Designed routes", "Choose, edit, or create a route for your run.")
+                    EditorialHeading("RUN ROUTES", if (onSelectRoute == null) "Designed routes" else "Choose a route",
+                        if (onSelectRoute == null) "Choose, edit, or create a route for your run." else
+                            "Select a saved route or design a new one.")
                     Spacer(Modifier.height(8.dp))
                 }
                 if (routes.isEmpty()) item {
                     AppSurfaceCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp)) {
                             Text("No routes saved", fontWeight = FontWeight.Bold)
-                            Text("Choose a GPX file from your device to get started.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Design a route or import a GPX file to get started.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
                 items(routes, key = { it.id }) { route ->
-                    AppSurfaceCard(Modifier.fillMaxWidth().clickable(onClickLabel = "Edit ${route.name}") { selectedId = route.id; message = null }) {
+                    var routeMenuExpanded by remember(route.id) { mutableStateOf(false) }
+                    AppSurfaceCard(Modifier.fillMaxWidth().clickable(
+                        onClickLabel = if (onSelectRoute == null) "Edit ${route.name}" else "Select ${route.name}") {
+                        if (onSelectRoute == null) { selectedId = route.id; message = null }
+                        else onSelectRoute(route.id)
+                    }) {
                         Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             RunRouteShape(route, Modifier.size(if (narrow) 78.dp else 104.dp))
@@ -161,11 +176,23 @@ internal fun RunRouteScreen(
                                     color = if (route.id == lastUsedRouteId) AppMint else AppBlue,
                                     style = MaterialTheme.typography.bodySmall)
                             }
-                            Text("›", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
+                            if (onSelectRoute == null) Text("›", color = AppBlue,
+                                style = MaterialTheme.typography.headlineMedium)
+                            else Box {
+                                IconButton(onClick = { routeMenuExpanded = true }) {
+                                    Icon(Icons.Default.MoreVert, "Options for ${route.name}")
+                                }
+                                DropdownMenu(routeMenuExpanded, onDismissRequest = { routeMenuExpanded = false }) {
+                                    DropdownMenuItem(text = { Text("Edit route") },
+                                        onClick = { routeMenuExpanded = false; selectedId = route.id })
+                                }
+                            }
                         }
                     }
                 }
                 item {
+                    if (onSelectRoute != null) TextButton(onClick = { onSelectRoute(null) },
+                        modifier = Modifier.fillMaxWidth()) { Text("No route") }
                     OutlinedButton(onClick = { drawing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Icon(Icons.Default.Add, null); Text(" Design a new route")
                     }
@@ -185,6 +212,8 @@ internal fun RunRouteScreen(
                         Box(Modifier.align(Alignment.CenterHorizontally).width(42.dp).height(5.dp)
                             .clip(RoundedCornerShape(5.dp)).background(AppBorder))
                         EditorialHeading("SAVED ROUTE", selected.name, selected.distanceLabel())
+                        if (onSelectRoute != null) Button(onClick = { onSelectRoute(selected.id) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Use this route") }
                         Text("MANAGE", color = AppGold, style = MaterialTheme.typography.labelMedium)
                         RunRouteAction("Edit route", "Change points or redraw", Icons.Default.Edit) { editingMap = true }
                         RunRouteAction("Reverse direction", "Travel the route the other way", Icons.Default.SwapHoriz) {
