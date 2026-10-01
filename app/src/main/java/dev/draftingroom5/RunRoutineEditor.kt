@@ -206,11 +206,7 @@ internal fun RunRoutineEditorScreen(
             item {
                 Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("ROUTE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        TextButton(onClick = { routePicker = true }) { Text("Change route") }
-                    }
+                    Text("ROUTE", color = AppGold, style = MaterialTheme.typography.labelMedium)
                     val selected = routes.firstOrNull { it.id == working.run?.routeId }
                     RunSelectionCard(
                         route = selected,

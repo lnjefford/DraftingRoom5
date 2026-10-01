@@ -63,9 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.util.GeoPoint
@@ -95,7 +93,6 @@ internal fun RunRouteScreen(
     var importing by remember { mutableStateOf(false) }
     var drawing by remember { mutableStateOf(false) }
     var editingMap by remember { mutableStateOf(false) }
-    var rename by rememberSaveable { mutableStateOf(false) }
     var delete by rememberSaveable { mutableStateOf(false) }
     val selected = routes.firstOrNull { it.id == selectedId }
     if (editingMap && selected != null) {
@@ -216,7 +213,6 @@ internal fun RunRouteScreen(
                         OutlinedButton(onClick = { delete = true }, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Delete, null); Text(" Delete route")
                         }
-                        TextButton(onClick = { rename = true }) { Text("Rename route") }
                     }
                 }
             }
@@ -224,9 +220,6 @@ internal fun RunRouteScreen(
             item { Spacer(Modifier.height(24.dp)) }
         }
         }
-    }
-    if (selected != null && rename) RouteTextDialog("Rename route", selected.name, "Route name", { rename = false }) { name ->
-        selected.renamed(name)?.let { if (onSave(it)) rename = false else message = "Could not rename route." }
     }
     if (selected != null && delete) AppConfirmationDialog(
         title = "Delete ${selected.name}?",
@@ -270,7 +263,7 @@ internal fun RunSelectionCard(
                 else -> FreeRunShape(thumbnail)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(title, style = if (narrow) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
+                Text(title, style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface)
                 Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = if (narrow) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
@@ -281,7 +274,7 @@ internal fun RunSelectionCard(
             else Box {
                 IconButton(onClick = { menuExpanded = true }) { Icon(Icons.Default.MoreVert, "Options for $title") }
                 DropdownMenu(menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(text = { Text("Edit route") }, onClick = { menuExpanded = false; onEdit() })
+                    DropdownMenuItem(text = { Text("Manage route") }, onClick = { menuExpanded = false; onEdit() })
                 }
             }
         }
@@ -437,20 +430,6 @@ private fun RunRouteAction(label: String, detail: String,
             Text("›", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
         }
     }
-}
-
-@Composable
-private fun RouteTextDialog(title: String, initial: String, label: String, onDismiss: () -> Unit,
-                            numeric: Boolean = false, onSave: (String) -> Unit) {
-    var value by rememberSaveable(title, initial) { mutableStateOf(initial) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { OutlinedTextField(value, { value = it.take(if (numeric) 8 else 200) }, label = { Text(label) },
-            singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text)) },
-        confirmButton = { TextButton(enabled = value.isNotBlank(), onClick = { onSave(value) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }
 
 internal fun routePreviewPoints(points: List<RunRoutePoint>, maxPoints: Int = 3000): List<RunRoutePoint> {
