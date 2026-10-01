@@ -17,7 +17,7 @@ class RoutineManagementSupportTest {
 
         assertEquals("Guided Routine · 8 exercises", guided.routineListMetadata())
         assertTrue(linked.routineListMetadata().startsWith("Linked App · "))
-        assertEquals("Run Routine · 1 interval", run.routineListMetadata())
+        assertEquals("Run · 1 interval", run.routineListMetadata())
         assertTrue("built-in" !in guided.routineListMetadata().lowercase())
         assertTrue("custom" !in guided.routineListMetadata().lowercase())
     }

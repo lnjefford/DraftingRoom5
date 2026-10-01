@@ -214,7 +214,7 @@ private fun RoutineChoiceRow(routine: Routine, selected: Boolean, onSelect: () -
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(routine.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Text(if (routine.execution == RoutineExecution.RUN)
-                    "RUN · ${checkNotNull(routine.run).intervalCountLabel().uppercase()}" else routine.scheduleEditorMetadata(),
+                    "Run · ${checkNotNull(routine.run).intervalCountLabel()}" else routine.scheduleEditorMetadata(),
                     color = if (routine.execution == RoutineExecution.RUN) AppBlue else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall)
                 if (routine.execution == RoutineExecution.RUN) Text(

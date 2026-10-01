@@ -127,10 +127,10 @@ internal fun dashboardWeek(today: LocalDate): List<LocalDate> {
     return (0L..6L).map(sunday::plusDays)
 }
 
-/** Six fixed Sunday-first rows keep every date in a 30-day range in its weekday column. */
+/** Four Sunday-first calendar weeks keep each date in its weekday column. */
 internal fun workoutCalendarDates(today: LocalDate): List<LocalDate> {
-    val firstSunday = dashboardWeek(today).first().minusWeeks(5)
-    return (0L..41L).map(firstSunday::plusDays)
+    val firstSunday = dashboardWeek(today).first().minusWeeks(3)
+    return (0L..27L).map(firstSunday::plusDays)
 }
 
 /** Follow today across midnight, but preserve an explicitly selected day in the visible week. */

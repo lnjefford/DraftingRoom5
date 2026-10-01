@@ -103,12 +103,12 @@ class DashboardSupportTest {
     @Test fun workoutCalendarKeepsDatesInSundayFirstColumnsAcrossDays() {
         val thursday = LocalDate.of(2026, 10, 1)
         val dates = workoutCalendarDates(thursday)
-        assertEquals(42, dates.size)
+        assertEquals(28, dates.size)
         assertEquals(java.time.DayOfWeek.SUNDAY, dates.first().dayOfWeek)
         assertEquals(java.time.DayOfWeek.SATURDAY, dates.last().dayOfWeek)
         assertEquals(4, dates.indexOf(thursday) % 7)
         assertEquals(dates, workoutCalendarDates(thursday.plusDays(1)))
-        assertTrue(thursday.minusDays(29) in dates)
+        assertTrue(thursday.minusDays(21) in dates)
     }
 
     @Test

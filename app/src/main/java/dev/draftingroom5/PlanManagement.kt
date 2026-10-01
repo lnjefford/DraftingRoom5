@@ -3,6 +3,7 @@ package dev.draftingroom5
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -376,22 +377,25 @@ private fun RecurringScheduleTab(
 private fun RecurringWeekSelector(counts: Map<DayOfWeek, Int>, selectedDay: DayOfWeek, onSelectDay: (DayOfWeek) -> Unit) {
     val selectedDiameter = if (LocalDensity.current.fontScale > 1.3f) 44.dp else 32.dp
     BrandedCard(Modifier.fillMaxWidth(), containerColor = AppSurfaceRaised) {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 6.dp)) {
-            (listOf(DayOfWeek.SUNDAY) + DayOfWeek.entries.filter { it != DayOfWeek.SUNDAY }).forEach { day ->
-                val count = counts.getValue(day)
-                val selected = day == selectedDay
-                Column(
-                    Modifier.width(48.dp).heightIn(min = 64.dp).clickable { onSelectDay(day) }.semantics {
-                        stateDescription = "${day.fullName()}, ${if (count == 1) "1 scheduled item" else "$count scheduled items"}${if (selected) ", selected" else ""}"
-                    },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Box(
-                        Modifier.size(selectedDiameter).clip(CircleShape).background(if (selected) AppBlueStrong else Color.Transparent),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(day.fullName().take(1), fontWeight = FontWeight.Bold) }
-                    Text(if (count == 0) "—" else count.toString(), color = if (selected) AppBlue else MaterialTheme.colorScheme.onSurfaceVariant)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val dayWidth = maxOf(48.dp, (maxWidth - 8.dp) / 7)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 6.dp)) {
+                (listOf(DayOfWeek.SUNDAY) + DayOfWeek.entries.filter { it != DayOfWeek.SUNDAY }).forEach { day ->
+                    val count = counts.getValue(day)
+                    val selected = day == selectedDay
+                    Column(
+                        Modifier.width(dayWidth).heightIn(min = 64.dp).clickable { onSelectDay(day) }.semantics {
+                            stateDescription = "${day.fullName()}, ${if (count == 1) "1 scheduled item" else "$count scheduled items"}${if (selected) ", selected" else ""}"
+                        },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Box(
+                            Modifier.size(selectedDiameter).clip(CircleShape).background(if (selected) AppBlueStrong else Color.Transparent),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(day.fullName().take(1), fontWeight = FontWeight.Bold) }
+                        Text(if (count == 0) "—" else count.toString(), color = if (selected) AppBlue else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
@@ -545,8 +549,7 @@ private fun ManagedRoutineRow(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(routine.name, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(if (routine.execution == RoutineExecution.RUN)
-                    "RUN · ${checkNotNull(routine.run).intervalCountLabel().uppercase()}" else routine.routineListMetadata(),
+                Text(routine.routineListMetadata(),
                     color = AppBlue, style = MaterialTheme.typography.labelLarge)
                 Text(if (routine.execution == RoutineExecution.RUN)
                     "${formatRunDuration(checkNotNull(routine.run).totalDurationSeconds)} timing · $scheduleSummary"
@@ -617,7 +620,7 @@ private fun Routine.scheduleMetadata(): String = when (execution) {
 internal fun Routine.routineListMetadata(): String = when (execution) {
     RoutineExecution.GUIDED -> "Guided Routine · ${if (exercises.size == 1) "1 exercise" else "${exercises.size} exercises"}"
     RoutineExecution.LINKED_APP -> "Linked App · ${linkedAppDisplayName(checkNotNull(appLink).packageName)}"
-    RoutineExecution.RUN -> "Run Routine · ${checkNotNull(run).intervalCountLabel()}"
+    RoutineExecution.RUN -> "Run · ${checkNotNull(run).intervalCountLabel()}"
 }
 
 internal fun TrainingPlan.routineScheduleSummary(routineId: String): String {

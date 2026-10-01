@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -1604,9 +1605,9 @@ private fun StatsWorkspaceHeader(
                     activity.forEach { card -> ActivityMetricCard(card, stats, today, dateRange, Modifier.fillMaxWidth()) }
                 }
             } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     activity.forEach { card ->
-                        ActivityMetricCard(card, stats, today, dateRange, Modifier.weight(1f))
+                        ActivityMetricCard(card, stats, today, dateRange, Modifier.weight(1f).fillMaxHeight())
                     }
                 }
             }
@@ -1804,11 +1805,14 @@ private fun ActivityMetricCard(
 ) {
     val metric = card.metric(stats)
     val trend = card.trend(stats).forDashboardRange(today, dateRange)
-    val activeDays = activityDays(trend)
+    val activeDays = if (card == DashboardCard.WORKOUTS) {
+        val displayedDates = workoutCalendarDates(today).toSet()
+        trend.count { it.date in displayedDates && (it.value ?: 0.0) > 0.0 }
+    } else activityDays(trend)
     val context = when {
         trend.isEmpty() -> "No daily activity available"
-        activeDays == 1 -> "1 active day"
-        else -> "$activeDays active days"
+        activeDays == 1 -> "1 active day${if (card == DashboardCard.WORKOUTS) " shown" else ""}"
+        else -> "$activeDays active days${if (card == DashboardCard.WORKOUTS) " shown" else ""}"
     }
     BrandedCard(
         modifier.semantics(mergeDescendants = true) {
@@ -1871,15 +1875,19 @@ private fun WorkoutDots(trend: List<HealthTrendPoint>, today: LocalDate, accent:
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-    Canvas(Modifier.fillMaxWidth().height(104.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(72.dp)) {
         val columns = 7
-        val rows = 6
+        val rows = 4
         val xStep = size.width / columns
         val yStep = size.height / rows
         dates.forEachIndexed { index, date ->
             drawCircle(
-                color = if (date in activeDates) accent else AppBorder,
-                radius = 4.dp.toPx(),
+                color = when {
+                    date == today -> AppBlue
+                    date in activeDates -> accent
+                    else -> AppBorder
+                },
+                radius = (if (date == today) 5.dp else 4.dp).toPx(),
                 center = androidx.compose.ui.geometry.Offset((index % columns + .5f) * xStep, (index / columns + .5f) * yStep),
             )
         }
@@ -2689,37 +2697,40 @@ private fun WeekSelector(
     onSelect: (LocalDate) -> Unit,
 ) {
     val locale = LocalLocale.current.platformLocale
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        dates.forEach { date ->
-            val isSelected = date == selectedDate
-            Column(
-                modifier = Modifier
-                    .width(48.dp)
-                    .defaultMinSize(minHeight = 78.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { onSelect(date) }
-                    .semantics {
-                        selected = isSelected
-                        stateDescription = buildString {
-                            append(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", locale)))
-                            if (date == today) append(", today")
-                            if (isSelected) append(", selected")
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val dayWidth = maxOf(48.dp, (maxWidth - 12.dp) / 7)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            dates.forEach { date ->
+                val isSelected = date == selectedDate
+                Column(
+                    modifier = Modifier
+                        .width(dayWidth)
+                        .defaultMinSize(minHeight = 78.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onSelect(date) }
+                        .semantics {
+                            selected = isSelected
+                            stateDescription = buildString {
+                                append(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", locale)))
+                                if (date == today) append(", today")
+                                if (isSelected) append(", selected")
+                            }
                         }
-                    }
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(date.dayOfWeek.name.take(1), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Box(
-                    Modifier
-                        .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
-                        .background(if (isSelected) AppBlueStrong else Color.Transparent, CircleShape),
-                    contentAlignment = Alignment.Center,
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(date.dayOfMonth.toString(), color = if (isSelected) AppBackgroundDeep else MaterialTheme.colorScheme.onSurface)
+                    Text(date.dayOfWeek.name.take(1), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box(
+                        Modifier
+                            .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                            .background(if (isSelected) AppBlueStrong else Color.Transparent, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(date.dayOfMonth.toString(), color = if (isSelected) AppBackgroundDeep else MaterialTheme.colorScheme.onSurface)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Box(Modifier.size(5.dp).background(if (date == today) AppBlue else Color.Transparent, CircleShape))
                 }
-                Spacer(Modifier.height(6.dp))
-                Box(Modifier.size(5.dp).background(if (date == today) AppBlue else Color.Transparent, CircleShape))
             }
         }
     }
