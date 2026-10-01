@@ -185,7 +185,11 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
             }
         } }, containerColor = Color.Transparent) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
-            AndroidView(factory = { map }, modifier = Modifier.fillMaxSize().graphicsLayer { clip = true }, update = { view ->
+            AndroidView(factory = {
+                // The same MapView is reattached after viewing turns. Its native overlays may
+                // have been released while detached, so invalidate the overlay cache here.
+                map.apply { tag = null }
+            }, modifier = Modifier.fillMaxSize().graphicsLayer { clip = true }, update = { view ->
                 val previous = view.tag as? Triple<*, *, *>
                 if (previous != null && previous.first === route?.points && previous.second === anchors && previous.third == drawMode)
                     return@AndroidView
@@ -393,7 +397,6 @@ internal fun RunRouteGuidanceEditor(
                     }
                 }
             }
-            item { TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back to map") } }
         }
     }
 }
