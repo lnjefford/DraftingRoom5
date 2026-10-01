@@ -27,7 +27,8 @@ internal fun AppDocument.withWatchRunResult(result: WatchRunResult): AppDocument
         RunInterval("watch-$index", RunIntervalKind.valueOf(interval.kind), interval.durationSeconds)
     }
     val routine = Routine(result.plan.routineId, 1, result.plan.routineName, "running_shoe",
-        RoutineExecution.RUN, emptyList(), null, RunRoutine(intervals, result.route?.id))
+        RoutineExecution.RUN, emptyList(), null, RunRoutine(intervals,
+            if (result.plan.preferredRouteId == WATCH_TREADMILL_ROUTE_ID) WATCH_TREADMILL_ROUTE_ID else result.route?.id))
     val route = result.route?.let { source ->
         RunRoute(source.id, 1, source.name,
             source.points.map { RunRoutePoint(it.latitudeE7, it.longitudeE7) },

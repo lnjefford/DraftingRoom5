@@ -83,6 +83,7 @@ internal fun RunRouteScreen(
     initialSelectedId: String? = null,
     lastUsedRouteId: String? = null,
     onSelectRoute: ((String?) -> Unit)? = null,
+    currentRouteId: String? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -149,6 +150,28 @@ internal fun RunRouteScreen(
                             "Select a saved route or design a new one.")
                     Spacer(Modifier.height(8.dp))
                 }
+                if (onSelectRoute != null) item {
+                    val current = routes.firstOrNull { it.id == currentRouteId }
+                    Text("CURRENT", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                    Text(current?.name ?: if (currentRouteId == TREADMILL_ROUTE_ID) "Treadmill" else "Free run",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface)
+                    Text(current?.distanceLabel() ?: if (currentRouteId == TREADMILL_ROUTE_ID) "Indoor timing · no GPS" else "No route guidance",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (current != null) TextButton(onClick = { selectedId = current.id }) { Text("Edit current route") }
+                }
+                if (onSelectRoute != null) {
+                    if (currentRouteId != null) item {
+                        RunModeOption("Free run", "Outdoor GPS tracking without route guidance") {
+                            onSelectRoute(null)
+                        }
+                    }
+                    if (currentRouteId != TREADMILL_ROUTE_ID) item {
+                        RunModeOption("Treadmill", "Indoor interval timing without GPS") {
+                            onSelectRoute(TREADMILL_ROUTE_ID)
+                        }
+                    }
+                }
                 if (routes.isEmpty()) item {
                     AppSurfaceCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(18.dp)) {
@@ -157,7 +180,7 @@ internal fun RunRouteScreen(
                         }
                     }
                 }
-                items(routes, key = { it.id }) { route ->
+                items(if (onSelectRoute == null) routes else routes.filterNot { it.id == currentRouteId }, key = { it.id }) { route ->
                     var routeMenuExpanded by remember(route.id) { mutableStateOf(false) }
                     AppSurfaceCard(Modifier.fillMaxWidth().clickable(
                         onClickLabel = if (onSelectRoute == null) "Edit ${route.name}" else "Select ${route.name}") {
@@ -192,8 +215,6 @@ internal fun RunRouteScreen(
                     }
                 }
                 item {
-                    if (onSelectRoute != null) TextButton(onClick = { onSelectRoute(null) },
-                        modifier = Modifier.fillMaxWidth()) { Text("No route") }
                     OutlinedButton(onClick = { drawing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Icon(Icons.Default.Add, null); Text(" Design a new route")
                     }
@@ -248,6 +269,16 @@ internal fun RunRouteScreen(
         onConfirm = { if (onDelete(selected.id)) { selectedId = null; delete = false } else message = "Could not delete route." },
         onDismiss = { delete = false },
     )
+}
+
+@Composable
+private fun RunModeOption(title: String, detail: String, onSelect: () -> Unit) {
+    AppSurfaceCard(Modifier.fillMaxWidth().clickable(onClick = onSelect)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable

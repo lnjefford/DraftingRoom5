@@ -70,6 +70,7 @@ import dev.draftingroom5.watch.WatchRunInterval
 import dev.draftingroom5.watch.WatchRunRoute
 import dev.draftingroom5.watch.WatchRunPoint
 import dev.draftingroom5.watch.WatchRunSample
+import dev.draftingroom5.watch.WATCH_TREADMILL_ROUTE_ID
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
 
@@ -158,14 +159,16 @@ private fun DraftingRoom5Watch(
         if (granted) {
             selectedRun?.let { plan ->
                 val route = runCatalog?.routes?.firstOrNull { it.id == selectedRouteId }
-                val started = runRecorder.start(plan, route, System.currentTimeMillis())
+                val started = runRecorder.start(plan.copy(preferredRouteId = selectedRouteId), route, System.currentTimeMillis())
                 if (started == null) runError = "Could not start run."
                 else {
                     WatchRunService.start(context, started.id)
                     runPicker = false
                 }
             }
-        } else runError = "Location permission is needed to record a run."
+        } else runError = if (selectedRouteId == WATCH_TREADMILL_ROUTE_ID)
+            "Location permission keeps the watch timer active in the background. GPS stays off."
+            else "Location permission is needed to record a run."
     }
     val timerStore = remember { LocalTimerStore(context) }
     var timer by remember { mutableStateOf(timerStore.read()) }
@@ -210,13 +213,14 @@ private fun DraftingRoom5Watch(
                 selectedRun,
                 selectedRouteId,
                 runError,
-                onSelectPlan = { plan -> selectedRun = plan; selectedRouteId = plan.preferredRouteId ?: runCatalog?.lastRouteId },
+                onSelectPlan = { plan -> selectedRun = plan; selectedRouteId = plan.preferredRouteId },
                 onSelectRoute = { selectedRouteId = it },
                 onStart = {
                     if (selectedRun != null) {
                         runError = null
                         if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                            val started = runRecorder.start(checkNotNull(selectedRun), runCatalog?.routes?.firstOrNull { it.id == selectedRouteId }, System.currentTimeMillis())
+                            val started = runRecorder.start(checkNotNull(selectedRun).copy(preferredRouteId = selectedRouteId),
+                                runCatalog?.routes?.firstOrNull { it.id == selectedRouteId }, System.currentTimeMillis())
                             if (started == null) runError = "Could not start run."
                             else { WatchRunService.start(context, started.id); runPicker = false }
                         } else locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -285,7 +289,8 @@ private fun WatchRunCompleteScreen(capture: WatchRunCapture, pendingRuns: Int, o
         Eyebrow("RUN COMPLETE")
         WatchText("%02d:%02d".format(capture.elapsedBeforeResumeMillis / 60_000,
             (capture.elapsedBeforeResumeMillis / 1_000) % 60), 30, Ivory, FontWeight.Bold, serifFamily())
-        WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 17, Mint)
+        if (capture.plan.preferredRouteId != WATCH_TREADMILL_ROUTE_ID)
+            WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 17, Mint)
         WatchText(if (pendingRuns > 0) "Sync pending" else "Saved on phone", 11, Secondary)
         PrimaryButton("Done", onDone)
     }
@@ -320,7 +325,9 @@ private fun WatchRunPickerScreen(catalog: WatchRunCatalog?, selected: WatchRunPl
             }
             if (selected != null) {
                 WatchText("Route", 12, Gold)
-                SecondaryButton(if (routeId == null) "✓ No route" else "No route", { onSelectRoute(null) })
+                SecondaryButton(if (routeId == null) "✓ Free run" else "Free run", { onSelectRoute(null) })
+                SecondaryButton(if (routeId == WATCH_TREADMILL_ROUTE_ID) "✓ Treadmill" else "Treadmill",
+                    { onSelectRoute(WATCH_TREADMILL_ROUTE_ID) })
                 catalog?.routes?.take(12)?.forEach { route ->
                     SecondaryButton((if (route.id == routeId) "✓ " else "") + route.name, { onSelectRoute(route.id) })
                 }
@@ -345,8 +352,11 @@ private fun WatchActiveRunScreen(capture: WatchRunCapture, now: Long, onPause: (
             horizontalAlignment = Alignment.CenterHorizontally) {
             Eyebrow(if (capture.isRunning) "RUNNING" else "PAUSED")
             WatchText("%02d:%02d".format(elapsed / 60, elapsed % 60), 36, Ivory, FontWeight.Bold, serifFamily())
-            WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 16, Mint)
-            if (capture.samples.isEmpty()) WatchText("Waiting for GPS", 11, Secondary)
+            if (capture.plan.preferredRouteId == WATCH_TREADMILL_ROUTE_ID) WatchText("Treadmill · indoor", 12, Mint)
+            else {
+                WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 16, Mint)
+                if (capture.samples.isEmpty()) WatchText("Waiting for GPS", 11, Secondary)
+            }
             WatchText(interval?.second?.kind ?: "Plan complete", 14, Gold)
             capture.routePosition()?.let { (point, offRouteMeters) ->
                 WatchText(if (offRouteMeters > 50) "Off route · ${offRouteMeters} m" else "Route point ${point + 1}", 11, Secondary)

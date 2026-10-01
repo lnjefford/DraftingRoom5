@@ -81,7 +81,7 @@ internal fun validateAppDocument(document: AppDocument) {
     require(document.lastRunRouteId == null || document.runRoutes.any { it.id == document.lastRunRouteId })
     val routeIds = document.runRoutes.mapTo(hashSetOf()) { it.id }
     document.plan.routines.forEach { routine ->
-        require(routine.run?.routeId == null || routine.run.routeId in routeIds) {
+        require(routine.run?.routeId == null || routine.run.routeId == TREADMILL_ROUTE_ID || routine.run.routeId in routeIds) {
             "Run routine ${routine.id} references a missing route."
         }
     }

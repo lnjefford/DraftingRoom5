@@ -48,4 +48,15 @@ class WatchRunImportTest {
         assertEquals(imported, decodeAppDocument(encodeAppDocument(imported)))
         assertTrue(runCatching { imported.withWatchRunResult(result.copy(id = "other")) }.isFailure)
     }
+
+    @Test fun treadmillCaptureKeepsTimingButRejectsGpsAndImportsAsIndoorRun() {
+        val indoor = plan.copy(preferredRouteId = TREADMILL_ROUTE_ID)
+        val capture = WatchRunCapture("indoor-run", indoor, null, 1_000, 0, 1_000, 0, emptyList())
+            .record(WatchRunSample(route.points.first(), 1_100, 5)).finish(4_000)
+        assertTrue(capture.samples.isEmpty())
+        val imported = defaultAppDocument().withWatchRunResult(checkNotNull(capture.result()))
+        assertTrue(checkNotNull(imported.runSessions.single().routine.run).isTreadmill)
+        assertEquals(null, imported.runSessions.single().route)
+        assertEquals(imported, decodeAppDocument(encodeAppDocument(imported)))
+    }
 }

@@ -21,6 +21,7 @@ import android.os.Vibrator
 import dev.draftingroom5.watch.WatchRunCapture
 import dev.draftingroom5.watch.WatchRunPoint
 import dev.draftingroom5.watch.WatchRunSample
+import dev.draftingroom5.watch.WATCH_TREADMILL_ROUTE_ID
 import kotlin.math.roundToInt
 
 /** Watch-owned GPS and interval cues keep working without a connected phone. */
@@ -61,7 +62,8 @@ internal class WatchRunService : Service(), LocationListener {
         startForeground(NOTIFICATION_ID, notification(capture), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
         handler.removeCallbacks(tick)
         handler.post(tick)
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (capture.plan.preferredRouteId != WATCH_TREADMILL_ROUTE_ID &&
+            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             runCatching {
                 locationManager.removeUpdates(this)
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3_000L, 2f, this, thread.looper)

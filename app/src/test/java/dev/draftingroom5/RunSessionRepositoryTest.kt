@@ -42,6 +42,24 @@ class RunSessionRepositoryTest {
         assertEquals(finished, (repository.finishRun(id, 31_000) as RepositoryResult.Success).value)
         assertEquals(finished, (AppRepository(storage).load() as LoadState.Ready).value)
     }
+
+    @Test fun treadmillStartsWithoutRouteAndIgnoresLocationSamples() {
+        val base = defaultAppDocument()
+        val indoor = routine.copy(run = checkNotNull(routine.run).copy(routeId = TREADMILL_ROUTE_ID))
+        val document = base.copy(plan = TrainingPlan(listOf(indoor), listOf(
+            ScheduleEntry("run-schedule", indoor.id, setOf(date.dayOfWeek)))))
+        val repository = AppRepository(RunMemoryStorage(encodeAppDocument(document)))
+        repository.load()
+        val started = (repository.startRun(occurrence, indoor.id, TREADMILL_ROUTE_ID, 1_000)
+            as RepositoryResult.Success).value
+        val session = started.runSessions.single()
+        assertEquals(null, session.route)
+        assertEquals(null, started.lastRunRouteId)
+        assertTrue(checkNotNull(session.routine.run).isTreadmill)
+        val sampled = (repository.recordRunLocation(session.id,
+            RunLocationSample(route.points.first(), 2_000, 5)) as RepositoryResult.Success).value
+        assertTrue(sampled.runSessions.single().samples.isEmpty())
+    }
 }
 
 private class RunMemoryStorage(initial: String) : DocumentStorage {

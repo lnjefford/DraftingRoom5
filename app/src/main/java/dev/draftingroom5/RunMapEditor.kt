@@ -164,14 +164,8 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
             if (!onSave(saved)) message = "Could not save route." else onBack()
         }
     }
-    if (editingGuidance) {
-        RunRouteGuidanceEditor(route, keyReady && anchors.size >= 2, routing,
-            onBack = { editingGuidance = false },
-            onGenerate = { rerouteVersion++ },
-            onCueClick = { cuePoint = it },
-            onDeleteCue = { index -> route = route?.copy(turnCues = route!!.turnCues.filterNot { it.pointIndex == index }) },
-        )
-    } else Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
+    Box(Modifier.fillMaxSize()) {
+    Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = { SecondaryTopBar(if (initial == null) "Design route" else "Edit route", onBack) {
             TextButton(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank(),
                 colors = ButtonDefaults.textButtonColors(contentColor = AppBlue,
@@ -185,11 +179,7 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
             }
         } }, containerColor = Color.Transparent) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
-            AndroidView(factory = {
-                // The same MapView is reattached after viewing turns. Its native overlays may
-                // have been released while detached, so invalidate the overlay cache here.
-                map.apply { tag = null }
-            }, modifier = Modifier.fillMaxSize().graphicsLayer { clip = true }, update = { view ->
+            AndroidView(factory = { map }, modifier = Modifier.fillMaxSize().graphicsLayer { clip = true }, update = { view ->
                 val previous = view.tag as? Triple<*, *, *>
                 if (previous != null && previous.first === route?.points && previous.second === anchors && previous.third == drawMode)
                     return@AndroidView
@@ -331,6 +321,13 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
                 }
             }
         }
+    }
+    if (editingGuidance) RunRouteGuidanceEditor(route, keyReady && anchors.size >= 2, routing,
+        onBack = { editingGuidance = false },
+        onGenerate = { rerouteVersion++ },
+        onCueClick = { cuePoint = it },
+        onDeleteCue = { index -> route = route?.copy(turnCues = route!!.turnCues.filterNot { it.pointIndex == index }) },
+    )
     }
     if (cuePoint != null && route != null) {
         val index = checkNotNull(cuePoint)

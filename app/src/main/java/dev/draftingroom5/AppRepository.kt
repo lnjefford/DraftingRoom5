@@ -155,7 +155,7 @@ internal class AppRepository(
             val routine = document.plan.routines.firstOrNull { it.id == routineId }
             require(schedule?.routineId == routineId && routine?.execution == RoutineExecution.RUN &&
                 document.occurrenceDate(occurrence) != null) { "This scheduled run is no longer available." }
-            val route = routeId?.let { selected ->
+            val route = routeId?.takeUnless { it == TREADMILL_ROUTE_ID }?.let { selected ->
                 requireNotNull(document.runRoutes.firstOrNull { it.id == selected }) { "The selected route is unavailable." }
             }?.forRunSnapshot()
             require(atMillis >= 0)
@@ -163,7 +163,7 @@ internal class AppRepository(
                 runSessions = document.runSessions + startRunSession(UUID.randomUUID().toString(), occurrence,
                     routine.copy(run = checkNotNull(routine.run).copy(routeId = routeId)), route,
                     atMillis, requireNotNull(document.occurrenceDate(occurrence))),
-                lastRunRouteId = routeId,
+                lastRunRouteId = routeId?.takeUnless { it == TREADMILL_ROUTE_ID },
             )
         }
     }

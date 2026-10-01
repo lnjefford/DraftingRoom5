@@ -12,6 +12,7 @@ const val WATCH_RUN_CATALOG_PATH = "/draftingroom5/phone/run-catalog"
 const val WATCH_RUN_RESULT_PATH_PREFIX = "/draftingroom5/watch/run-result/"
 const val WATCH_RUN_ACK_PATH_PREFIX = "/draftingroom5/phone/run-ack/"
 const val WATCH_RUN_ASSET_KEY = "payload"
+const val WATCH_TREADMILL_ROUTE_ID = "__treadmill__"
 private const val RUN_PROTOCOL = 1
 private const val MAX_RUN_PAYLOAD = 16 * 1024 * 1024
 
@@ -74,7 +75,7 @@ data class WatchRunCapture(
     fun resume(now: Long) = if (completedAtMillis != null || isRunning) this else copy(runningSinceMillis = now.coerceAtLeast(startedAtMillis))
     fun finish(now: Long) = if (completedAtMillis != null) this else pause(now).copy(completedAtMillis = now.coerceAtLeast(startedAtMillis))
     fun record(sample: WatchRunSample): WatchRunCapture {
-        if (!isRunning || samples.size >= 10_000 || sample.accuracyMeters !in 0..50 ||
+        if (!isRunning || plan.preferredRouteId == WATCH_TREADMILL_ROUTE_ID || samples.size >= 10_000 || sample.accuracyMeters !in 0..50 ||
             !sample.point.isValid() ||
             sample.recordedAtMillis < startedAtMillis || sample.recordedAtMillis <= (samples.lastOrNull()?.recordedAtMillis ?: 0)) return this
         val previous = samples.lastOrNull()

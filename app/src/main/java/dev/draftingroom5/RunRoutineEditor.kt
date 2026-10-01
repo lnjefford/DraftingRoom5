@@ -76,7 +76,6 @@ internal fun RunRoutineEditorScreen(
     onDelete: () -> Unit,
     onBack: () -> Unit,
     onSaveRoute: (RunRoute) -> Boolean,
-    onOpenHistory: () -> Unit = {},
 ) {
     var working by rememberSaveable(routine.id, stateSaver = RoutineDraftSaver) { mutableStateOf(routine) }
     LaunchedEffect(routine) { if (!isNew) working = routine }
@@ -115,9 +114,14 @@ internal fun RunRoutineEditorScreen(
             onDelete = { false },
             onBack = { routePicker = false },
             initialSelectedId = null,
+            currentRouteId = working.run?.routeId,
             onSelectRoute = { routeId ->
                 working.withRunRoute(routeId)?.let {
-                    if (applyChange(it, if (routeId == null) "Route cleared." else "Route saved.")) routePicker = false
+                    if (applyChange(it, when (routeId) {
+                            null -> "Free run selected."
+                            TREADMILL_ROUTE_ID -> "Treadmill selected."
+                            else -> "Route saved."
+                        })) routePicker = false
                 }
             },
         )
@@ -197,26 +201,24 @@ internal fun RunRoutineEditorScreen(
                         )
                     }
                     RoutineIdentityActions(onRename = { renaming = true }, onChangeArtwork = { artworkPicker = true })
-                    TextButton(onClick = onOpenHistory) { Text("Previous runs") }
                 }
             }
             item {
-                AppSurfaceCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("ROUTE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        val selected = routes.firstOrNull { it.id == working.run?.routeId }
-                        Text(selected?.name ?: "No route selected", fontWeight = FontWeight.Bold)
-                        Text(
-                            if (selected == null) "Select or design a route for this run." else
-                                "${selected.distanceLabel()} · " +
-                                    selected.turnCues.count { it.kind.isTurn() }.let { count ->
-                                        "$count ${if (count == 1) "turn" else "turns"}" },
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        OutlinedButton(onClick = { routePicker = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Text("Change route")
-                        }
+                        TextButton(onClick = { routePicker = true }) { Text("Change route") }
                     }
+                    val selected = routes.firstOrNull { it.id == working.run?.routeId }
+                    Text(selected?.name ?: if (working.run?.isTreadmill == true) "Treadmill" else "Free run",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    val turnCount = selected?.turnCues?.count { it.kind.isTurn() } ?: 0
+                    Text(if (working.run?.isTreadmill == true) "Indoor timing · no GPS" else if (selected == null) "No route guidance" else
+                        "${selected.distanceLabel()} · $turnCount ${if (turnCount == 1) "turn" else "turns"}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             item {

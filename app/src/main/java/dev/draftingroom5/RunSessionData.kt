@@ -54,7 +54,7 @@ internal data class RunSession(
         pause(atMillis).copy(completedAtMillis = atMillis.coerceAtLeast(startedAtMillis))
 
     fun record(sample: RunLocationSample): RunSession {
-        if (!isRunning || samples.size >= 10_000 || sample.accuracyMeters !in 0..50 ||
+        if (!isRunning || routine.run?.isTreadmill == true || samples.size >= 10_000 || sample.accuracyMeters !in 0..50 ||
             sample.recordedAtMillis < startedAtMillis || sample.recordedAtMillis < (samples.lastOrNull()?.recordedAtMillis ?: startedAtMillis)) return this
         val previous = samples.lastOrNull()
         val step = previous?.let { geoDistanceMeters(it.point, sample.point) } ?: 0.0

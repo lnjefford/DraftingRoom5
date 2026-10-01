@@ -14,6 +14,11 @@ internal data class RunRoutine(
     val routeId: String? = null,
 )
 
+/** A persisted route choice with no outdoor geometry or GPS tracking. */
+internal const val TREADMILL_ROUTE_ID = dev.draftingroom5.watch.WATCH_TREADMILL_ROUTE_ID
+
+internal val RunRoutine.isTreadmill: Boolean get() = routeId == TREADMILL_ROUTE_ID
+
 internal fun Routine.withRunRoute(routeId: String?): Routine? {
     if (execution != RoutineExecution.RUN || (routeId != null && (routeId.isBlank() || routeId.length > 128))) return null
     val current = checkNotNull(run)
@@ -206,6 +211,7 @@ internal fun validateRunRoutine(run: RunRoutine) {
 
 internal fun validateRunRoute(route: RunRoute) {
     require(route.id.isNotBlank() && route.id.length <= 128) { "Run route ID is invalid." }
+    require(route.id != TREADMILL_ROUTE_ID) { "The treadmill route ID is reserved." }
     require(route.revision >= 1) { "Run route revision must be positive." }
     require(route.name.isNotBlank() && route.name == route.name.trim() && route.name.length <= 200) {
         "Run route name is invalid."

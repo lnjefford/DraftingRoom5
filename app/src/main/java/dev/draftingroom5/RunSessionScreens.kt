@@ -69,12 +69,12 @@ import org.osmdroid.util.GeoPoint
 internal fun RunStartScreen(
     routine: Routine,
     routes: List<RunRoute>,
-    lastRouteId: String?,
     onStart: (String?) -> Boolean,
     onBack: () -> Unit,
 ) {
-    val initialRoute = lastRouteId?.takeIf { id -> routes.any { it.id == id } }
-        ?: routine.run?.routeId?.takeIf { id -> routes.any { it.id == id } }
+    val initialRoute = routine.run?.routeId?.takeIf { id ->
+        id == TREADMILL_ROUTE_ID || routes.any { it.id == id }
+    }
     var selectedId by rememberSaveable(routine.id) { mutableStateOf(initialRoute) }
     var message by remember { mutableStateOf<String?>(null) }
     BackHandler(onBack = onBack)
@@ -86,7 +86,7 @@ internal fun RunStartScreen(
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                EditorialHeading("READY TO RUN", "Choose your route", "Your last route is selected when available.")
+                EditorialHeading("READY TO RUN", "Choose your run", "Your routine's choice is selected.")
             }
             items(routes.sortedWith(compareByDescending<RunRoute> { it.id == initialRoute }.thenBy { it.name }), key = { it.id }) { route ->
                 RunRouteChoice(route, selectedId == route.id, route.id == initialRoute) {
@@ -94,6 +94,9 @@ internal fun RunStartScreen(
                 }
             }
             item { RunRouteChoice(null, selectedId == null, false) { selectedId = null } }
+            item { RunRouteChoice(null, selectedId == TREADMILL_ROUTE_ID, false, "Treadmill") {
+                selectedId = TREADMILL_ROUTE_ID
+            } }
             item {
                 AppSurfaceCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -117,18 +120,20 @@ internal fun RunStartScreen(
 }
 
 @Composable
-private fun RunRouteChoice(route: RunRoute?, selected: Boolean, lastUsed: Boolean, onSelect: () -> Unit) {
+private fun RunRouteChoice(route: RunRoute?, selected: Boolean, lastUsed: Boolean,
+    mode: String = "Free run", onSelect: () -> Unit) {
     AppSurfaceCard(Modifier.fillMaxWidth().clickable(onClick = onSelect)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (route != null) RunRouteShape(route, Modifier.size(76.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(route?.name ?: "No route", style = if (LocalConfiguration.current.screenWidthDp < 360)
+                Text(route?.name ?: mode, style = if (LocalConfiguration.current.screenWidthDp < 360)
                     MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface)
-                Text(route?.distanceLabel() ?: "Track time and distance without navigation.",
+                Text(route?.distanceLabel() ?: if (mode == "Treadmill") "Indoor timing without GPS." else
+                    "Track time and distance without navigation.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (lastUsed) Text("LAST USED", color = AppMint, style = MaterialTheme.typography.labelSmall)
+                if (lastUsed) Text("ROUTINE ROUTE", color = AppMint, style = MaterialTheme.typography.labelSmall)
             }
             RadioButton(selected = selected, onClick = onSelect)
         }
@@ -157,6 +162,7 @@ internal fun RunSessionScreen(
     }
     BackHandler { if (confirmFinish) confirmFinish = false else onBack() }
     val plan = checkNotNull(session.routine.run)
+    val treadmill = plan.isTreadmill
     val interval = session.intervalAt(now)
     val elapsed = session.elapsedMillis(now)
     val elapsedSeconds = elapsed / 1_000
@@ -203,7 +209,10 @@ internal fun RunSessionScreen(
         containerColor = Color.Transparent,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
-            RunLiveMap(session, Modifier.fillMaxSize(), recenterTick)
+            if (treadmill) Box(Modifier.fillMaxSize().background(AppBackgroundDeep),
+                contentAlignment = Alignment.Center) {
+                Text("TREADMILL · INDOOR RUN", color = AppMint, style = MaterialTheme.typography.labelLarge)
+            } else RunLiveMap(session, Modifier.fillMaxSize(), recenterTick)
             if (cue != null && (session.isRunning || complete)) {
                 Column(Modifier.fillMaxWidth().padding(14.dp).clip(RoundedCornerShape(18.dp))
                     .background(AppBackground.copy(alpha = 0.96f)).border(1.dp, AppBorder, RoundedCornerShape(18.dp))
@@ -225,7 +234,7 @@ internal fun RunSessionScreen(
                 }
             }
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().padding(end = 16.dp, bottom = 8.dp),
+                if (!treadmill) Row(Modifier.fillMaxWidth().padding(end = 16.dp, bottom = 8.dp),
                     horizontalArrangement = Arrangement.End) {
                     IconButton(onClick = { recenterTick++ }, modifier = Modifier.size(52.dp)
                         .clip(CircleShape).background(AppBackground.copy(alpha = .95f))
@@ -233,10 +242,10 @@ internal fun RunSessionScreen(
                         Icon(Icons.Default.MyLocation, "Recenter map", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
-                if (!locationEnabled) Text("Location is off · tap to enable GPS tracking",
+                if (!treadmill && !locationEnabled) Text("Location is off · tap to enable GPS tracking",
                     Modifier.fillMaxWidth().clickable(onClick = onRequestLocation).background(AppBackground.copy(alpha = 0.95f))
                         .padding(10.dp), color = MaterialTheme.colorScheme.error)
-                Text("© OpenStreetMap contributors", Modifier.padding(start = 12.dp, bottom = 4.dp),
+                if (!treadmill) Text("© OpenStreetMap contributors", Modifier.padding(start = 12.dp, bottom = 4.dp),
                     style = MaterialTheme.typography.labelSmall, color = Color.White)
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                     .background(AppSurface).border(1.dp, AppBorder, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
@@ -267,10 +276,10 @@ internal fun RunSessionScreen(
                     HorizontalDivider(color = AppBorder)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         RunMetric("Elapsed", formatRunClock(elapsedSeconds.toInt()), Modifier.weight(1f))
-                        RunMetric("Distance", java.lang.String.format(java.util.Locale.US, "%.1f mi", session.distanceMeters / 1609.344),
+                        if (!treadmill) RunMetric("Distance", java.lang.String.format(java.util.Locale.US, "%.1f mi", session.distanceMeters / 1609.344),
                             Modifier.weight(1f))
                     }
-                    if (session.samples.isEmpty()) Text("Waiting for a GPS fix", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    if (!treadmill && session.samples.isEmpty()) Text("Waiting for a GPS fix", color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall)
                     music()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -319,7 +328,7 @@ internal fun RunSessionScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 RunMetric("Intervals", "$completedIntervals of ${plan.intervals.size}", Modifier.weight(1f))
                 RunMetric("Elapsed", formatRunClock(elapsedSeconds.toInt()), Modifier.weight(1f))
-                RunMetric("Distance", java.lang.String.format(java.util.Locale.US, "%.1f mi", session.distanceMeters / 1609.344),
+                if (!treadmill) RunMetric("Distance", java.lang.String.format(java.util.Locale.US, "%.1f mi", session.distanceMeters / 1609.344),
                     Modifier.weight(1f))
             }
             Button(onClick = { if (!onFinish()) { message = "Couldn’t finish the run."; confirmFinish = false } },
@@ -417,72 +426,6 @@ private fun runLocationIcon(context: android.content.Context): BitmapDrawable {
 }
 
 @Composable
-internal fun RunHistoryScreen(
-    routine: Routine,
-    history: List<WorkoutHistoryEntry>,
-    sessions: List<RunSession>,
-    onSelect: (String) -> Unit,
-    onBack: () -> Unit,
-) {
-    BackHandler(onBack = onBack)
-    val byMonth = history.sortedByDescending { it.completedAtMillis }
-        .groupBy { it.effectiveDate.withDayOfMonth(1) }
-    Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
-        topBar = { SecondaryTopBar("Run history", onBack) }, containerColor = Color.Transparent) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { EditorialHeading(routine.name, "Previous runs", "Your saved timing, route, and tracking.") }
-            if (history.isEmpty()) item {
-                AppSurfaceCard(Modifier.fillMaxWidth()) {
-                    Text("No completed runs yet.", Modifier.padding(18.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            byMonth.forEach { (month, entries) ->
-                item(key = "month-$month") {
-                    Text(month.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy")).uppercase(),
-                        color = AppGold, style = MaterialTheme.typography.labelMedium)
-                }
-                items(entries, key = { it.id }) { entry ->
-                val session = sessions.firstOrNull { it.id == entry.id }
-                val elapsed = ((session?.elapsedBeforeResumeMillis ?: (entry.completedAtMillis - entry.startedAtMillis)) / 1_000).toInt()
-                val complete = elapsed >= (entry.snapshot.run?.totalDurationSeconds ?: Int.MAX_VALUE)
-                val narrow = LocalConfiguration.current.screenWidthDp < 360
-                AppSurfaceCard(Modifier.fillMaxWidth().clickable { onSelect(entry.id) }) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(if (narrow) 10.dp else 12.dp)) {
-                        session?.route?.let { RunRouteShape(it, Modifier.size(if (narrow) 78.dp else 96.dp)) } ?: Box(
-                            Modifier.size(if (narrow) 78.dp else 96.dp).clip(RoundedCornerShape(14.dp)).background(AppBackgroundDeep),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("RUN", color = AppBlue, style = MaterialTheme.typography.labelLarge) }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(entry.effectiveDate.format(java.time.format.DateTimeFormatter.ofPattern(
-                                if (narrow) "EEE, MMM d" else "EEEE, MMMM d")),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall)
-                            Text(if (complete) "✓ Timing complete" else "Ended early",
-                                color = if (complete) AppMint else AppGold,
-                                style = if (narrow) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium)
-                            Text(session?.route?.name ?: entry.snapshot.name,
-                                style = if (narrow)
-                                    MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onSurface, maxLines = 2,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            Text("${formatRunClock(elapsed)} · " + java.lang.String.format(java.util.Locale.US,
-                                "%.1f mi", (session?.distanceMeters ?: 0) / 1609.344),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        if (!narrow) Text("›", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
-                    }
-                }
-                }
-            }
-            item { Spacer(Modifier.size(24.dp)) }
-        }
-    }
-}
-
-@Composable
 internal fun RunCompletionScreen(history: WorkoutHistoryEntry, session: RunSession?, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var recenterTick by remember { mutableIntStateOf(0) }
@@ -493,7 +436,7 @@ internal fun RunCompletionScreen(history: WorkoutHistoryEntry, session: RunSessi
         topBar = { SecondaryTopBar("Run saved", onBack) }, containerColor = Color.Transparent) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (session != null) item {
+            if (session != null && session.routine.run?.isTreadmill != true) item {
                 Box(Modifier.fillMaxWidth().height(270.dp).clip(RoundedCornerShape(18.dp))) {
                     RunLiveMap(session, Modifier.fillMaxSize(), recenterTick)
                     IconButton(onClick = { recenterTick++ }, modifier = Modifier.align(Alignment.BottomEnd)
@@ -521,7 +464,8 @@ internal fun RunCompletionScreen(history: WorkoutHistoryEntry, session: RunSessi
                         style = MaterialTheme.typography.titleLarge)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         RunMetric("Elapsed", formatRunClock(elapsedSeconds), Modifier.weight(1f))
-                        RunMetric("Distance", java.lang.String.format(java.util.Locale.US, "%.1f mi", (session?.distanceMeters ?: 0) / 1609.344),
+                        if (history.snapshot.run?.isTreadmill != true) RunMetric("Distance",
+                            java.lang.String.format(java.util.Locale.US, "%.1f mi", (session?.distanceMeters ?: 0) / 1609.344),
                             Modifier.weight(1f))
                     }
                     Text("INTERVALS", color = AppGold, style = MaterialTheme.typography.labelMedium)

@@ -19,7 +19,6 @@ internal sealed interface AppRoute {
     data object PlanManagement : AppRoute
     data class RoutineEditor(val routineId: String) : AppRoute
     data object RunRoutes : AppRoute
-    data class RunHistory(val routineId: String) : AppRoute
     data class RunStart(val routineId: String, val scheduleEntryId: String, val scheduledDate: LocalDate) : AppRoute
     data class RunSession(val sessionId: String) : AppRoute
     data class ScheduleEditor(val entryId: String?, val draftId: String, val anchor: DayOfWeek) : AppRoute
@@ -180,7 +179,6 @@ internal fun encodeAppRoute(route: AppRoute): String = when (route) {
     AppRoute.PlanManagement -> "planning"
     is AppRoute.RoutineEditor -> "routine:${route.routineId}"
     AppRoute.RunRoutes -> "run-routes"
-    is AppRoute.RunHistory -> "run-history:${route.routineId}"
     is AppRoute.RunStart -> "run-start:${route.routineId}:${route.scheduleEntryId}:${route.scheduledDate}"
     is AppRoute.RunSession -> "run-session:${route.sessionId}"
     is AppRoute.ScheduleEditor -> "schedule:${route.entryId.orEmpty()}:${route.draftId}:${route.anchor.name}"
@@ -220,7 +218,6 @@ internal fun decodeAppRoute(value: String): AppRoute? {
         "planning" -> AppRoute.PlanManagement.takeIf { parts.size == 1 }
         "routine" -> parts.getOrNull(1)?.takeIf(String::isNotBlank)?.let { AppRoute.RoutineEditor(it) }
         "run-routes" -> AppRoute.RunRoutes.takeIf { parts.size == 1 }
-        "run-history" -> if (parts.size == 2 && parts[1].isNotBlank()) AppRoute.RunHistory(parts[1]) else null
         "run-start" -> if (parts.size == 4 && parts[1].isNotBlank() && parts[2].isNotBlank()) runCatching { LocalDate.parse(parts[3]) }.getOrNull()
             ?.let { AppRoute.RunStart(parts[1], parts[2], it) } else null
         "run-session" -> if (parts.size == 2 && parts[1].isNotBlank()) AppRoute.RunSession(parts[1]) else null

@@ -400,9 +400,10 @@ private fun DraftingRoom5App() {
         }
     }
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
-    val runningRunId = appDocument.runSessions.firstOrNull { it.isRunning }?.id
+    val runningRun = appDocument.runSessions.firstOrNull { it.isRunning }
+    val runningRunId = runningRun?.id
     LaunchedEffect(windowFocused, runningRunId) {
-        if (windowFocused && runningRunId != null &&
+        if (windowFocused && runningRunId != null && runningRun?.routine?.run?.isTreadmill != true &&
             androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED) {
             runCatching { RunLocationService.start(context, runningRunId) }
@@ -892,7 +893,6 @@ private fun DraftingRoom5App() {
                         if (saved) requestAutomaticBackup()
                         saved
                     },
-                    onOpenHistory = { navigation.navigate(AppRoute.RunHistory(routine.id)) },
                 ) else if (routine != null) GuidedRoutineEditorScreen(
                     routine = routine,
                     scheduleSummary = trainingPlan.routineScheduleSummary(routine.id),
@@ -1109,22 +1109,11 @@ private fun DraftingRoom5App() {
                 },
                 onBack = { navigation.back() },
             )
-            is AppRoute.RunHistory -> {
-                val routine = trainingPlan.routines.firstOrNull { it.id == screen.routineId }
-                if (routine == null) navigation.back() else RunHistoryScreen(
-                    routine = routine,
-                    history = workoutHistory.filter { it.snapshot.id == routine.id },
-                    sessions = appDocument.runSessions,
-                    onSelect = { navigation.navigate(AppRoute.Completion(it)) },
-                    onBack = { navigation.back() },
-                )
-            }
             is AppRoute.RunStart -> {
                 val routine = trainingPlan.routines.firstOrNull { it.id == screen.routineId && it.execution == RoutineExecution.RUN }
                 if (routine == null) navigation.dashboard() else RunStartScreen(
                     routine = routine,
                     routes = appDocument.runRoutes,
-                    lastRouteId = appDocument.lastRunRouteId,
                     onStart = { routeId ->
                         val saved = acceptDocumentResult(appRepository.startRun(
                             OccurrenceKey(screen.scheduleEntryId, screen.scheduledDate), routine.id, routeId,
@@ -1133,7 +1122,7 @@ private fun DraftingRoom5App() {
                         if (saved) {
                             requestAutomaticBackup()
                             appDocument.runSessions.lastOrNull()?.let {
-                                startRunTracking(it.id)
+                                if (routeId != TREADMILL_ROUTE_ID) startRunTracking(it.id)
                                 navigation.navigate(AppRoute.RunSession(it.id))
                             }
                         }
@@ -1153,7 +1142,7 @@ private fun DraftingRoom5App() {
                     },
                     onResume = {
                         acceptDocumentResult(appRepository.resumeRun(session.id, System.currentTimeMillis().coerceAtLeast(0L))).also {
-                            if (it) startRunTracking(session.id)
+                            if (it && session.routine.run?.isTreadmill != true) startRunTracking(session.id)
                         }
                     },
                     onFinish = {
@@ -1166,9 +1155,10 @@ private fun DraftingRoom5App() {
                         saved
                     },
                     onBack = { navigation.dashboard() },
-                    locationEnabled = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    locationEnabled = session.routine.run?.isTreadmill == true ||
+                        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
                         android.content.pm.PackageManager.PERMISSION_GRANTED,
-                    onRequestLocation = { startRunTracking(session.id) },
+                    onRequestLocation = { if (session.routine.run?.isTreadmill != true) startRunTracking(session.id) },
                     music = { SpotifyNowPlayingRow() },
                 )
             }

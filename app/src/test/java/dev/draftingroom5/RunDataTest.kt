@@ -95,6 +95,18 @@ class RunDataTest {
         }
     }
 
+    @Test fun treadmillIsAValidRouteChoiceButCannotBeAStoredRoute() {
+        val base = defaultAppDocument()
+        val treadmill = Routine("run", 1, "Indoor run", "running_shoe", RoutineExecution.RUN,
+            emptyList(), null, RunRoutine(listOf(RunInterval("first", RunIntervalKind.RUN, 60)), TREADMILL_ROUTE_ID))
+        val document = base.copy(plan = base.plan.copy(routines = base.plan.routines + treadmill))
+        validateAppDocument(document)
+        assertEquals(TREADMILL_ROUTE_ID, decodeAppDocument(encodeAppDocument(document)).plan.routines.last().run?.routeId)
+        assertThrows(IllegalArgumentException::class.java) {
+            validateRunRoute(routeFixture().copy(id = TREADMILL_ROUTE_ID))
+        }
+    }
+
     @Test fun deletingRouteClearsAssignmentsWithoutChangingOtherRoutines() {
         val base = defaultAppDocument()
         val selected = Routine("run", 1, "Park run", "running_shoe", RoutineExecution.RUN,
