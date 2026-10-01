@@ -674,6 +674,15 @@ fun RunRouteDetailScreenshots() {
 @PreviewTest
 @Preview(name = "Compact", widthDp = 320, heightDp = 800)
 @Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Composable
+fun RunRouteMissingDirectionsScreenshots() {
+    val route = previewRunRoute().copy(turnCues = emptyList())
+    DraftingRoom5Theme { RunRouteScreen(listOf(route), { true }, { true }, {}, initialSelectedId = route.id) }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
 @Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
 @Composable
 fun RunStartScreenshots() {

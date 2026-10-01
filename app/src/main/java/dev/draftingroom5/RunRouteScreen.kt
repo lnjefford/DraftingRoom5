@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,6 +90,7 @@ internal fun RunRouteScreen(
     var selectedId by rememberSaveable { mutableStateOf(initialSelectedId) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     var importing by remember { mutableStateOf(false) }
+    var generatingDirections by remember { mutableStateOf(false) }
     var drawing by remember { mutableStateOf(false) }
     var editingMap by remember { mutableStateOf(false) }
     var rename by rememberSaveable { mutableStateOf(false) }
@@ -96,6 +98,36 @@ internal fun RunRouteScreen(
     var addWaypoint by rememberSaveable { mutableStateOf(false) }
     var cuePoint by rememberSaveable { mutableStateOf<Int?>(null) }
     val selected = routes.firstOrNull { it.id == selectedId }
+    fun generateDirections(routeToUpdate: RunRoute) {
+        if (routeToUpdate.waypointIndices.size !in 2..50) {
+            message = "This route has too many waypoints for automatic directions."
+            return
+        }
+        val key = RunRoutingKeyStore(context).load()
+        if (key == null) {
+            message = "Set up your routing key in Design route first."
+            return
+        }
+        generatingDirections = true
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { requestWalkingRoute(
+                    routeToUpdate.waypointIndices.map(routeToUpdate.points::get), key) }
+            }
+            generatingDirections = false
+            result.onSuccess { planned ->
+                if (planned.points != routeToUpdate.points || planned.waypointIndices != routeToUpdate.waypointIndices)
+                    message = "The walking path has changed. Edit this route to recalculate it with directions."
+                else if (planned.turnCues.isEmpty()) message = "No directions were returned for this route."
+                else if (routeToUpdate.withGeneratedDirections(planned)?.let(onSave) == true)
+                    message = "Turn directions generated."
+                else message = "Could not save turn directions."
+            }.onFailure { error ->
+                message = (error as? WalkingRouteException)?.explanation
+                    ?: "Could not generate turn directions. Try again."
+            }
+        }
+    }
     if (editingMap && selected != null) {
         RunMapEditor(onSave = onSave, onBack = { editingMap = false }, initial = selected)
         return
@@ -212,6 +244,11 @@ internal fun RunRouteScreen(
                         Box(Modifier.align(Alignment.CenterHorizontally).width(42.dp).height(5.dp)
                             .clip(RoundedCornerShape(5.dp)).background(AppBorder))
                         EditorialHeading("SAVED ROUTE", selected.name, selected.distanceLabel())
+                        if (selected.turnCues.isEmpty()) OutlinedButton(
+                            onClick = { generateDirections(selected) }, enabled = !generatingDirections,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text(if (generatingDirections) "Generating directions…" else "Generate turn directions")
+                        }
                         if (onSelectRoute != null) Button(onClick = { onSelectRoute(selected.id) },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Use this route") }
                         Text("MANAGE", color = AppGold, style = MaterialTheme.typography.labelMedium)
@@ -247,16 +284,24 @@ internal fun RunRouteScreen(
                             verticalAlignment = Alignment.CenterVertically) {
                             Text(when (index) { 0 -> "Start"; selected.points.lastIndex -> "Finish"; else -> "Point ${index + 1}" },
                                 Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                            TextButton(onClick = { cuePoint = index }) { Text("Turn cue") }
+                            TextButton(onClick = { cuePoint = index }) {
+                                Text(if (selected.turnCues.any { it.pointIndex == index }) "Edit cue" else "Add cue")
+                            }
                             if (index != 0 && index != selected.points.lastIndex) IconButton(onClick = {
                                 selected.withoutWaypoint(index)?.let { if (!onSave(it)) message = "Could not save waypoint." }
                             }) { Icon(Icons.Default.Delete, "Remove waypoint") }
                         }
                     }
                 }
-                item { Text("TURN CUES", Modifier.padding(horizontal = 20.dp), color = AppGold, style = MaterialTheme.typography.labelMedium) }
+                item {
+                    Column(Modifier.padding(horizontal = 20.dp)) {
+                        Text("TURN DIRECTIONS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                        Text("Generated with the route. Tap a direction to edit it.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
                 if (selected.turnCues.isEmpty()) item {
-                    Text("No turn cues yet. Add one at a waypoint.", Modifier.padding(horizontal = 20.dp),
+                    Text("No directions saved for this route yet.", Modifier.padding(horizontal = 20.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 items(selected.turnCues, key = { "cue-${it.pointIndex}" }) { cue ->
@@ -383,23 +428,29 @@ private fun RunRouteMap(route: RunRoute, modifier: Modifier = Modifier) {
         onDispose { map.onPause(); map.onDetach() }
     }
     Box(modifier.clip(RoundedCornerShape(18.dp))) {
-        AndroidView(factory = { map }, modifier = Modifier.fillMaxSize(), update = { view ->
-            view.overlays.clear()
-            view.overlays.add(Polyline().apply {
-                setPoints(route.points.map { GeoPoint(it.latitudeE7 / 10_000_000.0, it.longitudeE7 / 10_000_000.0) })
-                outlinePaint.color = android.graphics.Color.rgb(96, 163, 255)
-                outlinePaint.strokeWidth = 6f * context.resources.displayMetrics.density
-            })
-            route.waypointIndices.forEachIndexed { position, index ->
-                view.overlays.add(Marker(view).apply {
-                    val point = route.points[index]
-                    this.position = GeoPoint(point.latitudeE7 / 10_000_000.0, point.longitudeE7 / 10_000_000.0)
-                    icon = routeMarker(context, position)
-                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                })
-            }
-            view.invalidate()
-        })
+        // A cue dialog changes Compose state, not the route. Building thousands of native map
+        // points again on that recomposition can stall the UI, so draw only for a new revision.
+        key(route.id, route.revision) {
+            AndroidView(factory = {
+                map.apply {
+                    overlays.add(Polyline().apply {
+                        setPoints(route.points.map { GeoPoint(it.latitudeE7 / 10_000_000.0,
+                            it.longitudeE7 / 10_000_000.0) })
+                        outlinePaint.color = android.graphics.Color.rgb(96, 163, 255)
+                        outlinePaint.strokeWidth = 6f * context.resources.displayMetrics.density
+                    })
+                    route.waypointIndices.forEachIndexed { position, index ->
+                        overlays.add(Marker(this).apply {
+                            val point = route.points[index]
+                            this.position = GeoPoint(point.latitudeE7 / 10_000_000.0,
+                                point.longitudeE7 / 10_000_000.0)
+                            icon = routeMarker(context, position)
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        })
+                    }
+                }
+            }, modifier = Modifier.fillMaxSize())
+        }
         Text("© OpenStreetMap contributors", Modifier.align(Alignment.BottomStart)
             .background(AppBackground.copy(alpha = 0.85f)).padding(5.dp),
             color = Color.White, style = MaterialTheme.typography.labelSmall)

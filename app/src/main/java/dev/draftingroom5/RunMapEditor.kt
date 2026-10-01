@@ -94,7 +94,7 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
     val keyStore = remember(context) { RunRoutingKeyStore(context) }
     var name by remember(initial?.id) { mutableStateOf(initial?.name.orEmpty()) }
     var anchors by remember(initial?.id) { mutableStateOf(initial?.let { source -> source.waypointIndices.map(source.points::get) } ?: emptyList()) }
-    var route by remember(initial?.id) { mutableStateOf(initial?.let { WalkingRoute(it.points, it.waypointIndices) }) }
+    var route by remember(initial?.id) { mutableStateOf(initial?.let { WalkingRoute(it.points, it.waypointIndices, it.turnCues) }) }
     var routing by remember { mutableStateOf(false) }
     var routingMessage by remember { mutableStateOf<String?>(null) }
     var keyReady by remember { mutableStateOf(keyStore.load() != null) }
@@ -154,7 +154,8 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
         else {
             val saved = RunRoute(initial?.id ?: newId(), (initial?.revision ?: 0) + 1, clean,
                 planned.points, planned.waypointIndices,
-                if (initial != null && planned.points == initial.points) initial.turnCues else emptyList())
+                if (initial != null && planned.points == initial.points && initial.turnCues.isNotEmpty())
+                    initial.turnCues else planned.turnCues)
             if (!onSave(saved)) message = "Could not save route." else onBack()
         }
     }

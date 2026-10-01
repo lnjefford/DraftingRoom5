@@ -148,6 +148,12 @@ internal fun RunRoute.duplicate(copyId: String): RunRoute = copy(
     name = "$name copy".take(200),
 )
 
+/** Existing geometry must not be silently replaced just to add provider directions. */
+internal fun RunRoute.withGeneratedDirections(planned: WalkingRoute): RunRoute? {
+    if (planned.points != points || planned.waypointIndices != waypointIndices || planned.turnCues.isEmpty()) return null
+    return copy(turnCues = planned.turnCues, revision = revision + 1)
+}
+
 internal val RunRoute.distanceMeters: Double
     get() = points.zipWithNext().sumOf { (a, b) -> geoDistanceMeters(a, b) }
 
