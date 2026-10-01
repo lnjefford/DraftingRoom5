@@ -39,6 +39,8 @@ class DashboardOccurrenceMenuTest {
         assertEquals(2, tomorrow.size)
         assertEquals(2, tomorrow.map { it.occurrence }.distinct().size)
         assertTrue(tomorrow.all { it.action == SessionAction.START })
-        assertFalse(canChangeDashboardOccurrence(tomorrow.first { it.occurrence == source }, date.plusDays(1), date.plusDays(1), listOf(exception)))
+        val moved = tomorrow.first { it.occurrence == source }
+        assertTrue(canChangeDashboardOccurrence(moved, date.plusDays(1), date.plusDays(1), listOf(exception)))
+        assertFalse(canChangeDashboardOccurrence(moved, date.plusDays(1), date.plusDays(1), listOf(exception), OccurrenceDisposition.DEFERRED))
     }
 }

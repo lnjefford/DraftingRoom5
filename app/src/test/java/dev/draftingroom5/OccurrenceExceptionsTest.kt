@@ -63,6 +63,19 @@ class OccurrenceExceptionsTest {
         assertTrue(repo.openGuidedSession(repo.sessionLease()!!, key(id = "guided"), guided.id, 1, "new") is SessionRepositoryResult.Invalid)
     }
 
+    @Test fun movedOccurrenceCanBeSkippedOnItsEffectiveDay() {
+        val repo = repository()
+        assertTrue(repo.deferOccurrence(key(), day) is RepositoryResult.Success)
+        val nextDay = day.plusDays(1)
+        assertTrue(repo.skipOccurrence(key(), nextDay) is RepositoryResult.Success)
+        assertEquals(OccurrenceDisposition.SKIPPED, repo.document().occurrenceDisposition(key()))
+        assertNull(repo.document().occurrenceDate(key()))
+        assertTrue(repo.cards(nextDay).none { it.occurrence == key() })
+        assertTrue(repo.cards(nextDay).any { it.occurrence == key(nextDay) })
+        assertTrue(repo.document().history.isEmpty())
+        assertTrue(repo.deferOccurrence(key(), nextDay) is RepositoryResult.Invalid)
+    }
+
     @Test fun undoIsAtomicIdempotentAndCannotUndoADifferentDisposition() {
         val store = Store()
         val repo = repository(store)

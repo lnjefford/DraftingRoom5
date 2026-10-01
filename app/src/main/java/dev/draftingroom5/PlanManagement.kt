@@ -114,8 +114,8 @@ internal fun PlanManagementScreen(
 ) {
     BackHandler(onBack = onBack)
     var selectedTab by rememberSaveable { mutableIntStateOf(initialTab) }
-    var selectedDayName by rememberSaveable { mutableStateOf(DayOfWeek.MONDAY.name) }
-    val selectedDay = runCatching { DayOfWeek.valueOf(selectedDayName) }.getOrDefault(DayOfWeek.MONDAY)
+    var selectedDayName by rememberSaveable { mutableStateOf(DayOfWeek.SUNDAY.name) }
+    val selectedDay = runCatching { DayOfWeek.valueOf(selectedDayName) }.getOrDefault(DayOfWeek.SUNDAY)
     var addingRoutine by rememberSaveable { mutableStateOf(false) }
     var renamingRoutineId by rememberSaveable { mutableStateOf<String?>(null) }
     val renamingRoutine = plan.routines.firstOrNull { it.id == renamingRoutineId }
@@ -377,7 +377,7 @@ private fun RecurringWeekSelector(counts: Map<DayOfWeek, Int>, selectedDay: DayO
     val selectedDiameter = if (LocalDensity.current.fontScale > 1.3f) 44.dp else 32.dp
     BrandedCard(Modifier.fillMaxWidth(), containerColor = AppSurfaceRaised) {
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 6.dp)) {
-            DayOfWeek.entries.forEach { day ->
+            (listOf(DayOfWeek.SUNDAY) + DayOfWeek.entries.filter { it != DayOfWeek.SUNDAY }).forEach { day ->
                 val count = counts.getValue(day)
                 val selected = day == selectedDay
                 Column(

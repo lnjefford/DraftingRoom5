@@ -234,12 +234,15 @@ internal class AppRepository(
         val existing = current.occurrenceExceptions.firstOrNull { it.occurrence == occurrence }
         if (existing?.disposition == disposition) return@synchronized RepositoryResult.Success(current)
         update(current.generation) {
-            require(existing == null) { "Undo the existing exception before changing it." }
-            require(occurrence.scheduledDate == today && current.occurrenceDate(occurrence) == today) {
-                "Only today's scheduled occurrence can be moved or skipped."
+            val skippingMovedToday = disposition == OccurrenceDisposition.SKIPPED &&
+                existing?.disposition == OccurrenceDisposition.DEFERRED && existing.effectiveDate == today
+            require(existing == null || skippingMovedToday) { "Undo the existing exception before changing it." }
+            require(current.occurrenceDate(occurrence) == today &&
+                (occurrence.scheduledDate == today || skippingMovedToday)) {
+                "Only today's occurrence can be moved or skipped."
             }
             require(disposition != OccurrenceDisposition.DEFERRED || today < java.time.LocalDate.MAX) { "Tomorrow is outside the supported date range." }
-            it.copy(occurrenceExceptions = it.occurrenceExceptions + OccurrenceException(occurrence, disposition,
+            it.copy(occurrenceExceptions = it.occurrenceExceptions.filterNot { exception -> exception.occurrence == occurrence } + OccurrenceException(occurrence, disposition,
                 if (disposition == OccurrenceDisposition.DEFERRED) today.plusDays(1) else null))
         }
     }

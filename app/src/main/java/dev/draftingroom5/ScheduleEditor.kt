@@ -136,7 +136,7 @@ internal fun ScheduleEditorScreen(
                 EditorialHeading(
                     eyebrow = "ROUTINE",
                     title = if (original == null) "Choose a routine" else "Change routine",
-                    supportingText = "Select the activity to schedule for ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}.",
+                    supportingText = "Select the activity to repeat every ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}.",
                 )
             }
             if (plan.routines.isEmpty()) {
@@ -151,16 +151,6 @@ internal fun ScheduleEditorScreen(
             } else {
                 items(plan.routines, key = { it.id }) { routine ->
                     RoutineChoiceRow(routine, selected = routine.id == draft.routineId) { routineId = routine.id }
-                }
-            }
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text("REPEATS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                    AppSurfaceCard(Modifier.fillMaxWidth()) {
-                        Text("Every ${requestedAnchor.getDisplayName(TextStyle.FULL, locale)}",
-                            Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold)
-                    }
                 }
             }
             if (saveFailed) item { Text("Couldn’t save these changes. Try again.", color = MaterialTheme.colorScheme.error) }

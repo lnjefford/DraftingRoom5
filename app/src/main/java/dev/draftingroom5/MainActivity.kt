@@ -1343,7 +1343,8 @@ private fun Dashboard(
                 else "Only today's occurrence is skipped. It will not count as completed.",
             confirmLabel = if (occurrenceError == null) (if (moving) "Move to tomorrow" else "Skip today") else "Retry",
             onConfirm = {
-                if (pendingSession == null || !canChangeDashboardOccurrence(pendingSession, today, selectedDate, occurrenceExceptions)) {
+                if (pendingSession == null || !canChangeDashboardOccurrence(pendingSession, today, selectedDate, occurrenceExceptions,
+                        if (moving) OccurrenceDisposition.DEFERRED else OccurrenceDisposition.SKIPPED)) {
                     occurrenceError = "This occurrence changed. Return to today's card and try again."
                 } else {
                     val disposition = if (moving) OccurrenceDisposition.DEFERRED else OccurrenceDisposition.SKIPPED
@@ -1825,7 +1826,7 @@ private fun ActivityMetricCard(
                 }
             }
             if (card == DashboardCard.WORKOUTS) {
-                WorkoutDots(trend, card.accent)
+                WorkoutDots(trend, today, card.accent)
                 Text(context, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 ActivityBars(trend, card.accent)
@@ -1861,19 +1862,25 @@ private fun ActivityBars(trend: List<HealthTrendPoint>, accent: Color) {
 }
 
 @Composable
-private fun WorkoutDots(trend: List<HealthTrendPoint>, accent: Color) {
-    val recent = trend.takeLast(28)
-    Canvas(Modifier.fillMaxWidth().height(58.dp)) {
+private fun WorkoutDots(trend: List<HealthTrendPoint>, today: LocalDate, accent: Color) {
+    val activeDates = trend.filter { (it.value ?: 0.0) > 0.0 }.mapTo(hashSetOf()) { it.date }
+    val dates = workoutCalendarDates(today)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        listOf("S", "M", "T", "W", "T", "F", "S").forEach { label ->
+            Text(label, modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    Canvas(Modifier.fillMaxWidth().height(104.dp)) {
         val columns = 7
-        val rows = 4
-        val xStep = size.width / (columns - 1).coerceAtLeast(1)
-        val yStep = size.height / (rows - 1).coerceAtLeast(1)
-        repeat(rows * columns) { index ->
-            val point = recent.getOrNull(index)
+        val rows = 6
+        val xStep = size.width / columns
+        val yStep = size.height / rows
+        dates.forEachIndexed { index, date ->
             drawCircle(
-                color = if ((point?.value ?: 0.0) > 0.0) accent else AppBorder,
+                color = if (date in activeDates) accent else AppBorder,
                 radius = 4.dp.toPx(),
-                center = androidx.compose.ui.geometry.Offset((index % columns) * xStep, (index / columns) * yStep),
+                center = androidx.compose.ui.geometry.Offset((index % columns + .5f) * xStep, (index / columns + .5f) * yStep),
             )
         }
     }
@@ -2723,9 +2730,13 @@ internal fun canChangeDashboardOccurrence(
     today: LocalDate,
     selectedDate: LocalDate,
     exceptions: List<OccurrenceException>,
+    disposition: OccurrenceDisposition = OccurrenceDisposition.SKIPPED,
 ): Boolean = selectedDate == today && session.action == SessionAction.START && session.savedOriginDate == null &&
-    session.occurrence.scheduledDate == today && session.effectiveDate == today &&
-    exceptions.none { it.occurrence == session.occurrence }
+    session.effectiveDate == today && when (val existing = exceptions.firstOrNull { it.occurrence == session.occurrence }) {
+        null -> session.occurrence.scheduledDate == today
+        else -> disposition == OccurrenceDisposition.SKIPPED && existing.disposition == OccurrenceDisposition.DEFERRED &&
+            existing.effectiveDate == today
+    }
 
 internal fun occurrenceMenuActionDescription(session: DashboardSession, disposition: OccurrenceDisposition): String =
     when (disposition) {
@@ -2887,10 +2898,11 @@ private fun SessionCard(
                         .border(1.dp, AppBlue.copy(alpha = .35f), RoundedCornerShape(12.dp))
                         .padding(4.dp),
                 ) {
-                    listOf(
+                    (if (session.occurrence.scheduledDate == session.effectiveDate) listOf(
                         Triple(OccurrenceDisposition.DEFERRED, "Move to tomorrow", Icons.Default.CalendarMonth),
                         Triple(OccurrenceDisposition.SKIPPED, "Skip today", Icons.Default.Remove),
-                    ).forEach { (disposition, label, icon) ->
+                    ) else listOf(Triple(OccurrenceDisposition.SKIPPED, "Skip today", Icons.Default.Remove)))
+                        .forEach { (disposition, label, icon) ->
                         Row(
                             Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(8.dp))

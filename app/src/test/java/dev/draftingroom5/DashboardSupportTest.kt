@@ -14,9 +14,9 @@ class DashboardSupportTest {
     }
 
     @Test fun explicitlySelectedDaySurvivesReturningWithinTheSameWeek() {
-        val friday = saturday.minusDays(1)
-        assertEquals(friday, resolveDashboardDate(friday, saturday, saturday.plusDays(1)))
-        assertEquals(friday, resolveDashboardDate(friday, saturday, saturday))
+        val thursday = saturday.minusDays(2)
+        assertEquals(thursday, resolveDashboardDate(thursday, saturday.minusDays(1), saturday))
+        assertEquals(thursday, resolveDashboardDate(thursday, saturday, saturday))
     }
 
     private val saturday = LocalDate.of(2026, 9, 12)
@@ -95,9 +95,20 @@ class DashboardSupportTest {
     fun selectedDateControlsOccurrencesAndRecoveryDays() {
         val week = dashboardWeek(LocalDate.of(2026, 9, 10))
 
-        assertEquals(LocalDate.of(2026, 9, 7), week.first())
-        assertEquals(LocalDate.of(2026, 9, 13), week.last())
-        assertEquals(0, dashboardSessions(plan, emptyList(), emptyList(), week.last()).size)
+        assertEquals(LocalDate.of(2026, 9, 6), week.first())
+        assertEquals(LocalDate.of(2026, 9, 12), week.last())
+        assertEquals(0, dashboardSessions(plan, emptyList(), emptyList(), week.first()).size)
+    }
+
+    @Test fun workoutCalendarKeepsDatesInSundayFirstColumnsAcrossDays() {
+        val thursday = LocalDate.of(2026, 10, 1)
+        val dates = workoutCalendarDates(thursday)
+        assertEquals(42, dates.size)
+        assertEquals(java.time.DayOfWeek.SUNDAY, dates.first().dayOfWeek)
+        assertEquals(java.time.DayOfWeek.SATURDAY, dates.last().dayOfWeek)
+        assertEquals(4, dates.indexOf(thursday) % 7)
+        assertEquals(dates, workoutCalendarDates(thursday.plusDays(1)))
+        assertTrue(thursday.minusDays(29) in dates)
     }
 
     @Test
