@@ -1607,7 +1607,7 @@ private fun StatsWorkspaceHeader(
             } else {
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     activity.forEach { card ->
-                        ActivityMetricCard(card, stats, today, dateRange, Modifier.weight(1f).fillMaxHeight())
+                        ActivityMetricCard(card, stats, today, dateRange, Modifier.weight(1f).fillMaxHeight(), fillCardHeight = true)
                     }
                 }
             }
@@ -1802,6 +1802,7 @@ private fun ActivityMetricCard(
     today: LocalDate,
     dateRange: HealthDateRange,
     modifier: Modifier,
+    fillCardHeight: Boolean = false,
 ) {
     val metric = card.metric(stats)
     val trend = card.trend(stats).forDashboardRange(today, dateRange)
@@ -1819,7 +1820,8 @@ private fun ActivityMetricCard(
             contentDescription = "${card.title}, ${metric.value} ${card.unit} in ${dateRange.displayLabel}, $context"
         },
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.then(if (fillCardHeight) Modifier.fillMaxHeight() else Modifier).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(card.title.uppercase(), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall, letterSpacing = 1.8.sp)
             Row(verticalAlignment = Alignment.Bottom) {
@@ -1833,7 +1835,9 @@ private fun ActivityMetricCard(
                 WorkoutDots(trend, today, card.accent)
                 Text(context, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
-                ActivityBars(trend, card.accent)
+                ActivityBars(trend, card.accent,
+                    if (fillCardHeight) Modifier.fillMaxWidth().weight(1f).heightIn(min = 58.dp)
+                    else Modifier.fillMaxWidth().height(58.dp))
                 Row(Modifier.fillMaxWidth()) {
                     Text(dateRange.menuLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Today", modifier = Modifier.weight(1f), textAlign = TextAlign.End,
@@ -1845,8 +1849,8 @@ private fun ActivityMetricCard(
 }
 
 @Composable
-private fun ActivityBars(trend: List<HealthTrendPoint>, accent: Color) {
-    Canvas(Modifier.fillMaxWidth().height(58.dp)) {
+private fun ActivityBars(trend: List<HealthTrendPoint>, accent: Color, modifier: Modifier) {
+    Canvas(modifier) {
         val values = trend.map { (it.value ?: 0.0).coerceAtLeast(0.0) }
         if (values.isEmpty()) return@Canvas
         val maximum = values.max().takeIf { it > 0.0 } ?: 1.0
