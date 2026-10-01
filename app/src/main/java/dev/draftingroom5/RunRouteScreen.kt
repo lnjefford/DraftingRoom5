@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.util.BoundingBox
@@ -254,8 +255,8 @@ internal fun RunSelectionCard(
     var menuExpanded by remember(routeId) { mutableStateOf(false) }
     AppSurfaceCard(Modifier.fillMaxWidth().clickable(onClickLabel = "Choose $title", onClick = onClick)) {
         Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            val thumbnail = Modifier.size(if (narrow) 78.dp else 104.dp)
+            horizontalArrangement = Arrangement.spacedBy(if (narrow) 8.dp else 12.dp)) {
+            val thumbnail = Modifier.size(if (narrow) 68.dp else 104.dp)
             when {
                 route != null -> RunRouteShape(route, thumbnail)
                 treadmill -> Image(painterResource(R.drawable.run_treadmill_card), null,
@@ -263,7 +264,10 @@ internal fun RunSelectionCard(
                 else -> FreeRunShape(thumbnail)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium,
+                Text(title, style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = if (narrow) 18.sp else 20.sp,
+                    lineHeight = if (narrow) 22.sp else 24.sp,
+                ),
                     color = MaterialTheme.colorScheme.onSurface)
                 Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = if (narrow) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
