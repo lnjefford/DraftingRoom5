@@ -15,6 +15,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -217,6 +220,14 @@ private data class HealthUiState(
 @Composable
 private fun DraftingRoom5App() {
     val navigation = rememberAppNavigationState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, navigation) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) navigation.switchWorkspace(AppWorkspace.TODAY)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val screen = navigation.current
     val screenState = rememberSaveableStateHolder()
     var savedRouteKeys by rememberSaveable { mutableStateOf(navigation.backStack.map(::encodeAppRoute)) }
@@ -615,6 +626,38 @@ private fun DraftingRoom5App() {
         }
         screenState.SaveableStateProvider(encodeAppRoute(screen)) {
         when (screen) {
+            AppRoute.Today -> TodayTheme { TodayWorkspaceScreen(
+                document = appDocument,
+                onSwitchWorkspace = navigation::switchWorkspace,
+                updatePresentation = updateSettingsPresentation(updateStatus, updateBusy, updateActionMessage, BuildConfig.VERSION_NAME),
+                onUpdate = checkAndInstallUpdate,
+                backupStatus = backupStatus,
+                backupActionMessage = backupActionMessage,
+                onAutomaticBackupChange = { enabled ->
+                    runCatching { backupManager.setEnabled(enabled) }.onSuccess {
+                        (appRepository.state.value as? LoadState.Ready)?.value?.let { acceptDocumentResult(RepositoryResult.Success(it)) }
+                        backupStatus = backupManager.status()
+                        backupActionMessage = if (enabled) "Automatic backups enabled." else "Automatic backups disabled."
+                    }.onFailure { backupActionMessage = it.message ?: "Could not save backup settings." }
+                },
+                onBackUpNow = {
+                    val result = backupManager.createBackup()
+                    if (result.isFailure) backupManager.requestBackup()
+                    backupStatus = backupManager.status()
+                    backupActionMessage = if (result.isSuccess) "Fitness and Finance recovery snapshot saved." else backupFailureMessage(backupStatus.enabled)
+                },
+                onRestoreLatest = {
+                    backupManager.restoreLatest().onSuccess {
+                        (appRepository.state.value as? LoadState.Ready)?.value?.let { acceptDocumentResult(RepositoryResult.Success(it)) }
+                        backupActionMessage = "Restored Fitness and Finance from the latest recovery snapshot."
+                    }.onFailure { error -> backupActionMessage = error.message ?: "Could not restore the latest snapshot." }
+                    backupStatus = backupManager.status()
+                },
+                onOpenBackupSettings = {
+                    runCatching { openAndroidBackupSettings(context) }
+                        .onFailure { backupActionMessage = "Could not open Android backup settings: ${it.message ?: "Try again."}" }
+                },
+            ) }
             AppRoute.Dashboard -> Dashboard(
                 healthUi = healthUi,
                 dashboardLayout = dashboardLayout,

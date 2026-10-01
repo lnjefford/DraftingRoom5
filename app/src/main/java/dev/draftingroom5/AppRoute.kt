@@ -13,6 +13,7 @@ import java.time.DayOfWeek
 
 /** Every full-screen destination in the clean application shell. */
 internal sealed interface AppRoute {
+    data object Today : AppRoute
     data object Dashboard : AppRoute
     data object Settings : AppRoute
     data object DashboardCustomization : AppRoute
@@ -46,10 +47,11 @@ internal sealed interface AppRoute {
     data class RetirementScenarioDetail(val generation: Long, val planRevision: Long, val scenarioId: String) : AppRoute
 }
 
-internal enum class AppWorkspace(val label: String) { FITNESS("Fitness"), RETIREMENT("Finance") }
+internal enum class AppWorkspace(val label: String) { TODAY("Today"), FITNESS("Fitness"), RETIREMENT("Finance") }
 
 internal val AppRoute.workspace: AppWorkspace
     get() = when (this) {
+        AppRoute.Today -> AppWorkspace.TODAY
         AppRoute.RetirementOverview,
         AppRoute.RetirementForecast,
         AppRoute.RetirementAssets,
@@ -78,20 +80,30 @@ internal val AppRoute.workspace: AppWorkspace
 @Stable
 internal class AppNavigationState(
     initialStack: List<AppRoute>,
-    initialWorkspace: AppWorkspace = initialStack.lastOrNull()?.workspace ?: AppWorkspace.FITNESS,
+    initialWorkspace: AppWorkspace = initialStack.lastOrNull()?.workspace ?: AppWorkspace.TODAY,
     initialInactiveStack: List<AppRoute>? = null,
+    initialTodayStack: List<AppRoute>? = null,
+    initialFitnessStack: List<AppRoute>? = null,
+    initialRetirementStack: List<AppRoute>? = null,
 ) {
+    private var todayStack by mutableStateOf(
+        normalizeRouteStack(if (initialWorkspace == AppWorkspace.TODAY) initialStack else initialTodayStack.orEmpty(), AppWorkspace.TODAY),
+    )
     private var fitnessStack by mutableStateOf(
-        normalizeRouteStack(if (initialWorkspace == AppWorkspace.FITNESS) initialStack else initialInactiveStack.orEmpty(), AppWorkspace.FITNESS),
+        normalizeRouteStack(if (initialWorkspace == AppWorkspace.FITNESS) initialStack else initialFitnessStack ?: initialInactiveStack.orEmpty(), AppWorkspace.FITNESS),
     )
     private var retirementStack by mutableStateOf(
-        normalizeRouteStack(if (initialWorkspace == AppWorkspace.RETIREMENT) initialStack else initialInactiveStack.orEmpty(), AppWorkspace.RETIREMENT),
+        normalizeRouteStack(if (initialWorkspace == AppWorkspace.RETIREMENT) initialStack else initialRetirementStack ?: initialInactiveStack.orEmpty(), AppWorkspace.RETIREMENT),
     )
     var activeWorkspace by mutableStateOf(initialWorkspace)
         private set
 
     val backStack: List<AppRoute>
-        get() = if (activeWorkspace == AppWorkspace.FITNESS) fitnessStack else retirementStack
+        get() = when (activeWorkspace) {
+            AppWorkspace.TODAY -> todayStack
+            AppWorkspace.FITNESS -> fitnessStack
+            AppWorkspace.RETIREMENT -> retirementStack
+        }
 
     val current: AppRoute get() = backStack.last()
     val canGoBack: Boolean get() = backStack.size > 1
@@ -128,25 +140,38 @@ internal class AppNavigationState(
     }
 
     private fun updateActiveStack(stack: List<AppRoute>) {
-        if (activeWorkspace == AppWorkspace.FITNESS) fitnessStack = stack else retirementStack = stack
+        when (activeWorkspace) {
+            AppWorkspace.TODAY -> todayStack = stack
+            AppWorkspace.FITNESS -> fitnessStack = stack
+            AppWorkspace.RETIREMENT -> retirementStack = stack
+        }
     }
 
     companion object {
         val Saver: Saver<AppNavigationState, Any> = listSaver(
             save = { state ->
                 listOf("workspace:${state.activeWorkspace.name}") +
+                    state.todayStack.map { "today:${encodeAppRoute(it)}" } +
                     state.fitnessStack.map { "fitness:${encodeAppRoute(it)}" } +
                     state.retirementStack.map { "retirement:${encodeAppRoute(it)}" }
             },
             restore = { encoded ->
                 val workspace = encoded.firstOrNull()?.removePrefix("workspace:")
                     ?.let { runCatching { AppWorkspace.valueOf(it) }.getOrNull() } ?: AppWorkspace.FITNESS
+                val today = encoded.filter { it.startsWith("today:") }.mapNotNull { decodeAppRoute(it.removePrefix("today:")) }
                 val fitness = encoded.filter { it.startsWith("fitness:") }.mapNotNull { decodeAppRoute(it.removePrefix("fitness:")) }
                 val retirement = encoded.filter { it.startsWith("retirement:") }.mapNotNull { decodeAppRoute(it.removePrefix("retirement:")) }
                 AppNavigationState(
-                    initialStack = if (workspace == AppWorkspace.FITNESS) fitness else retirement,
+                    initialStack = when (workspace) {
+                        AppWorkspace.TODAY -> today
+                        AppWorkspace.FITNESS -> fitness
+                        AppWorkspace.RETIREMENT -> retirement
+                    },
                     initialWorkspace = workspace,
                     initialInactiveStack = if (workspace == AppWorkspace.FITNESS) retirement else fitness,
+                    initialTodayStack = today,
+                    initialFitnessStack = fitness,
+                    initialRetirementStack = retirement,
                 )
             },
         )
@@ -155,7 +180,7 @@ internal class AppNavigationState(
 
 @Composable
 internal fun rememberAppNavigationState(): AppNavigationState = rememberSaveable(saver = AppNavigationState.Saver) {
-    AppNavigationState(listOf(AppRoute.Dashboard))
+    AppNavigationState(listOf(AppRoute.Today))
 }
 
 internal val retirementTopLevelRoutes = listOf(
@@ -165,7 +190,11 @@ internal val retirementTopLevelRoutes = listOf(
 )
 
 internal fun normalizeRouteStack(routes: List<AppRoute>, workspace: AppWorkspace = AppWorkspace.FITNESS): List<AppRoute> {
-    val root = if (workspace == AppWorkspace.FITNESS) AppRoute.Dashboard else AppRoute.RetirementOverview
+    val root = when (workspace) {
+        AppWorkspace.TODAY -> AppRoute.Today
+        AppWorkspace.FITNESS -> AppRoute.Dashboard
+        AppWorkspace.RETIREMENT -> AppRoute.RetirementOverview
+    }
     val matching = routes.filter { it.workspace == workspace }
     if (matching.isEmpty()) return listOf(root)
     val firstRoot = matching.indexOfFirst { it == root || (workspace == AppWorkspace.RETIREMENT && it in retirementTopLevelRoutes) }
@@ -173,6 +202,7 @@ internal fun normalizeRouteStack(routes: List<AppRoute>, workspace: AppWorkspace
 }
 
 internal fun encodeAppRoute(route: AppRoute): String = when (route) {
+    AppRoute.Today -> "today"
     AppRoute.Dashboard -> "dashboard"
     AppRoute.Settings -> "settings"
     AppRoute.DashboardCustomization -> "customization"
@@ -208,6 +238,7 @@ internal fun encodeAppRoute(route: AppRoute): String = when (route) {
 internal fun decodeAppRoute(value: String): AppRoute? {
     val parts = value.split(':')
     return when (parts.firstOrNull()) {
+        "today" -> AppRoute.Today.takeIf { parts.size == 1 }
         "dashboard" -> AppRoute.Dashboard.takeIf { parts.size == 1 }
         // Metric details moved into the snapshot; restore older saved destinations at its dashboard.
         "metric" -> AppRoute.Dashboard.takeIf {

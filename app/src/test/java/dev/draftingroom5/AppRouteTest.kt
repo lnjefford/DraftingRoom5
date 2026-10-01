@@ -16,6 +16,7 @@ class AppRouteTest {
     @Test
     fun everyDestinationRoundTripsThroughSavedPrimitiveState() {
         val routes = listOf(
+            AppRoute.Today,
             AppRoute.Dashboard,
             AppRoute.Settings,
             AppRoute.DashboardCustomization,
@@ -102,6 +103,24 @@ class AppRouteTest {
         assertEquals(AppRoute.RetirementForecastSettings, navigation.current)
         assertTrue(navigation.back())
         assertEquals(AppRoute.RetirementForecast, navigation.current)
+    }
+
+    @Test fun todayIsTheFreshLaunchWorkspaceAndPreservesOtherStacks() {
+        val initial = AppNavigationState(listOf(AppRoute.Today))
+        assertEquals(AppWorkspace.TODAY, initial.activeWorkspace)
+        assertEquals(AppRoute.Today, initial.current)
+        initial.switchWorkspace(AppWorkspace.FITNESS)
+        initial.navigate(AppRoute.Settings)
+        initial.switchWorkspace(AppWorkspace.RETIREMENT)
+        initial.selectRetirementTab(AppRoute.RetirementAssets)
+        initial.switchWorkspace(AppWorkspace.TODAY)
+        val encoded = with(AppNavigationState.Saver) { SaverScope { true }.save(initial) }!!
+        val restored = AppNavigationState.Saver.restore(encoded)!!
+        assertEquals(AppRoute.Today, restored.current)
+        restored.switchWorkspace(AppWorkspace.FITNESS)
+        assertEquals(AppRoute.Settings, restored.current)
+        restored.switchWorkspace(AppWorkspace.RETIREMENT)
+        assertEquals(AppRoute.RetirementAssets, restored.current)
     }
 
     @Test

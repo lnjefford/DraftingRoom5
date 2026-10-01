@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -99,6 +100,7 @@ internal data class WorkspaceChoice(
 )
 
 internal val WorkspaceChoices = listOf(
+    WorkspaceChoice(AppWorkspace.TODAY, Icons.Default.WbSunny),
     WorkspaceChoice(AppWorkspace.FITNESS, Icons.Default.FitnessCenter),
     WorkspaceChoice(AppWorkspace.RETIREMENT, Icons.Default.Savings),
 )

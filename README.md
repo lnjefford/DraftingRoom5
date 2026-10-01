@@ -1,6 +1,8 @@
 # DraftingRoom5
 
-DraftingRoom5 is a native Android health dashboard with a Wear OS workout companion. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
+DraftingRoom5 is a native Android personal dashboard with Fitness and Finance workspaces and a Wear OS workout companion. It combines a day-focused training plan with Health Connect trends, guided routines, linked workout apps, dashboard customization, local recovery, and verified in-app updates.
+
+The Today workspace opens first whenever the app starts. It shows scheduled workouts and the tracked retirement balance, with a purple scene that changes for local time and current weather. It uses current location by default, offers a saved city override, and includes editable stock and team favorites. Stock rows open current quotes; team rows open official schedules and scores. Market prices and sports results are not yet displayed inside the app.
 
 The current release adds custom timed walk/run sessions, GPS tracking, routes drawn on OpenStreetMap or imported from GPX, and phone-free run recording on Wear OS. Cached plans and routes let the watch record without a nearby phone; completed runs transfer into phone history when the Wear Data Layer reconnects. The run screen has lightweight Spotify status and a clickable Spotify logo/row; enabling Android notification-listener access shows the currently playing title.
 
