@@ -165,7 +165,8 @@ internal fun RunSessionScreen(
         .coerceAtLeast(0).toInt() } ?: 0
     val next = interval?.let { plan.intervals.getOrNull(it.first + 1) }
     val progress = session.routeProgress()
-    val cue = progress?.let { position -> session.route?.turnCues?.firstOrNull { it.pointIndex >= position.first - 1 } }
+    val cue = progress?.let { position -> session.route?.turnCues?.firstOrNull {
+        it.kind.isTurn() && it.pointIndex >= position.first - 1 } }
     val cueDistance = cue?.let { turn -> session.samples.lastOrNull()?.point?.let { point ->
         session.route?.points?.getOrNull(turn.pointIndex)?.let { geoDistanceMeters(point, it).toInt() }
     } }

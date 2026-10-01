@@ -59,6 +59,16 @@ class RunDataTest {
         assertEquals(route.points, copy.points)
     }
 
+    @Test fun runSnapshotDropsLegacyArrivalAndContinueCues() {
+        val route = routeFixture().copy(turnCues = listOf(
+            RunTurnCue(0, RunTurnKind.CONTINUE, "Continue straight"),
+            RunTurnCue(1, RunTurnKind.RIGHT, "Turn right"),
+            RunTurnCue(2, RunTurnKind.ARRIVE, "Arrive at destination"),
+        ))
+        assertEquals(listOf(RunTurnCue(1, RunTurnKind.RIGHT, "Turn right")),
+            route.forRunSnapshot().turnCues)
+    }
+
     @Test fun routineExecutionShapesCannotBeMixed() {
         val base = defaultAppDocument()
         val invalid = Routine(

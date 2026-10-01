@@ -89,6 +89,9 @@ internal data class RunRoutePoint(
 
 internal enum class RunTurnKind { CONTINUE, LEFT, RIGHT, U_TURN, ARRIVE }
 
+internal fun RunTurnKind.isTurn(): Boolean = this == RunTurnKind.LEFT ||
+    this == RunTurnKind.RIGHT || this == RunTurnKind.U_TURN
+
 internal data class RunTurnCue(
     val pointIndex: Int,
     val kind: RunTurnKind,
@@ -110,9 +113,10 @@ internal data class RunRoute(
 
 /** Keep turn locations and endpoints while bounding offline transfer and session snapshots. */
 internal fun RunRoute.forRunSnapshot(maxPoints: Int = 2_000): RunRoute {
-    if (points.size <= maxPoints) return this
+    val turnsOnly = copy(turnCues = turnCues.filter { it.kind.isTurn() })
+    if (points.size <= maxPoints) return turnsOnly
     require(maxPoints >= 2)
-    val required = (listOf(0, points.lastIndex) + turnCues.map { it.pointIndex }).distinct().sorted()
+    val required = (listOf(0, points.lastIndex) + turnsOnly.turnCues.map { it.pointIndex }).distinct().sorted()
     val retainedRequired = if (required.size <= maxPoints) required else
         (listOf(0) + required.drop(1).dropLast(1).take(maxPoints - 2) + points.lastIndex).distinct().sorted()
     val room = maxPoints - retainedRequired.size
@@ -123,9 +127,9 @@ internal fun RunRoute.forRunSnapshot(maxPoints: Int = 2_000): RunRoute {
     }
     val selected = (retainedRequired + supplemental).distinct().sorted()
     val mapped = selected.withIndex().associate { it.value to it.index }
-    return copy(points = selected.map(points::get),
+    return turnsOnly.copy(points = selected.map(points::get),
         waypointIndices = (listOf(0) + waypointIndices.mapNotNull(mapped::get) + selected.lastIndex).distinct().sorted(),
-        turnCues = turnCues.mapNotNull { cue -> mapped[cue.pointIndex]?.let { cue.copy(pointIndex = it) } })
+        turnCues = turnsOnly.turnCues.mapNotNull { cue -> mapped[cue.pointIndex]?.let { cue.copy(pointIndex = it) } })
 }
 
 internal fun RunRoute.renamed(name: String): RunRoute? {

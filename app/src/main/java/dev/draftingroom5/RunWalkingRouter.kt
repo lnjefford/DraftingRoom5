@@ -42,8 +42,9 @@ internal fun parseWalkingRoute(body: String): WalkingRoute {
             for (stepIndex in 0 until steps.length()) {
                 val step = steps.getJSONObject(stepIndex)
                 val type = step.getInt("type")
-                // Departure only announces the start; the route already displays that marker.
-                if (type == 11) continue
+                // Only actual turns are useful as run guidance. Skip departure, arrival,
+                // and straight-ahead instructions, including those at intermediate stops.
+                if (type !in 0..5 && type != 9 && type != 12 && type != 13) continue
                 val location = step.getJSONArray("way_points").getInt(0)
                 require(location in points.indices)
                 val instruction = step.getString("instruction").trim()
@@ -52,8 +53,6 @@ internal fun parseWalkingRoute(body: String): WalkingRoute {
                     0, 2, 4, 12 -> RunTurnKind.LEFT
                     1, 3, 5, 13 -> RunTurnKind.RIGHT
                     9 -> RunTurnKind.U_TURN
-                    10 -> RunTurnKind.ARRIVE
-                    6, 7, 8 -> RunTurnKind.CONTINUE
                     else -> continue
                 }
                 add(RunTurnCue(location, kind, instruction.take(500)))

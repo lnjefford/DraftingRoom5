@@ -688,7 +688,18 @@ fun RunRouteGuidanceEditorScreenshots() {
     val route = previewRunRoute()
     DraftingRoom5Theme {
         RunRouteGuidanceEditor(WalkingRoute(route.points, route.waypointIndices, route.turnCues),
-            route.waypointIndices.map(route.points::get), true, false, {}, {}, {}, {}, {})
+            true, false, {}, {}, {}, {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Composable
+fun RunRouteNoTurnsEditorScreenshots() {
+    val route = previewRunRoute()
+    DraftingRoom5Theme {
+        RunRouteGuidanceEditor(WalkingRoute(route.points, route.waypointIndices, emptyList()),
+            true, false, {}, {}, {}, {})
     }
 }
 

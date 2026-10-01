@@ -208,7 +208,9 @@ internal fun RunRoutineEditorScreen(
                         Text(selected?.name ?: "No route selected", fontWeight = FontWeight.Bold)
                         Text(
                             if (selected == null) "Select or design a route for this run." else
-                                "${selected.points.size} route points · ${selected.turnCues.size} turn cues",
+                                "${selected.distanceLabel()} · " +
+                                    selected.turnCues.count { it.kind.isTurn() }.let { count ->
+                                        "$count ${if (count == 1) "turn" else "turns"}" },
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         OutlinedButton(onClick = { routePicker = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

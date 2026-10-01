@@ -171,7 +171,9 @@ internal fun RunRouteScreen(
                                 Text(route.name, style = if (narrow) MaterialTheme.typography.titleMedium else
                                     MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
                                 Text(route.distanceLabel(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(if (route.id == lastUsedRouteId) "LAST USED" else "${route.waypointIndices.size} waypoints",
+                                val turnCount = route.turnCues.count { it.kind.isTurn() }
+                                Text(if (route.id == lastUsedRouteId) "LAST USED" else
+                                    "$turnCount ${if (turnCount == 1) "turn" else "turns"}",
                                     color = if (route.id == lastUsedRouteId) AppMint else AppBlue,
                                     style = MaterialTheme.typography.bodySmall)
                             }
@@ -208,13 +210,13 @@ internal fun RunRouteScreen(
                         Box(Modifier.align(Alignment.CenterHorizontally).width(42.dp).height(5.dp)
                             .clip(RoundedCornerShape(5.dp)).background(AppBorder))
                         EditorialHeading("SAVED ROUTE", selected.name, selected.distanceLabel())
-                        Text("${selected.waypointIndices.size} stops · ${selected.turnCues.size} " +
-                            "turn ${if (selected.turnCues.size == 1) "direction" else "directions"}",
+                        val turnCount = selected.turnCues.count { it.kind.isTurn() }
+                        Text("$turnCount ${if (turnCount == 1) "turn" else "turns"}",
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (onSelectRoute != null) Button(onClick = { onSelectRoute(selected.id) },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Use this route") }
                         Text("MANAGE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        RunRouteAction("Edit route", "Edit stops, path, and directions", Icons.Default.Edit) { editingMap = true }
+                        RunRouteAction("Edit route", "Edit map and turn directions", Icons.Default.Edit) { editingMap = true }
                         RunRouteAction("Reverse direction", "Travel the route the other way", Icons.Default.SwapHoriz) {
                             if (onSave(selected.reversedDirection())) message = "Direction reversed. Turn cues cleared for safety."
                             else message = "Could not reverse route."
@@ -398,18 +400,18 @@ internal fun routePreviewPoints(points: List<RunRoutePoint>, maxPoints: Int = 30
 
 @Composable
 internal fun RunTurnCueDialog(pointIndex: Int, original: RunTurnCue?, onDismiss: () -> Unit, onSave: (RunTurnCue) -> Unit) {
-    var kind by rememberSaveable(pointIndex) { mutableStateOf(original?.kind ?: RunTurnKind.CONTINUE) }
+    var kind by rememberSaveable(pointIndex) { mutableStateOf(original?.kind?.takeIf(RunTurnKind::isTurn) ?: RunTurnKind.LEFT) }
     var instruction by rememberSaveable(pointIndex) { mutableStateOf(original?.instruction.orEmpty()) }
     var expanded by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Turn cue · point ${pointIndex + 1}") },
+        title = { Text("Edit turn") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box {
                     OutlinedButton(onClick = { expanded = true }) { Text(kind.label()) }
                     DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
-                        RunTurnKind.entries.forEach { option ->
+                        listOf(RunTurnKind.LEFT, RunTurnKind.RIGHT, RunTurnKind.U_TURN).forEach { option ->
                             DropdownMenuItem(text = { Text(option.label()) }, onClick = { kind = option; expanded = false })
                         }
                     }

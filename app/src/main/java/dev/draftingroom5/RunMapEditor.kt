@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -97,7 +96,8 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
     val keyStore = remember(context) { RunRoutingKeyStore(context) }
     var name by remember(initial?.id) { mutableStateOf(initial?.name.orEmpty()) }
     var anchors by remember(initial?.id) { mutableStateOf(initial?.let { source -> source.waypointIndices.map(source.points::get) } ?: emptyList()) }
-    var route by remember(initial?.id) { mutableStateOf(initial?.let { WalkingRoute(it.points, it.waypointIndices, it.turnCues) }) }
+    var route by remember(initial?.id) { mutableStateOf(initial?.let { source ->
+        WalkingRoute(source.points, source.waypointIndices, source.turnCues.filter { it.kind.isTurn() }) }) }
     var routing by remember { mutableStateOf(false) }
     var routingMessage by remember { mutableStateOf<String?>(null) }
     var keyReady by remember { mutableStateOf(keyStore.load() != null) }
@@ -160,15 +160,14 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
         if (clean.isBlank() || planned == null) message = "Name the route and wait for a walking path."
         else {
             val saved = RunRoute(initial?.id ?: newId(), (initial?.revision ?: 0) + 1, clean,
-                planned.points, planned.waypointIndices, planned.turnCues)
+                planned.points, planned.waypointIndices, planned.turnCues.filter { it.kind.isTurn() })
             if (!onSave(saved)) message = "Could not save route." else onBack()
         }
     }
     if (editingGuidance) {
-        RunRouteGuidanceEditor(route, anchors, keyReady, routing,
+        RunRouteGuidanceEditor(route, keyReady && anchors.size >= 2, routing,
             onBack = { editingGuidance = false },
             onGenerate = { rerouteVersion++ },
-            onRemoveStop = { index -> anchors = anchors.filterIndexed { position, _ -> position != index }; route = null },
             onCueClick = { cuePoint = it },
             onDeleteCue = { index -> route = route?.copy(turnCues = route!!.turnCues.filterNot { it.pointIndex == index }) },
         )
@@ -315,7 +314,7 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
                         routingMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         OutlinedButton(onClick = { editingGuidance = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Stops & directions")
+                            Text("Turn directions")
                         }
                         Button(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank(),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
@@ -355,48 +354,33 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
 
 @Composable
 internal fun RunRouteGuidanceEditor(
-    route: WalkingRoute?, anchors: List<RunRoutePoint>, keyReady: Boolean, routing: Boolean,
-    onBack: () -> Unit, onGenerate: () -> Unit, onRemoveStop: (Int) -> Unit,
+    route: WalkingRoute?, canGenerate: Boolean, routing: Boolean,
+    onBack: () -> Unit, onGenerate: () -> Unit,
     onCueClick: (Int) -> Unit, onDeleteCue: (Int) -> Unit,
 ) {
     Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
-        topBar = { SecondaryTopBar("Stops & directions", onBack) },
+        topBar = { SecondaryTopBar("Turn directions", onBack) },
         containerColor = Color.Transparent) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text("STOPS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                Text("Tap the map to add stops. Directions are generated from the walking path; edit one only when needed.",
+                Text("TURNS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                Text("Turns are generated from the walking path. Edit one here only if needed; edit route points on the map.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            itemsIndexed(anchors, key = { index, _ -> "stop-$index" }) { index, _ ->
-                val pointIndex = route?.waypointIndices?.getOrNull(index)
-                AppSurfaceCard(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(when (index) {
-                            0 -> "Start"
-                            anchors.lastIndex -> "Finish"
-                            else -> "Stop ${index + 1}"
-                        }, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                        if (pointIndex != null) TextButton(onClick = { onCueClick(pointIndex) }) {
-                            Text(if (route.turnCues.any { it.pointIndex == pointIndex }) "Edit direction" else "Add direction")
-                        }
-                        if (index != 0 && index != anchors.lastIndex) IconButton(onClick = { onRemoveStop(index) }) {
-                            Icon(Icons.Default.Delete, "Remove stop")
-                        }
-                    }
-                }
             }
             item {
-                Text("TURN DIRECTIONS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                if (route?.turnCues.isNullOrEmpty()) Text("No directions available yet.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (keyReady && anchors.size >= 2) OutlinedButton(onClick = onGenerate, enabled = !routing,
+                val emptyMessage = when {
+                    route == null -> "Set a route on the map to generate turns."
+                    route.turnCues.none { it.kind.isTurn() } -> "This route has no turns."
+                    else -> null
+                }
+                emptyMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                if (canGenerate) OutlinedButton(onClick = onGenerate, enabled = !routing,
                     modifier = Modifier.fillMaxWidth()) {
-                    Text(if (routing) "Generating directions…" else "Regenerate directions from walking path")
+                    Text(if (routing) "Generating turns…" else "Regenerate turns from walking path")
                 }
             }
-            items(route?.turnCues.orEmpty(), key = { "cue-${it.pointIndex}" }) { cue ->
+            items(route?.turnCues.orEmpty().filter { it.kind.isTurn() }, key = { "cue-${it.pointIndex}" }) { cue ->
                 AppSurfaceCard(Modifier.fillMaxWidth().clickable { onCueClick(cue.pointIndex) }) {
                     Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
