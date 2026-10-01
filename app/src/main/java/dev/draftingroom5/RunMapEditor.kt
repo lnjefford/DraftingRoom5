@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -99,9 +102,12 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
     var routingMessage by remember { mutableStateOf<String?>(null) }
     var keyReady by remember { mutableStateOf(keyStore.load() != null) }
     var keyVersion by remember { mutableIntStateOf(0) }
-    var keyDialog by remember { mutableStateOf(!keyReady && !inspectionMode) }
+    var keyDialog by remember { mutableStateOf(initial == null && !keyReady && !inspectionMode) }
     var message by remember { mutableStateOf<String?>(null) }
     var drawMode by remember { mutableStateOf(false) }
+    var editingGuidance by remember { mutableStateOf(false) }
+    var cuePoint by remember { mutableStateOf<Int?>(null) }
+    var rerouteVersion by remember { mutableIntStateOf(0) }
     var menuExpanded by remember { mutableStateOf(false) }
     var stroke by remember { mutableStateOf<List<Offset>>(emptyList()) }
     val map = remember(context) {
@@ -127,8 +133,9 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
         map.onResume()
         onDispose { map.onPause(); map.onDetach() }
     }
-    LaunchedEffect(anchors, keyReady, keyVersion) {
-        if (initial != null && keyVersion == 0 && anchors == initial.waypointIndices.map(initial.points::get)) return@LaunchedEffect
+    LaunchedEffect(anchors, keyReady, keyVersion, rerouteVersion) {
+        if (initial != null && keyVersion == 0 && rerouteVersion == 0 &&
+            anchors == initial.waypointIndices.map(initial.points::get)) return@LaunchedEffect
         route = null
         routingMessage = null
         if (anchors.size < 2 || !keyReady) return@LaunchedEffect
@@ -143,7 +150,7 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
         } catch (error: WalkingRouteException) { routingMessage = error.explanation }
         finally { routing = false }
     }
-    BackHandler(onBack = onBack)
+    BackHandler { if (editingGuidance) editingGuidance = false else onBack() }
     val distancePoints = route?.points ?: anchors
     val distanceMeters = distancePoints.zipWithNext().sumOf { (a, b) -> geoDistanceMeters(a, b) }
     val distanceLabel = String.format(Locale.US, "%.1f mi", distanceMeters / 1609.344)
@@ -153,13 +160,19 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
         if (clean.isBlank() || planned == null) message = "Name the route and wait for a walking path."
         else {
             val saved = RunRoute(initial?.id ?: newId(), (initial?.revision ?: 0) + 1, clean,
-                planned.points, planned.waypointIndices,
-                if (initial != null && planned.points == initial.points && initial.turnCues.isNotEmpty())
-                    initial.turnCues else planned.turnCues)
+                planned.points, planned.waypointIndices, planned.turnCues)
             if (!onSave(saved)) message = "Could not save route." else onBack()
         }
     }
-    Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
+    if (editingGuidance) {
+        RunRouteGuidanceEditor(route, anchors, keyReady, routing,
+            onBack = { editingGuidance = false },
+            onGenerate = { rerouteVersion++ },
+            onRemoveStop = { index -> anchors = anchors.filterIndexed { position, _ -> position != index }; route = null },
+            onCueClick = { cuePoint = it },
+            onDeleteCue = { index -> route = route?.copy(turnCues = route!!.turnCues.filterNot { it.pointIndex == index }) },
+        )
+    } else Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
         topBar = { SecondaryTopBar(if (initial == null) "Design route" else "Edit route", onBack) {
             TextButton(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank(),
                 colors = ButtonDefaults.textButtonColors(contentColor = AppBlue,
@@ -174,9 +187,14 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
         } }, containerColor = Color.Transparent) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
             AndroidView(factory = { map }, modifier = Modifier.fillMaxSize().graphicsLayer { clip = true }, update = { view ->
+                val previous = view.tag as? Triple<*, *, *>
+                if (previous != null && previous.first === route?.points && previous.second === anchors && previous.third == drawMode)
+                    return@AndroidView
+                view.tag = Triple(route?.points, anchors, drawMode)
                 view.overlays.clear()
                 route?.let { planned ->
-                    val points = planned.points.map { GeoPoint(it.latitudeE7 / 10_000_000.0, it.longitudeE7 / 10_000_000.0) }
+                    val points = routePreviewPoints(planned.points).map {
+                        GeoPoint(it.latitudeE7 / 10_000_000.0, it.longitudeE7 / 10_000_000.0) }
                     view.overlays.add(Polyline().apply {
                         setPoints(points)
                         outlinePaint.color = android.graphics.Color.argb(90, 32, 103, 237)
@@ -296,6 +314,9 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
                         if (!keyReady && !inspectionMode) Text("Set up routing to follow walking paths.", color = AppGold)
                         routingMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        OutlinedButton(onClick = { editingGuidance = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Stops & directions")
+                        }
                         Button(onClick = saveRoute, enabled = route != null && !routing && name.isNotBlank(),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = AppBlue,
@@ -306,6 +327,15 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
                     }
                 }
             }
+        }
+    }
+    if (cuePoint != null && route != null) {
+        val index = checkNotNull(cuePoint)
+        RunTurnCueDialog(index, route!!.turnCues.firstOrNull { it.pointIndex == index },
+            onDismiss = { cuePoint = null }) { cue ->
+            route = route?.copy(turnCues = (route!!.turnCues.filterNot { it.pointIndex == index } + cue)
+                .sortedBy { it.pointIndex })
+            cuePoint = null
         }
     }
     if (keyDialog) RunRoutingKeyDialog(
@@ -321,6 +351,67 @@ internal fun RunMapEditor(onSave: (RunRoute) -> Boolean, onBack: () -> Unit, ini
             } else false
         },
     )
+}
+
+@Composable
+internal fun RunRouteGuidanceEditor(
+    route: WalkingRoute?, anchors: List<RunRoutePoint>, keyReady: Boolean, routing: Boolean,
+    onBack: () -> Unit, onGenerate: () -> Unit, onRemoveStop: (Int) -> Unit,
+    onCueClick: (Int) -> Unit, onDeleteCue: (Int) -> Unit,
+) {
+    Scaffold(modifier = Modifier.fillMaxSize().appScreenBackground(),
+        topBar = { SecondaryTopBar("Stops & directions", onBack) },
+        containerColor = Color.Transparent) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Text("STOPS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                Text("Tap the map to add stops. Directions are generated from the walking path; edit one only when needed.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            itemsIndexed(anchors, key = { index, _ -> "stop-$index" }) { index, _ ->
+                val pointIndex = route?.waypointIndices?.getOrNull(index)
+                AppSurfaceCard(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(when (index) {
+                            0 -> "Start"
+                            anchors.lastIndex -> "Finish"
+                            else -> "Stop ${index + 1}"
+                        }, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                        if (pointIndex != null) TextButton(onClick = { onCueClick(pointIndex) }) {
+                            Text(if (route.turnCues.any { it.pointIndex == pointIndex }) "Edit direction" else "Add direction")
+                        }
+                        if (index != 0 && index != anchors.lastIndex) IconButton(onClick = { onRemoveStop(index) }) {
+                            Icon(Icons.Default.Delete, "Remove stop")
+                        }
+                    }
+                }
+            }
+            item {
+                Text("TURN DIRECTIONS", color = AppGold, style = MaterialTheme.typography.labelMedium)
+                if (route?.turnCues.isNullOrEmpty()) Text("No directions available yet.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (keyReady && anchors.size >= 2) OutlinedButton(onClick = onGenerate, enabled = !routing,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Text(if (routing) "Generating directions…" else "Regenerate directions from walking path")
+                }
+            }
+            items(route?.turnCues.orEmpty(), key = { "cue-${it.pointIndex}" }) { cue ->
+                AppSurfaceCard(Modifier.fillMaxWidth().clickable { onCueClick(cue.pointIndex) }) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(cue.kind.label(), fontWeight = FontWeight.SemiBold)
+                            Text(cue.instruction, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        IconButton(onClick = { onDeleteCue(cue.pointIndex) }) {
+                            Icon(Icons.Default.Delete, "Delete direction")
+                        }
+                    }
+                }
+            }
+            item { TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back to map") } }
+        }
+    }
 }
 
 @Composable

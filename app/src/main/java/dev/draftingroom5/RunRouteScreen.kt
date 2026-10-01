@@ -60,7 +60,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -90,44 +89,11 @@ internal fun RunRouteScreen(
     var selectedId by rememberSaveable { mutableStateOf(initialSelectedId) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     var importing by remember { mutableStateOf(false) }
-    var generatingDirections by remember { mutableStateOf(false) }
     var drawing by remember { mutableStateOf(false) }
     var editingMap by remember { mutableStateOf(false) }
     var rename by rememberSaveable { mutableStateOf(false) }
     var delete by rememberSaveable { mutableStateOf(false) }
-    var addWaypoint by rememberSaveable { mutableStateOf(false) }
-    var cuePoint by rememberSaveable { mutableStateOf<Int?>(null) }
     val selected = routes.firstOrNull { it.id == selectedId }
-    fun generateDirections(routeToUpdate: RunRoute) {
-        if (routeToUpdate.waypointIndices.size !in 2..50) {
-            message = "This route has too many waypoints for automatic directions."
-            return
-        }
-        val key = RunRoutingKeyStore(context).load()
-        if (key == null) {
-            message = "Set up your routing key in Design route first."
-            return
-        }
-        generatingDirections = true
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching { requestWalkingRoute(
-                    routeToUpdate.waypointIndices.map(routeToUpdate.points::get), key) }
-            }
-            generatingDirections = false
-            result.onSuccess { planned ->
-                if (planned.points != routeToUpdate.points || planned.waypointIndices != routeToUpdate.waypointIndices)
-                    message = "The walking path has changed. Edit this route to recalculate it with directions."
-                else if (planned.turnCues.isEmpty()) message = "No directions were returned for this route."
-                else if (routeToUpdate.withGeneratedDirections(planned)?.let(onSave) == true)
-                    message = "Turn directions generated."
-                else message = "Could not save turn directions."
-            }.onFailure { error ->
-                message = (error as? WalkingRouteException)?.explanation
-                    ?: "Could not generate turn directions. Try again."
-            }
-        }
-    }
     if (editingMap && selected != null) {
         RunMapEditor(onSave = onSave, onBack = { editingMap = false }, initial = selected)
         return
@@ -140,7 +106,6 @@ internal fun RunRouteScreen(
         }, onBack = { drawing = false })
         return
     }
-    val largeText = LocalDensity.current.fontScale > 1.3f
     val narrow = LocalConfiguration.current.screenWidthDp < 360
     val goBack = { if (selectedId != null) selectedId = null else onBack() }
     BackHandler(onBack = goBack)
@@ -171,8 +136,10 @@ internal fun RunRouteScreen(
         topBar = { SecondaryTopBar(selected?.name ?: "Routes", goBack) },
         containerColor = Color.Transparent,
     ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+        if (selected != null) RunRouteMap(selected, Modifier.fillMaxWidth().height(220.dp))
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = if (selected == null) 20.dp else 0.dp),
+            Modifier.fillMaxSize().padding(horizontal = if (selected == null) 20.dp else 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (selected == null) {
@@ -235,24 +202,19 @@ internal fun RunRouteScreen(
                 }
             } else {
                 item {
-                    RunRouteMap(selected, Modifier.fillMaxWidth().height(350.dp))
-                }
-                item {
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                         .background(AppBackground).padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Box(Modifier.align(Alignment.CenterHorizontally).width(42.dp).height(5.dp)
                             .clip(RoundedCornerShape(5.dp)).background(AppBorder))
                         EditorialHeading("SAVED ROUTE", selected.name, selected.distanceLabel())
-                        if (selected.turnCues.isEmpty()) OutlinedButton(
-                            onClick = { generateDirections(selected) }, enabled = !generatingDirections,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Text(if (generatingDirections) "Generating directions…" else "Generate turn directions")
-                        }
+                        Text("${selected.waypointIndices.size} stops · ${selected.turnCues.size} " +
+                            "turn ${if (selected.turnCues.size == 1) "direction" else "directions"}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (onSelectRoute != null) Button(onClick = { onSelectRoute(selected.id) },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Use this route") }
                         Text("MANAGE", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        RunRouteAction("Edit route", "Change points or redraw", Icons.Default.Edit) { editingMap = true }
+                        RunRouteAction("Edit route", "Edit stops, path, and directions", Icons.Default.Edit) { editingMap = true }
                         RunRouteAction("Reverse direction", "Travel the route the other way", Icons.Default.SwapHoriz) {
                             if (onSave(selected.reversedDirection())) message = "Direction reversed. Turn cues cleared for safety."
                             else message = "Could not reverse route."
@@ -268,75 +230,14 @@ internal fun RunRouteScreen(
                         TextButton(onClick = { rename = true }) { Text("Rename route") }
                     }
                 }
-                item {
-                    if (largeText) Column(Modifier.padding(horizontal = 20.dp)) {
-                        Text("WAYPOINTS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        TextButton(onClick = { addWaypoint = true }) { Text("Add waypoint") }
-                    } else Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("WAYPOINTS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        TextButton(onClick = { addWaypoint = true }) { Text("Add waypoint") }
-                    }
-                }
-                items(selected.waypointIndices, key = { "waypoint-$it" }) { index ->
-                    AppSurfaceCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Text(when (index) { 0 -> "Start"; selected.points.lastIndex -> "Finish"; else -> "Point ${index + 1}" },
-                                Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                            TextButton(onClick = { cuePoint = index }) {
-                                Text(if (selected.turnCues.any { it.pointIndex == index }) "Edit cue" else "Add cue")
-                            }
-                            if (index != 0 && index != selected.points.lastIndex) IconButton(onClick = {
-                                selected.withoutWaypoint(index)?.let { if (!onSave(it)) message = "Could not save waypoint." }
-                            }) { Icon(Icons.Default.Delete, "Remove waypoint") }
-                        }
-                    }
-                }
-                item {
-                    Column(Modifier.padding(horizontal = 20.dp)) {
-                        Text("TURN DIRECTIONS", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                        Text("Generated with the route. Tap a direction to edit it.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                if (selected.turnCues.isEmpty()) item {
-                    Text("No directions saved for this route yet.", Modifier.padding(horizontal = 20.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                items(selected.turnCues, key = { "cue-${it.pointIndex}" }) { cue ->
-                    AppSurfaceCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp).clickable { cuePoint = cue.pointIndex }) {
-                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Point ${cue.pointIndex + 1} · ${cue.kind.label()}", fontWeight = FontWeight.Bold)
-                                Text(cue.instruction, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            IconButton(onClick = {
-                                selected.withoutTurnCue(cue.pointIndex)?.let { if (!onSave(it)) message = "Could not delete turn cue." }
-                            }) { Icon(Icons.Default.Delete, "Delete turn cue") }
-                        }
-                    }
-                }
             }
             message?.let { notice -> item { Text(notice, Modifier.padding(horizontal = if (selected == null) 0.dp else 20.dp), color = AppMint) } }
             item { Spacer(Modifier.height(24.dp)) }
         }
+        }
     }
     if (selected != null && rename) RouteTextDialog("Rename route", selected.name, "Route name", { rename = false }) { name ->
         selected.renamed(name)?.let { if (onSave(it)) rename = false else message = "Could not rename route." }
-    }
-    if (selected != null && addWaypoint) RouteTextDialog("Add waypoint", "", "Track point number", { addWaypoint = false }, numeric = true) { value ->
-        val index = value.toIntOrNull()?.minus(1)
-        val updated = index?.let(selected::withWaypoint)
-        if (updated == null) message = "Enter a track point number from 1 to ${selected.points.size}."
-        else if (onSave(updated)) addWaypoint = false else message = "Could not save waypoint."
-    }
-    if (selected != null && cuePoint != null) {
-        val index = checkNotNull(cuePoint)
-        val current = selected.turnCues.firstOrNull { it.pointIndex == index }
-        RunTurnCueDialog(index, current, onDismiss = { cuePoint = null }) { cue ->
-            selected.withTurnCue(cue)?.let { if (onSave(it)) cuePoint = null else message = "Could not save turn cue." }
-        }
     }
     if (selected != null && delete) AppConfirmationDialog(
         title = "Delete ${selected.name}?",
@@ -393,7 +294,7 @@ internal fun RunRouteShape(route: RunRoute, modifier: Modifier = Modifier) {
             (size.height - offsetY - (point.latitudeE7 - minY) * scale).toFloat(),
         )
         val path = Path()
-        route.points.forEachIndexed { index, point ->
+        routePreviewPoints(route.points).forEachIndexed { index, point ->
             val p = position(point)
             if (index == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
         }
@@ -434,7 +335,7 @@ private fun RunRouteMap(route: RunRoute, modifier: Modifier = Modifier) {
             AndroidView(factory = {
                 map.apply {
                     overlays.add(Polyline().apply {
-                        setPoints(route.points.map { GeoPoint(it.latitudeE7 / 10_000_000.0,
+                        setPoints(routePreviewPoints(route.points).map { GeoPoint(it.latitudeE7 / 10_000_000.0,
                             it.longitudeE7 / 10_000_000.0) })
                         outlinePaint.color = android.graphics.Color.rgb(96, 163, 255)
                         outlinePaint.strokeWidth = 6f * context.resources.displayMetrics.density
@@ -488,8 +389,15 @@ private fun RouteTextDialog(title: String, initial: String, label: String, onDis
     )
 }
 
+internal fun routePreviewPoints(points: List<RunRoutePoint>, maxPoints: Int = 3000): List<RunRoutePoint> {
+    require(maxPoints >= 2)
+    if (points.size <= maxPoints) return points
+    val step = (points.lastIndex + maxPoints - 2) / (maxPoints - 1)
+    return points.filterIndexed { index, _ -> index == points.lastIndex || index % step == 0 }
+}
+
 @Composable
-private fun RunTurnCueDialog(pointIndex: Int, original: RunTurnCue?, onDismiss: () -> Unit, onSave: (RunTurnCue) -> Unit) {
+internal fun RunTurnCueDialog(pointIndex: Int, original: RunTurnCue?, onDismiss: () -> Unit, onSave: (RunTurnCue) -> Unit) {
     var kind by rememberSaveable(pointIndex) { mutableStateOf(original?.kind ?: RunTurnKind.CONTINUE) }
     var instruction by rememberSaveable(pointIndex) { mutableStateOf(original?.instruction.orEmpty()) }
     var expanded by remember { mutableStateOf(false) }
@@ -516,7 +424,7 @@ private fun RunTurnCueDialog(pointIndex: Int, original: RunTurnCue?, onDismiss: 
     )
 }
 
-private fun RunTurnKind.label(): String = when (this) {
+internal fun RunTurnKind.label(): String = when (this) {
     RunTurnKind.CONTINUE -> "Continue"
     RunTurnKind.LEFT -> "Turn left"
     RunTurnKind.RIGHT -> "Turn right"

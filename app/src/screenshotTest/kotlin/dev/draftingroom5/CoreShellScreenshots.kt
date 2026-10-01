@@ -683,6 +683,18 @@ fun RunRouteMissingDirectionsScreenshots() {
 @PreviewTest
 @Preview(name = "Compact", widthDp = 320, heightDp = 800)
 @Preview(name = "Tall", widthDp = 412, heightDp = 1100)
+@Composable
+fun RunRouteGuidanceEditorScreenshots() {
+    val route = previewRunRoute()
+    DraftingRoom5Theme {
+        RunRouteGuidanceEditor(WalkingRoute(route.points, route.waypointIndices, route.turnCues),
+            route.waypointIndices.map(route.points::get), true, false, {}, {}, {}, {}, {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Tall", widthDp = 412, heightDp = 1100)
 @Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
 @Composable
 fun RunStartScreenshots() {

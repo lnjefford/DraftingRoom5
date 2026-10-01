@@ -5,6 +5,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RunDataTest {
+    @org.junit.Test
+    fun previewSamplingKeepsEndsAndBoundsNativeMapWork() {
+        val points = (0 until 10_000).map { RunRoutePoint(it, it) }
+        val preview = routePreviewPoints(points)
+        assertEquals(points.first(), preview.first())
+        assertEquals(points.last(), preview.last())
+        org.junit.Assert.assertTrue(preview.size <= 3_000)
+        assertEquals(points.take(10), routePreviewPoints(points.take(10)))
+    }
     @Test fun runRoutineRequiresUniquePositiveIntervals() {
         assertThrows(IllegalArgumentException::class.java) {
             validateRunRoutine(RunRoutine(listOf(
