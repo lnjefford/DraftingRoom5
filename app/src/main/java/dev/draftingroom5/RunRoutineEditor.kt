@@ -205,20 +205,20 @@ internal fun RunRoutineEditorScreen(
             }
             item {
                 Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("ROUTE", color = AppGold, style = MaterialTheme.typography.labelMedium)
                         TextButton(onClick = { routePicker = true }) { Text("Change route") }
                     }
                     val selected = routes.firstOrNull { it.id == working.run?.routeId }
-                    Text(selected?.name ?: if (working.run?.isTreadmill == true) "Treadmill" else "Free run",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                    val turnCount = selected?.turnCues?.count { it.kind.isTurn() } ?: 0
-                    Text(if (working.run?.isTreadmill == true) "Indoor timing · no GPS" else if (selected == null) "No route guidance" else
-                        "${selected.distanceLabel()} · $turnCount ${if (turnCount == 1) "turn" else "turns"}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    RunSelectionCard(
+                        route = selected,
+                        routeId = working.run?.routeId,
+                        narrow = LocalConfiguration.current.screenWidthDp < 360,
+                        selected = false,
+                        onClick = { routePicker = true },
+                    )
                 }
             }
             item {

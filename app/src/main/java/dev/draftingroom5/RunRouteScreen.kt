@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,11 +58,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -150,26 +153,14 @@ internal fun RunRouteScreen(
                             "Select a saved route or design a new one.")
                     Spacer(Modifier.height(8.dp))
                 }
-                if (onSelectRoute != null) item {
-                    val current = routes.firstOrNull { it.id == currentRouteId }
-                    Text("CURRENT", color = AppGold, style = MaterialTheme.typography.labelMedium)
-                    Text(current?.name ?: if (currentRouteId == TREADMILL_ROUTE_ID) "Treadmill" else "Free run",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface)
-                    Text(current?.distanceLabel() ?: if (currentRouteId == TREADMILL_ROUTE_ID) "Indoor timing · no GPS" else "No route guidance",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (current != null) TextButton(onClick = { selectedId = current.id }) { Text("Edit current route") }
-                }
                 if (onSelectRoute != null) {
-                    if (currentRouteId != null) item {
-                        RunModeOption("Free run", "Outdoor GPS tracking without route guidance") {
-                            onSelectRoute(null)
-                        }
+                    item {
+                        RunSelectionCard(null, null, narrow, currentRouteId == null,
+                            onClick = { onSelectRoute(null) })
                     }
-                    if (currentRouteId != TREADMILL_ROUTE_ID) item {
-                        RunModeOption("Treadmill", "Indoor interval timing without GPS") {
-                            onSelectRoute(TREADMILL_ROUTE_ID)
-                        }
+                    item {
+                        RunSelectionCard(null, TREADMILL_ROUTE_ID, narrow, currentRouteId == TREADMILL_ROUTE_ID,
+                            onClick = { onSelectRoute(TREADMILL_ROUTE_ID) })
                     }
                 }
                 if (routes.isEmpty()) item {
@@ -180,39 +171,14 @@ internal fun RunRouteScreen(
                         }
                     }
                 }
-                items(if (onSelectRoute == null) routes else routes.filterNot { it.id == currentRouteId }, key = { it.id }) { route ->
-                    var routeMenuExpanded by remember(route.id) { mutableStateOf(false) }
-                    AppSurfaceCard(Modifier.fillMaxWidth().clickable(
-                        onClickLabel = if (onSelectRoute == null) "Edit ${route.name}" else "Select ${route.name}") {
-                        if (onSelectRoute == null) { selectedId = route.id; message = null }
-                        else onSelectRoute(route.id)
-                    }) {
-                        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            RunRouteShape(route, Modifier.size(if (narrow) 78.dp else 104.dp))
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Text(route.name, style = if (narrow) MaterialTheme.typography.titleMedium else
-                                    MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
-                                Text(route.distanceLabel(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                val turnCount = route.turnCues.count { it.kind.isTurn() }
-                                Text(if (route.id == lastUsedRouteId) "LAST USED" else
-                                    "$turnCount ${if (turnCount == 1) "turn" else "turns"}",
-                                    color = if (route.id == lastUsedRouteId) AppMint else AppBlue,
-                                    style = MaterialTheme.typography.bodySmall)
-                            }
-                            if (onSelectRoute == null) Text("›", color = AppBlue,
-                                style = MaterialTheme.typography.headlineMedium)
-                            else Box {
-                                IconButton(onClick = { routeMenuExpanded = true }) {
-                                    Icon(Icons.Default.MoreVert, "Options for ${route.name}")
-                                }
-                                DropdownMenu(routeMenuExpanded, onDismissRequest = { routeMenuExpanded = false }) {
-                                    DropdownMenuItem(text = { Text("Edit route") },
-                                        onClick = { routeMenuExpanded = false; selectedId = route.id })
-                                }
-                            }
-                        }
-                    }
+                items(routes, key = { it.id }) { route ->
+                    RunSelectionCard(route, route.id, narrow, onSelectRoute != null && route.id == currentRouteId,
+                        lastUsed = route.id == lastUsedRouteId,
+                        onClick = {
+                            if (onSelectRoute == null) { selectedId = route.id; message = null }
+                            else onSelectRoute(route.id)
+                        },
+                        onEdit = if (onSelectRoute == null) null else ({ selectedId = route.id }))
                 }
                 item {
                     OutlinedButton(onClick = { drawing = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
@@ -272,12 +238,77 @@ internal fun RunRouteScreen(
 }
 
 @Composable
-private fun RunModeOption(title: String, detail: String, onSelect: () -> Unit) {
-    AppSurfaceCard(Modifier.fillMaxWidth().clickable(onClick = onSelect)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+internal fun RunSelectionCard(
+    route: RunRoute?,
+    routeId: String?,
+    narrow: Boolean,
+    selected: Boolean,
+    lastUsed: Boolean = false,
+    onClick: () -> Unit,
+    onEdit: (() -> Unit)? = null,
+) {
+    val treadmill = routeId == TREADMILL_ROUTE_ID
+    val title = route?.name ?: if (treadmill) "Treadmill" else "Free run"
+    val turnCount = route?.turnCues?.count { it.kind.isTurn() } ?: 0
+    val subtitle = route?.distanceLabel() ?: if (treadmill) "Indoor timing · no GPS" else "Outdoor GPS · no route guidance"
+    val detail = when {
+        selected -> "SELECTED"
+        route != null && lastUsed -> "LAST USED"
+        route != null -> "$turnCount ${if (turnCount == 1) "turn" else "turns"}"
+        treadmill -> "INDOOR RUN"
+        else -> "OPEN ROUTE"
+    }
+    var menuExpanded by remember(routeId) { mutableStateOf(false) }
+    AppSurfaceCard(Modifier.fillMaxWidth().clickable(onClickLabel = "Choose $title", onClick = onClick)) {
+        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            val thumbnail = Modifier.size(if (narrow) 78.dp else 104.dp)
+            when {
+                route != null -> RunRouteShape(route, thumbnail)
+                treadmill -> Image(painterResource(R.drawable.run_treadmill_card), null,
+                    thumbnail.clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop)
+                else -> FreeRunShape(thumbnail)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(title, style = if (narrow) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = if (narrow) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
+                Text(detail, color = if (selected || lastUsed) AppMint else AppBlue,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            if (onEdit == null) Text("›", color = AppBlue, style = MaterialTheme.typography.headlineMedium)
+            else Box {
+                IconButton(onClick = { menuExpanded = true }) { Icon(Icons.Default.MoreVert, "Options for $title") }
+                DropdownMenu(menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(text = { Text("Edit route") }, onClick = { menuExpanded = false; onEdit() })
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun FreeRunShape(modifier: Modifier = Modifier) {
+    Canvas(modifier.clip(RoundedCornerShape(14.dp)).background(AppBackgroundDeep)
+        .border(1.dp, AppBorder, RoundedCornerShape(14.dp))) {
+        drawRect(Color(0xFF0A1C2C))
+        val road = Color(0xFF29445D)
+        repeat(5) { index ->
+            val y = size.height * (index + .6f) / 5f
+            val path = Path().apply {
+                moveTo(0f, y)
+                cubicTo(size.width * .35f, y - size.height * .15f,
+                    size.width * .65f, y + size.height * .1f, size.width, y - size.height * .06f)
+            }
+            drawPath(path, road, style = Stroke(width = 1.5.dp.toPx()))
+        }
+        drawCircle(AppBlue.copy(alpha = .2f), radius = size.minDimension * .24f,
+            center = Offset(size.width * .5f, size.height * .5f))
+        drawCircle(AppMint, radius = size.minDimension * .1f,
+            center = Offset(size.width * .5f, size.height * .5f))
+        drawCircle(Color.White, radius = size.minDimension * .035f,
+            center = Offset(size.width * .5f, size.height * .5f))
     }
 }
 
