@@ -135,6 +135,7 @@ internal fun TodayWorkspaceScreen(
     previewRetirementTrend: List<TodayRetirementPoint> = emptyList(),
     previewDate: LocalDate? = null,
     previewSettings: Boolean = false,
+    previewScrollOffset: Int = 0,
 ) {
     val context = LocalContext.current
     val locationPreferences = remember { TodayLocationPreferences(context) }
@@ -339,20 +340,22 @@ internal fun TodayWorkspaceScreen(
                     }
                 }, modifier = Modifier.fillMaxWidth()) { Text("Save Today settings") }
                 Spacer(Modifier.height(24.dp))
-            } else Column(
-                Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                TodayHero(scene, kind, today, weather, weatherMessage, onEditLocation = { locationEditorOpen = true },
-                    onRefresh = { refreshSerial++ })
-                Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(34.dp)) {
-                    TodayWorkoutEditorial(workouts, week, today) { onSwitchWorkspace(AppWorkspace.FITNESS) }
-                    TodayMarketsEditorial(symbols) { symbol -> context.openTodayLink(marketUrl(symbol)) }
-                    TodayTeamsEditorial(teams) { team -> context.openTodayLink(team.scheduleUrl) }
-                    TodayRetirementEditorial(retirementBalance, retirementMessage, retirementTrend) {
-                        onSwitchWorkspace(AppWorkspace.RETIREMENT)
+            } else Box(Modifier.fillMaxSize().padding(padding).background(TodayBackground)) {
+                TodaySceneBackdrop(scene)
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState(initial = previewScrollOffset)),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    TodayHero(kind, today, weather, weatherMessage, onRefresh = { refreshSerial++ })
+                    Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(34.dp)) {
+                        TodayWorkoutEditorial(workouts, week, today) { onSwitchWorkspace(AppWorkspace.FITNESS) }
+                        TodayMarketsEditorial(symbols) { symbol -> context.openTodayLink(marketUrl(symbol)) }
+                        TodayTeamsEditorial(teams) { team -> context.openTodayLink(team.scheduleUrl) }
+                        TodayRetirementEditorial(retirementBalance, retirementMessage, retirementTrend) {
+                            onSwitchWorkspace(AppWorkspace.RETIREMENT)
+                        }
+                        Spacer(Modifier.height(24.dp))
                     }
-                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
@@ -369,13 +372,30 @@ private fun TodaySettingLabel(text: String) {
 }
 
 @Composable
+private fun TodaySceneBackdrop(scene: Int) {
+    val motion = remember { ValueAnimator.areAnimatorsEnabled() }
+    val height = if (LocalDensity.current.fontScale >= 1.5f) 680.dp else 480.dp
+    Box(Modifier.fillMaxWidth().height(height)) {
+        if (motion) Crossfade(scene, animationSpec = tween(1200), label = "Today scene") { selected ->
+            Image(painterResource(selected), contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize())
+        } else Image(painterResource(scene), contentDescription = null, contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+            0f to TodayBackground.copy(alpha = 0.48f),
+            0.4f to TodayBackground.copy(alpha = 0.26f),
+            0.7f to TodayBackground.copy(alpha = 0.82f),
+            1f to TodayBackground,
+        )))
+    }
+}
+
+@Composable
 private fun TodayHero(
-    scene: Int,
     kind: TodayWeatherKind,
     date: LocalDate,
     weather: TodayWeather?,
     message: String?,
-    onEditLocation: () -> Unit,
     onRefresh: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -385,11 +405,6 @@ private fun TodayHero(
     val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "Weather drift")
     val heroHeight = if (LocalDensity.current.fontScale >= 1.5f) 460.dp else 232.dp
     Box(Modifier.fillMaxWidth().height(heroHeight)) {
-        if (motion) Crossfade(scene, animationSpec = tween(1200), label = "Today scene") { selected ->
-            Image(painterResource(selected), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        } else Image(painterResource(scene), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(TodayBackground.copy(alpha = 0.5f),
-            Color.Transparent, TodayBackground.copy(alpha = 0.7f)))))
         if (motion && kind in setOf(TodayWeatherKind.RAIN, TodayWeatherKind.SNOW, TodayWeatherKind.STORM)) {
             Canvas(Modifier.fillMaxSize()) {
                 repeat(42) { index ->
@@ -412,7 +427,6 @@ private fun TodayHero(
             }
             Text(weather?.let { "${it.location}  ·  ${kind.name.lowercase().replaceFirstChar(Char::uppercase)}" }
                 ?: message ?: "Weather loading", color = Color.White)
-            TextButton(onClick = onEditLocation) { Text("Change location", color = TodayCopper) }
         }
         IconButton(onClick = onRefresh, modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)) {
             Icon(Icons.Default.Refresh, contentDescription = "Refresh weather", tint = Color.White)

@@ -20,6 +20,18 @@ import java.time.LocalDate
 @Preview(name = "Large text", widthDp = 360, heightDp = 1100, fontScale = 2f)
 @Composable
 fun TodayWorkspaceScreenshots() {
+    TodayWorkspacePreview()
+}
+
+@PreviewTest
+@Preview(name = "Scrolled", widthDp = 412, heightDp = 1100)
+@Composable
+fun TodayScrolledScreenshot() {
+    TodayWorkspacePreview(scrollOffset = 600)
+}
+
+@Composable
+private fun TodayWorkspacePreview(scrollOffset: Int = 0) {
     DraftingRoom5Theme { TodayTheme {
         TodayWorkspaceScreen(
             document = defaultAppDocument(),
@@ -34,6 +46,7 @@ fun TodayWorkspaceScreenshots() {
                 TodayRetirementPoint(LocalDate.of(2026, 10, 1), 81_558_200),
             ),
             previewDate = LocalDate.of(2026, 10, 1),
+            previewScrollOffset = scrollOffset,
         )
     } }
 }

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,7 +49,6 @@ import java.util.Locale
 
 private val TodayText = Color(0xFFF7F2FF)
 private val TodayMint = Color(0xFF55DFB7)
-private val TodayFeatureShape = RoundedCornerShape(22.dp)
 
 @Composable
 internal fun TodayEditorialHeading(title: String, action: String? = null, onAction: (() -> Unit)? = null) {
@@ -78,38 +76,25 @@ internal fun TodayEditorialHeading(title: String, action: String? = null, onActi
 @Composable
 internal fun TodayWorkoutEditorial(sessions: List<DashboardSession>, week: List<TodayWeekDay>, today: LocalDate, onOpen: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        TodayEditorialHeading("TODAY'S WORKOUT", "VIEW FITNESS", onOpen)
+        TodayEditorialHeading("TODAY'S WORKOUT")
         val primary = sessions.firstOrNull()
-        val largeText = LocalDensity.current.fontScale >= 1.5f
-        Box(
-            Modifier.fillMaxWidth().height(if (largeText) 340.dp else 178.dp)
-                .clip(TodayFeatureShape)
-                .background(Brush.linearGradient(listOf(Color(0xFF243C60), Color(0xFF171D43), Color(0xFF14112C))))
-                .border(1.dp, Color(0xFF46628A), TodayFeatureShape)
-                .clickable(onClick = onOpen),
-        ) {
-            if (!largeText) Icon(Icons.Default.FitnessCenter, contentDescription = null,
-                tint = Color(0xFF78A8FF).copy(alpha = 0.27f),
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp).size(102.dp))
-            Column(Modifier.fillMaxWidth().padding(22.dp).padding(end = if (largeText) 0.dp else 66.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.width(3.dp).height(72.dp).background(Color(0xFF8FB9FF), RoundedCornerShape(2.dp)))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(if (primary == null) "OPEN DAY" else when (primary.action) {
                     SessionAction.DONE -> "COMPLETED TODAY"
                     SessionAction.RESUME -> "IN PROGRESS"
                     SessionAction.START -> "ON YOUR SCHEDULE"
                 }, color = Color(0xFF8FB9FF), style = MaterialTheme.typography.labelMedium, letterSpacing = 1.5.sp)
                 Text(primary?.routine?.name ?: "Your day is open", color = TodayText,
-                    style = MaterialTheme.typography.headlineMedium, maxLines = if (largeText) 3 else 2,
-                    overflow = TextOverflow.Ellipsis)
+                    style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(primary?.progressLabel ?: if (primary == null) "Make room for what moves you" else
                     if (sessions.size == 1) "1 session on your schedule" else "${sessions.size} sessions on your schedule",
                     color = Color(0xFFCAD9F2), style = MaterialTheme.typography.bodyMedium)
             }
-            Row(Modifier.align(Alignment.BottomStart).padding(start = 22.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (primary == null) "OPEN FITNESS" else primary.actionLabel.uppercase(Locale.ROOT),
-                    color = Color(0xFF93BDFF), style = MaterialTheme.typography.labelMedium, letterSpacing = 1.sp)
-                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF93BDFF), modifier = Modifier.size(18.dp))
-            }
+            Icon(Icons.Default.ChevronRight, contentDescription = "Open Fitness", tint = Color(0xFF8FB9FF),
+                modifier = Modifier.size(24.dp))
         }
         if (sessions.size > 1) Text("+ ${sessions.size - 1} more on today's schedule", color = TodayLavender,
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.clickable(onClick = onOpen))
