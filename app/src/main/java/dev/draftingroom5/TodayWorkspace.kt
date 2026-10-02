@@ -132,6 +132,7 @@ internal fun TodayWorkspaceScreen(
     onUpdate: () -> Unit = {},
     previewWeather: TodayWeather? = null,
     previewRetirementBalance: String? = null,
+    previewRetirementTrend: List<TodayRetirementPoint> = emptyList(),
     previewDate: LocalDate? = null,
     previewSettings: Boolean = false,
 ) {
@@ -182,14 +183,20 @@ internal fun TodayWorkspaceScreen(
     }
     var retirementBalance by remember { mutableStateOf(previewRetirementBalance) }
     var retirementMessage by remember { mutableStateOf(if (previewDate != null) "Tracked retirement value" else "Loading your plan") }
+    var retirementTrend by remember { mutableStateOf(previewRetirementTrend) }
     LaunchedEffect(Unit) {
         if (previewDate != null) return@LaunchedEffect
         runCatching {
             withContext(Dispatchers.IO) {
                 val repository = RetirementProviders.get(context).repository
-                AssetAggregator.totals(repository.load()).tracked.format()
+                val state = repository.load()
+                AssetAggregator.totals(state).tracked.format() to todayRetirementTrend(state)
             }
-        }.onSuccess { retirementBalance = it; retirementMessage = "Tracked retirement value" }
+        }.onSuccess { (balance, trend) ->
+            retirementBalance = balance
+            retirementTrend = trend
+            retirementMessage = "Tracked retirement value"
+        }
             .onFailure { retirementMessage = "Retirement data unavailable" }
     }
     var today by remember { mutableStateOf(previewDate ?: LocalDate.now()) }
@@ -197,6 +204,7 @@ internal fun TodayWorkspaceScreen(
         if (previewDate == null) while (true) { today = LocalDate.now(); delay(60_000) }
     }
     val workouts = remember(document, today) { dashboardSessions(document, today) }
+    val week = remember(document, today) { todayWeek(document, today) }
     val localHour = weather?.localHour ?: LocalDateTime.now().hour
     val daypart = daypartForHour(localHour)
     val kind = weather?.kind ?: TodayWeatherKind.UNKNOWN
@@ -337,51 +345,12 @@ internal fun TodayWorkspaceScreen(
             ) {
                 TodayHero(scene, kind, today, weather, weatherMessage, onEditLocation = { locationEditorOpen = true },
                     onRefresh = { refreshSerial++ })
-                Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(30.dp)) {
-                    TodaySection("TODAY'S WORKOUT", onOpen = { onSwitchWorkspace(AppWorkspace.FITNESS) }) {
-                        if (workouts.isEmpty()) Text("A clear day to move your way.", color = TodayLavender,
-                            style = MaterialTheme.typography.titleLarge)
-                        else workouts.take(3).forEach { session ->
-                            Row(Modifier.fillMaxWidth().clickable { onSwitchWorkspace(AppWorkspace.FITNESS) }.padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(session.routine.name, style = MaterialTheme.typography.headlineMedium)
-                                    Text(session.actionLabel, color = TodayLavender)
-                                }
-                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TodayCopper)
-                            }
-                        }
-                    }
-                    TodaySection("YOUR STOCKS") {
-                        symbols.forEach { symbol ->
-                            Row(Modifier.fillMaxWidth().clickable { context.openTodayLink(marketUrl(symbol)) }.padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(when (symbol) { "AAPL" -> "Apple"; "^IXIC" -> "Nasdaq Composite"; else -> symbol },
-                                        style = MaterialTheme.typography.titleLarge)
-                                    Text(symbol, color = TodayLavender, style = MaterialTheme.typography.labelMedium)
-                                }
-                                Icon(Icons.Default.ChevronRight, contentDescription = "Open quote for $symbol", tint = TodayCopper)
-                            }
-                            HorizontalDivider(color = TodayBorder)
-                        }
-                        Text("Open a symbol for the latest quote", color = TodayLavender, style = MaterialTheme.typography.bodySmall)
-                    }
-                    TodaySection("YOUR TEAMS") {
-                        if (teams.isEmpty()) Text("No teams selected", color = TodayLavender)
-                        teams.forEach { team ->
-                            Row(Modifier.fillMaxWidth().clickable { context.openTodayLink(team.scheduleUrl) }.padding(vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text(team.displayName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                                Icon(Icons.Default.ChevronRight, contentDescription = "Open schedule for ${team.displayName}", tint = TodayCopper)
-                            }
-                            HorizontalDivider(color = TodayBorder)
-                        }
-                        Text("Open a team for schedules and scores", color = TodayLavender, style = MaterialTheme.typography.bodySmall)
-                    }
-                    TodaySection("RETIREMENT GLANCE", onOpen = { onSwitchWorkspace(AppWorkspace.RETIREMENT) }) {
-                        Text(retirementMessage, color = TodayLavender)
-                        retirementBalance?.let { Text(it, style = MaterialTheme.typography.displaySmall, color = Color(0xFFB7EC82)) }
+                Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(34.dp)) {
+                    TodayWorkoutEditorial(workouts, week, today) { onSwitchWorkspace(AppWorkspace.FITNESS) }
+                    TodayMarketsEditorial(symbols) { symbol -> context.openTodayLink(marketUrl(symbol)) }
+                    TodayTeamsEditorial(teams) { team -> context.openTodayLink(team.scheduleUrl) }
+                    TodayRetirementEditorial(retirementBalance, retirementMessage, retirementTrend) {
+                        onSwitchWorkspace(AppWorkspace.RETIREMENT)
                     }
                     Spacer(Modifier.height(24.dp))
                 }
@@ -392,20 +361,6 @@ internal fun TodayWorkspaceScreen(
 
 private fun android.content.Context.openTodayLink(url: String) {
     runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-}
-
-@Composable
-private fun TodaySection(title: String, onOpen: (() -> Unit)? = null, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        HorizontalDivider(color = TodayCopper, thickness = 2.dp, modifier = Modifier.width(52.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(title, color = Color.White, style = MaterialTheme.typography.labelLarge, letterSpacing = 2.sp)
-            if (onOpen != null) IconButton(onClick = onOpen) {
-                Icon(Icons.Default.ChevronRight, contentDescription = "Open $title", tint = TodayCopper)
-            }
-        }
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
-    }
 }
 
 @Composable
@@ -428,7 +383,7 @@ private fun TodayHero(
     val motion = remember { ValueAnimator.areAnimatorsEnabled() }
     val transition = rememberInfiniteTransition(label = "Today ambient weather")
     val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "Weather drift")
-    val heroHeight = if (LocalDensity.current.fontScale >= 1.5f) 460.dp else 300.dp
+    val heroHeight = if (LocalDensity.current.fontScale >= 1.5f) 460.dp else 232.dp
     Box(Modifier.fillMaxWidth().height(heroHeight)) {
         if (motion) Crossfade(scene, animationSpec = tween(1200), label = "Today scene") { selected ->
             Image(painterResource(selected), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -446,17 +401,17 @@ private fun TodayHero(
                 }
             }
         }
-        Column(Modifier.align(Alignment.TopStart).padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.align(Alignment.TopStart).padding(24.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", locale)).uppercase(locale),
                 style = MaterialTheme.typography.labelLarge, color = Color.White, letterSpacing = 2.sp)
-            Text("Your day, at a glance", style = MaterialTheme.typography.headlineMedium, color = Color.White)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Cloud, contentDescription = null, tint = TodayCopper, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(6.dp))
-                Text(weather?.location ?: message ?: "Weather loading", color = Color.White)
+                Icon(Icons.Default.Cloud, contentDescription = null, tint = TodayCopper, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.size(8.dp))
+                Text(weather?.let { "${it.temperatureF}°F" } ?: "Today", color = Color.White,
+                    style = MaterialTheme.typography.headlineMedium)
             }
-            weather?.let { Text("${it.temperatureF}°F  ·  ${kind.name.lowercase().replaceFirstChar(Char::uppercase)}",
-                color = Color.White, modifier = Modifier.padding(start = 24.dp)) }
+            Text(weather?.let { "${it.location}  ·  ${kind.name.lowercase().replaceFirstChar(Char::uppercase)}" }
+                ?: message ?: "Weather loading", color = Color.White)
             TextButton(onClick = onEditLocation) { Text("Change location", color = TodayCopper) }
         }
         IconButton(onClick = onRefresh, modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)) {
