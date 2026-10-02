@@ -158,7 +158,7 @@ internal fun TodayMarketsEditorial(
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             symbols.forEach { symbol ->
                 TodayMarketCard(symbol, quotes[symbol], loadLogos, loading,
-                    Modifier.width(if (largeText) 290.dp else 216.dp)) { onOpen(symbol) }
+                    Modifier.width(if (largeText) 250.dp else 164.dp)) { onOpen(symbol) }
             }
         }
         Text("Market data: Yahoo Finance", color = TodayLavender.copy(alpha = 0.8f),
@@ -175,7 +175,7 @@ private fun TodayMarketCard(symbol: String, quote: TodayMarketQuote?, loadLogos:
     val change = quote?.changePercent
     val trendColor = if (change == null || change >= 0) TodayMint else Color(0xFFFF8F90)
     val shape = RoundedCornerShape(18.dp)
-    Column(modifier.clip(shape).background(Color(0xFF251E41)).border(1.dp, TodayBorder, shape)
+    Column(modifier.clip(shape).background(TodayEditorialCardSurface).border(1.dp, TodayBorder.copy(alpha = 0.7f), shape)
         .clickable(onClick = onOpen).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TodayStockLogo(symbol, loadLogos)
@@ -254,7 +254,8 @@ internal fun TodayTeamsEditorial(teams: List<TodayTeam>, games: Map<TodayTeam, T
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             teams.forEach { team ->
-                TodayTeamCard(team, games[team], loading, Modifier.width(if (largeText) 290.dp else 216.dp)) {
+                TodayTeamCard(team, games[team], loading,
+                    Modifier.width(if (largeText) 290.dp else 216.dp).height(if (largeText) 340.dp else 244.dp)) {
                     onOpen(team)
                 }
             }
@@ -269,7 +270,7 @@ private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolea
                           modifier: Modifier = Modifier, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     val shape = RoundedCornerShape(18.dp)
-    Column(modifier.clip(shape).background(Color(0xFF251E41)).border(1.dp, TodayBorder, shape)
+    Column(modifier.clip(shape).background(TodayEditorialCardSurface).border(1.dp, TodayBorder.copy(alpha = 0.7f), shape)
         .clickable(onClick = onOpen).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(Color.White),
@@ -289,7 +290,7 @@ private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolea
         if (game == null) {
             Text(if (loading) "Loading schedule…" else "No upcoming game posted", color = TodayText,
                 style = MaterialTheme.typography.titleMedium, maxLines = 2)
-            Spacer(Modifier.height(34.dp))
+            Spacer(Modifier.weight(1f))
             Text("View full schedule ↗", color = TodayLavender, style = MaterialTheme.typography.labelSmall)
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -297,6 +298,7 @@ private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolea
                 Text("${if (game.home) "vs" else "@"} ${game.opponent}", color = TodayText,
                     style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            Spacer(Modifier.weight(1f))
             Text(game.startsAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d", locale)),
                 color = TodayCopper, style = MaterialTheme.typography.labelLarge)
             Text(if (game.timeConfirmed) game.startsAt.atZone(ZoneId.systemDefault()).format(
@@ -305,6 +307,8 @@ private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolea
         }
     }
 }
+
+private val TodayEditorialCardSurface = Color(0xA6251E41)
 
 @Composable
 private fun TodayOpponentLogo(url: String?, fallback: String) {

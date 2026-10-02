@@ -28,6 +28,8 @@ private val previewTeamGames = mapOf(
         Instant.parse("2026-10-04T00:30:00Z"), true, true, null, null),
     TodayTeam.PACKERS to TodayNextGame(TodayTeam.PACKERS, "Buccaneers",
         Instant.parse("2026-10-04T17:00:00Z"), false, true, null, null),
+    TodayTeam.INDIANA_FOOTBALL to TodayNextGame(TodayTeam.INDIANA_FOOTBALL, "Rutgers",
+        Instant.parse("2026-10-03T19:00:00Z"), false, true, null, null),
 )
 
 @PreviewTest
@@ -106,7 +108,9 @@ fun TodayDetailsScreenshots() {
         Column(Modifier.fillMaxSize().background(TodayBackground).verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(34.dp)) {
             TodayMarketsEditorial(listOf("AAPL", "^IXIC"), previewMarketQuotes, onOpen = {})
-            TodayTeamsEditorial(TodayTeam.entries.toList(), previewTeamGames, onOpen = {})
+            TodayTeamsEditorial(listOf(TodayTeam.INDIANA_FOOTBALL, TodayTeam.INDIANA_BASKETBALL) +
+                TodayTeam.entries.filter { it != TodayTeam.INDIANA_FOOTBALL && it != TodayTeam.INDIANA_BASKETBALL },
+                previewTeamGames, onOpen = {})
             TodayRetirementEditorial("\$815,582.00", "Tracked retirement value", listOf(
                 TodayRetirementPoint(LocalDate.of(2026, 9, 1), 78_200_000),
                 TodayRetirementPoint(LocalDate.of(2026, 9, 8), 79_450_000),
