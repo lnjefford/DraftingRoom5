@@ -133,6 +133,7 @@ internal fun TodayWorkspaceScreen(
     previewWeather: TodayWeather? = null,
     previewRetirementBalance: String? = null,
     previewRetirementTrend: List<TodayRetirementPoint> = emptyList(),
+    previewMarketQuotes: Map<String, TodayMarketQuote> = emptyMap(),
     previewDate: LocalDate? = null,
     previewSettings: Boolean = false,
     previewScrollOffset: Int = 0,
@@ -206,6 +207,21 @@ internal fun TodayWorkspaceScreen(
     }
     val workouts = remember(document, today) { dashboardSessions(document, today) }
     val week = remember(document, today) { todayWeek(document, today) }
+    var marketQuotes by remember { mutableStateOf(previewMarketQuotes) }
+    var marketLoading by remember { mutableStateOf(previewDate == null) }
+    LaunchedEffect(symbols, previewDate) {
+        if (previewDate != null) return@LaunchedEffect
+        marketLoading = true
+        while (true) {
+            val updated = marketQuotes.filterKeys { it in symbols }.toMutableMap()
+            symbols.forEach { symbol ->
+                runCatching { TodayMarketSource.fetch(symbol) }.onSuccess { updated[symbol] = it }
+            }
+            marketQuotes = updated
+            marketLoading = false
+            delay(15 * 60 * 1000L)
+        }
+    }
     val localHour = weather?.localHour ?: LocalDateTime.now().hour
     val daypart = daypartForHour(localHour)
     val kind = weather?.kind ?: TodayWeatherKind.UNKNOWN
@@ -349,7 +365,9 @@ internal fun TodayWorkspaceScreen(
                     TodayHero(kind, today, weather, weatherMessage, onRefresh = { refreshSerial++ })
                     Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(34.dp)) {
                         TodayWorkoutEditorial(workouts, week, today) { onSwitchWorkspace(AppWorkspace.FITNESS) }
-                        TodayMarketsEditorial(symbols) { symbol -> context.openTodayLink(marketUrl(symbol)) }
+                        TodayMarketsEditorial(symbols, marketQuotes, loadLogos = previewDate == null, loading = marketLoading,
+                            onOpen = { symbol -> context.openTodayLink(marketUrl(symbol)) },
+                            onAttribution = { context.openTodayLink("https://www.allinvestview.com/tools/ticker-logos/") })
                         TodayTeamsEditorial(teams) { team -> context.openTodayLink(team.scheduleUrl) }
                         TodayRetirementEditorial(retirementBalance, retirementMessage, retirementTrend) {
                             onSwitchWorkspace(AppWorkspace.RETIREMENT)

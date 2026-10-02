@@ -1,6 +1,7 @@
 package dev.draftingroom5
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,9 +36,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +48,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -107,24 +114,23 @@ private fun TodayWeekChart(week: List<TodayWeekDay>, today: LocalDate) {
     val done = week.sumOf { it.completed }
     val planned = week.sumOf { it.planned }
     val locale = LocalConfiguration.current.locales[0]
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (LocalDensity.current.fontScale >= 1.5f) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("THIS WEEK", color = TodayLavender, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.3.sp)
-            Text("$done of $planned complete", color = TodayLavender, style = MaterialTheme.typography.labelMedium)
+            Text("THIS WEEK · $done / $planned", color = TodayLavender, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.sp)
         } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("THIS WEEK", color = TodayLavender, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.3.sp)
-            Text("$done of $planned complete", color = TodayLavender, style = MaterialTheme.typography.labelMedium)
+            Text("THIS WEEK", color = TodayLavender, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.sp)
+            Text("$done / $planned complete", color = TodayLavender, style = MaterialTheme.typography.labelSmall)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             week.forEach { day ->
-                val barHeight = if (day.planned == 0) 5.dp else (13 + day.planned.coerceAtMost(3) * 11).dp
+                val barHeight = if (day.planned == 0) 3.dp else (7 + day.planned.coerceAtMost(3) * 6).dp
                 Column(Modifier.weight(1f).semantics {
                     contentDescription = "${day.date.dayOfWeek}, ${day.completed} of ${day.planned} workouts complete"
-                }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.height(48.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-                        Box(Modifier.width(12.dp).height(barHeight).clip(RoundedCornerShape(7.dp))
+                }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Box(Modifier.height(26.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                        Box(Modifier.width(7.dp).height(barHeight).clip(RoundedCornerShape(7.dp))
                             .background(if (day.planned == 0) TodayBorder else Color(0xFF4E436D)))
-                        if (day.completed > 0) Box(Modifier.width(12.dp)
+                        if (day.completed > 0) Box(Modifier.width(7.dp)
                             .height(barHeight * day.completed.toFloat() / day.planned.coerceAtLeast(1))
                             .clip(RoundedCornerShape(7.dp)).background(TodayMint))
                     }
@@ -138,31 +144,111 @@ private fun TodayWeekChart(week: List<TodayWeekDay>, today: LocalDate) {
 }
 
 @Composable
-internal fun TodayMarketsEditorial(symbols: List<String>, onOpen: (String) -> Unit) {
+internal fun TodayMarketsEditorial(
+    symbols: List<String>,
+    quotes: Map<String, TodayMarketQuote>,
+    loadLogos: Boolean = false,
+    loading: Boolean = false,
+    onOpen: (String) -> Unit,
+    onAttribution: () -> Unit = {},
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TodayEditorialHeading("YOUR STOCKS")
         val visible = if (expanded) symbols else symbols.take(2)
         val largeText = LocalDensity.current.fontScale >= 1.5f
         visible.chunked(if (largeText) 1 else 2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { symbol ->
-                    Column(Modifier.weight(1f).clickable { onOpen(symbol) }.padding(vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text(symbol, color = TodayCopper, style = MaterialTheme.typography.labelLarge, letterSpacing = 1.2.sp)
-                        Text(when (symbol) { "AAPL" -> "Apple"; "^IXIC" -> "Nasdaq Composite"; else -> symbol },
-                            color = TodayText, style = MaterialTheme.typography.titleLarge, maxLines = 2,
-                            overflow = TextOverflow.Ellipsis)
-                        Text("VIEW LIVE QUOTE  ↗", color = TodayLavender, style = MaterialTheme.typography.labelSmall)
-                    }
+                    TodayMarketCard(symbol, quotes[symbol], loadLogos, loading, Modifier.weight(1f)) { onOpen(symbol) }
                 }
                 if (row.size == 1 && !largeText) Spacer(Modifier.weight(1f))
             }
-            HorizontalDivider(color = TodayBorder)
         }
         if (symbols.size > 2) TextButton(onClick = { expanded = !expanded }) {
             Text(if (expanded) "Show less" else "Show ${symbols.size - 2} more", color = TodayCopper)
         }
+        Text("Market data: Yahoo Finance", color = TodayLavender.copy(alpha = 0.8f),
+            style = MaterialTheme.typography.labelSmall)
+        Text("Logos by AllInvestView ↗", color = TodayLavender.copy(alpha = 0.8f),
+            style = MaterialTheme.typography.labelSmall, modifier = Modifier.clickable(onClick = onAttribution))
+    }
+}
+
+@Composable
+private fun TodayMarketCard(symbol: String, quote: TodayMarketQuote?, loadLogos: Boolean, loading: Boolean,
+                            modifier: Modifier = Modifier, onOpen: () -> Unit) {
+    val locale = LocalConfiguration.current.locales[0]
+    val change = quote?.changePercent
+    val trendColor = if (change == null || change >= 0) TodayMint else Color(0xFFFF8F90)
+    val shape = RoundedCornerShape(18.dp)
+    Column(modifier.clip(shape).background(Color(0xFF251E41)).border(1.dp, TodayBorder, shape)
+        .clickable(onClick = onOpen).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TodayStockLogo(symbol, loadLogos)
+            Text(symbol, color = TodayText, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f),
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Icon(Icons.Default.ChevronRight, contentDescription = "Open $symbol quote", tint = TodayCopper,
+                modifier = Modifier.size(18.dp))
+        }
+        Text(when (symbol) { "AAPL" -> "Apple"; "^IXIC" -> "Nasdaq Composite"; else -> symbol },
+            color = TodayLavender, style = MaterialTheme.typography.labelSmall, maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
+        Text(quote?.let { marketPriceText(it, locale) } ?: if (loading) "Loading quote…" else "Quote unavailable", color = TodayText,
+            style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(change?.let { String.format(locale, "%+.2f%% · 1D", it) } ?: "Latest available quote",
+            color = if (change == null) TodayLavender else trendColor, style = MaterialTheme.typography.labelSmall,
+            maxLines = 1)
+        if (quote != null && quote.points.size >= 2) TodayMarketSparkline(quote.points, trendColor)
+        else Box(Modifier.fillMaxWidth().height(36.dp), contentAlignment = Alignment.CenterStart) {
+            Text("Trend unavailable", color = TodayLavender.copy(alpha = 0.7f), style = MaterialTheme.typography.labelSmall)
+        }
+        Text(quote?.let { "5D · ${Instant.ofEpochSecond(it.updatedAtSeconds).atZone(ZoneId.systemDefault()).format(
+            DateTimeFormatter.ofPattern("MMM d, h:mm a", locale))}" } ?: "Tap for market details",
+            color = TodayLavender, style = MaterialTheme.typography.labelSmall, maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private fun marketPriceText(quote: TodayMarketQuote, locale: Locale): String {
+    val value = String.format(locale, "%,.2f", quote.price)
+    return if (quote.symbol.startsWith("^")) value else when (quote.currency) {
+        "USD" -> "\$$value"
+        "EUR" -> "€$value"
+        "GBP" -> "£$value"
+        else -> "${quote.currency} $value".trim()
+    }
+}
+
+@Composable
+private fun TodayStockLogo(symbol: String, loadLogos: Boolean) {
+    val image by produceState<android.graphics.Bitmap?>(initialValue = null, symbol, loadLogos) {
+        value = if (loadLogos) runCatching { TodayMarketLogoSource.fetch(symbol) }.getOrNull() else null
+    }
+    Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(Color.White), contentAlignment = Alignment.Center) {
+        when {
+            image != null -> Image(image!!.asImageBitmap(), contentDescription = "$symbol logo", modifier = Modifier.size(28.dp))
+            symbol == "AAPL" -> Image(painterResource(R.drawable.today_logo_apple), contentDescription = "Apple logo",
+                modifier = Modifier.size(28.dp))
+            else -> Text(symbol.trimStart('^').take(2), color = TodayBackground, style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun TodayMarketSparkline(points: List<Double>, color: Color) {
+    Canvas(Modifier.fillMaxWidth().height(36.dp).semantics { contentDescription = "Five day price trend" }) {
+        val low = points.minOrNull() ?: return@Canvas
+        val high = points.maxOrNull() ?: return@Canvas
+        val range = (high - low).takeIf { it > 0.0 } ?: 1.0
+        val line = Path()
+        points.forEachIndexed { index, value ->
+            val x = size.width * index / (points.size - 1)
+            val y = size.height * (0.85f - ((value - low) / range).toFloat() * 0.7f)
+            if (index == 0) line.moveTo(x, y) else line.lineTo(x, y)
+        }
+        drawPath(line, color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
     }
 }
 
