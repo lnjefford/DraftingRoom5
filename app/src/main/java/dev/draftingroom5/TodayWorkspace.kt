@@ -37,6 +37,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Refresh
@@ -134,9 +136,11 @@ internal fun TodayWorkspaceScreen(
     previewRetirementBalance: String? = null,
     previewRetirementTrend: List<TodayRetirementPoint> = emptyList(),
     previewMarketQuotes: Map<String, TodayMarketQuote> = emptyMap(),
+    previewTeamGames: Map<TodayTeam, TodayNextGame> = emptyMap(),
     previewDate: LocalDate? = null,
     previewSettings: Boolean = false,
     previewScrollOffset: Int = 0,
+    previewSettingsScrollOffset: Int = 0,
 ) {
     val context = LocalContext.current
     val locationPreferences = remember { TodayLocationPreferences(context) }
@@ -220,6 +224,24 @@ internal fun TodayWorkspaceScreen(
             marketQuotes = updated
             marketLoading = false
             delay(15 * 60 * 1000L)
+        }
+    }
+    var teamGames by remember { mutableStateOf(previewTeamGames) }
+    var teamLoading by remember { mutableStateOf(previewDate == null) }
+    LaunchedEffect(teams, previewDate) {
+        if (previewDate != null) return@LaunchedEffect
+        teamLoading = true
+        while (true) {
+            val now = java.time.Instant.now()
+            teamGames = teamGames.filter { (team, game) -> team in teams && game.startsAt > now }
+            teams.forEach { team ->
+                runCatching { TodayTeamSource.fetch(team, LocalDate.now(), now) }
+                    .onSuccess { game ->
+                        teamGames = if (game == null) teamGames - team else teamGames + (team to game)
+                    }
+            }
+            teamLoading = false
+            delay(30 * 60 * 1000L)
         }
     }
     val localHour = weather?.localHour ?: LocalDateTime.now().hour
@@ -313,7 +335,7 @@ internal fun TodayWorkspaceScreen(
                     cityError = null
                 }) { Text(if (cityBusy) "Searching…" else "Save city") }
             } else if (settingsOpen) Column(
-                Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
+                Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState(initial = previewSettingsScrollOffset)).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(22.dp),
             ) {
                 Text("Make this briefing yours", style = MaterialTheme.typography.headlineMedium)
@@ -332,16 +354,42 @@ internal fun TodayWorkspaceScreen(
                 TextField(value = symbolsDraft, onValueChange = { symbolsDraft = it },
                     label = { Text("Symbols, separated by commas") }, modifier = Modifier.fillMaxWidth())
                 symbolsError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                val orderedSymbols = remember(symbolsDraft) { runCatching { parseSymbols(symbolsDraft) }.getOrNull() }
+                if (orderedSymbols != null) {
+                    Text("Displayed left to right in this order", color = TodayLavender,
+                        style = MaterialTheme.typography.bodySmall)
+                    orderedSymbols.forEachIndexed { index, symbol ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(symbol, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                            IconButton(enabled = index > 0, onClick = {
+                                symbolsDraft = moveTodayItem(orderedSymbols, index, -1).joinToString(", ")
+                            }) { Icon(Icons.Default.ArrowUpward, contentDescription = "Move $symbol earlier") }
+                            IconButton(enabled = index < orderedSymbols.lastIndex, onClick = {
+                                symbolsDraft = moveTodayItem(orderedSymbols, index, 1).joinToString(", ")
+                            }) { Icon(Icons.Default.ArrowDownward, contentDescription = "Move $symbol later") }
+                        }
+                    }
+                }
                 HorizontalDivider(color = TodayBorder)
                 TodaySettingLabel("TEAMS TO FOLLOW")
-                TodayTeam.entries.forEach { team ->
-                    Row(Modifier.fillMaxWidth().clickable {
-                        teamsDraft = if (team in teamsDraft) teamsDraft - team else teamsDraft + team
-                    }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Displayed left to right in this order", color = TodayLavender,
+                    style = MaterialTheme.typography.bodySmall)
+                teamsDraft.forEachIndexed { index, team ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(team.displayName, modifier = Modifier.weight(1f).padding(end = 16.dp))
-                        Switch(checked = team in teamsDraft, onCheckedChange = { checked ->
-                            teamsDraft = if (checked) teamsDraft + team else teamsDraft - team
-                        })
+                        IconButton(enabled = index > 0, onClick = {
+                            teamsDraft = moveTodayItem(teamsDraft, index, -1)
+                        }) { Icon(Icons.Default.ArrowUpward, contentDescription = "Move ${team.displayName} earlier") }
+                        IconButton(enabled = index < teamsDraft.lastIndex, onClick = {
+                            teamsDraft = moveTodayItem(teamsDraft, index, 1)
+                        }) { Icon(Icons.Default.ArrowDownward, contentDescription = "Move ${team.displayName} later") }
+                        Switch(checked = true, onCheckedChange = { teamsDraft = teamsDraft - team })
+                    }
+                }
+                TodayTeam.entries.filter { it !in teamsDraft }.forEach { team ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(team.displayName, modifier = Modifier.weight(1f).padding(end = 16.dp))
+                        Switch(checked = false, onCheckedChange = { teamsDraft = teamsDraft + team })
                     }
                 }
                 Button(onClick = {
@@ -349,7 +397,7 @@ internal fun TodayWorkspaceScreen(
                     if (parsed.isFailure) symbolsError = parsed.exceptionOrNull()?.message
                     else {
                         symbols = parsed.getOrThrow()
-                        teams = TodayTeam.entries.filter { it in teamsDraft }
+                        teams = teamsDraft
                         todayPreferences.setSymbols(symbols)
                         todayPreferences.setTeams(teams)
                         settingsOpen = false
@@ -368,7 +416,9 @@ internal fun TodayWorkspaceScreen(
                         TodayMarketsEditorial(symbols, marketQuotes, loadLogos = previewDate == null, loading = marketLoading,
                             onOpen = { symbol -> context.openTodayLink(marketUrl(symbol)) },
                             onAttribution = { context.openTodayLink("https://www.allinvestview.com/tools/ticker-logos/") })
-                        TodayTeamsEditorial(teams) { team -> context.openTodayLink(team.scheduleUrl) }
+                        TodayTeamsEditorial(teams, teamGames, loading = teamLoading) {
+                            team -> context.openTodayLink(team.scheduleUrl)
+                        }
                         TodayRetirementEditorial(retirementBalance, retirementMessage, retirementTrend) {
                             onSwitchWorkspace(AppWorkspace.RETIREMENT)
                         }

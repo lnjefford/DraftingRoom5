@@ -5,6 +5,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,9 +28,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -152,21 +151,15 @@ internal fun TodayMarketsEditorial(
     onOpen: (String) -> Unit,
     onAttribution: () -> Unit = {},
 ) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TodayEditorialHeading("YOUR STOCKS")
-        val visible = if (expanded) symbols else symbols.take(2)
         val largeText = LocalDensity.current.fontScale >= 1.5f
-        visible.chunked(if (largeText) 1 else 2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { symbol ->
-                    TodayMarketCard(symbol, quotes[symbol], loadLogos, loading, Modifier.weight(1f)) { onOpen(symbol) }
-                }
-                if (row.size == 1 && !largeText) Spacer(Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            symbols.forEach { symbol ->
+                TodayMarketCard(symbol, quotes[symbol], loadLogos, loading,
+                    Modifier.width(if (largeText) 290.dp else 216.dp)) { onOpen(symbol) }
             }
-        }
-        if (symbols.size > 2) TextButton(onClick = { expanded = !expanded }) {
-            Text(if (expanded) "Show less" else "Show ${symbols.size - 2} more", color = TodayCopper)
         }
         Text("Market data: Yahoo Finance", color = TodayLavender.copy(alpha = 0.8f),
             style = MaterialTheme.typography.labelSmall)
@@ -253,36 +246,82 @@ private fun TodayMarketSparkline(points: List<Double>, color: Color) {
 }
 
 @Composable
-internal fun TodayTeamsEditorial(teams: List<TodayTeam>, onOpen: (TodayTeam) -> Unit) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+internal fun TodayTeamsEditorial(teams: List<TodayTeam>, games: Map<TodayTeam, TodayNextGame>,
+                                  loading: Boolean = false, onOpen: (TodayTeam) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TodayEditorialHeading("YOUR TEAMS")
-        val visible = if (expanded) teams else teams.take(2)
         val largeText = LocalDensity.current.fontScale >= 1.5f
-        visible.chunked(if (largeText) 1 else 2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                row.forEach { team ->
-                    Column(Modifier.weight(1f).clickable { onOpen(team) }.padding(vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(if (largeText) 68.dp else 42.dp)
-                            .clip(RoundedCornerShape(14.dp)).background(Color(0xFF2C264A)),
-                            contentAlignment = Alignment.Center) {
-                            Text(team.shortMark, color = TodayCopper, style = MaterialTheme.typography.labelMedium)
-                        }
-                        Text(team.displayName, color = TodayText, style = MaterialTheme.typography.titleMedium,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text("SCHEDULE & SCORES  ↗", color = TodayLavender, style = MaterialTheme.typography.labelSmall)
-                    }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            teams.forEach { team ->
+                TodayTeamCard(team, games[team], loading, Modifier.width(if (largeText) 290.dp else 216.dp)) {
+                    onOpen(team)
                 }
-                if (row.size == 1 && !largeText) Spacer(Modifier.weight(1f))
             }
-            HorizontalDivider(color = TodayBorder)
         }
         if (teams.isEmpty()) Text("Choose teams in Today settings", color = TodayLavender)
-        if (teams.size > 2) TextButton(onClick = { expanded = !expanded }) {
-            Text(if (expanded) "Show less" else "Show ${teams.size - 2} more teams", color = TodayCopper)
+        Text("Schedules: ESPN", color = TodayLavender.copy(alpha = 0.8f), style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolean,
+                          modifier: Modifier = Modifier, onOpen: () -> Unit) {
+    val locale = LocalConfiguration.current.locales[0]
+    val shape = RoundedCornerShape(18.dp)
+    Column(modifier.clip(shape).background(Color(0xFF251E41)).border(1.dp, TodayBorder, shape)
+        .clickable(onClick = onOpen).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(Color.White),
+                contentAlignment = Alignment.Center) {
+                Image(painterResource(team.logoResource), contentDescription = "${team.displayName} logo",
+                    modifier = Modifier.size(34.dp))
+            }
+            Text(team.shortMark, color = TodayCopper, style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ChevronRight, contentDescription = "Open ${team.displayName} schedule",
+                tint = TodayCopper, modifier = Modifier.size(18.dp))
+        }
+        Text(team.displayName, color = TodayText, style = MaterialTheme.typography.titleMedium,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text("NEXT GAME", color = TodayLavender, style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 1.sp)
+        if (game == null) {
+            Text(if (loading) "Loading schedule…" else "No upcoming game posted", color = TodayText,
+                style = MaterialTheme.typography.titleMedium, maxLines = 2)
+            Spacer(Modifier.height(34.dp))
+            Text("View full schedule ↗", color = TodayLavender, style = MaterialTheme.typography.labelSmall)
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TodayOpponentLogo(game.opponentLogo, game.opponent.take(2))
+                Text("${if (game.home) "vs" else "@"} ${game.opponent}", color = TodayText,
+                    style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(game.startsAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d", locale)),
+                color = TodayCopper, style = MaterialTheme.typography.labelLarge)
+            Text(if (game.timeConfirmed) game.startsAt.atZone(ZoneId.systemDefault()).format(
+                DateTimeFormatter.ofPattern("h:mm a", locale)) else "Time TBD",
+                color = TodayLavender, style = MaterialTheme.typography.labelSmall)
         }
     }
+}
+
+@Composable
+private fun TodayOpponentLogo(url: String?, fallback: String) {
+    val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, url) {
+        value = if (url == null) null else runCatching { TodayTeamSource.logo(url) }.getOrNull()
+    }
+    Box(Modifier.size(27.dp).clip(RoundedCornerShape(7.dp)).background(Color.White), contentAlignment = Alignment.Center) {
+        if (bitmap != null) Image(bitmap!!.asImageBitmap(), contentDescription = null, modifier = Modifier.size(25.dp))
+        else Text(fallback.uppercase(Locale.ROOT), color = TodayBackground, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+private val TodayTeam.logoResource: Int get() = when (this) {
+    TodayTeam.BREWERS -> R.drawable.today_team_brewers
+    TodayTeam.PACKERS -> R.drawable.today_team_packers
+    TodayTeam.INDIANA_FOOTBALL, TodayTeam.INDIANA_BASKETBALL -> R.drawable.today_team_indiana
+    TodayTeam.WISCONSIN_FOOTBALL, TodayTeam.WISCONSIN_BASKETBALL -> R.drawable.today_team_wisconsin
 }
 
 private val TodayTeam.shortMark: String get() = when (this) {

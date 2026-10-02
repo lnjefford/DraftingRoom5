@@ -31,13 +31,18 @@ internal class TodayPreferences(context: Context) {
 
     fun teams(): List<TodayTeam> {
         val raw = preferences.getString("teams", null) ?: return TodayTeam.entries
-        val selected = raw.split(',').mapNotNull { name -> TodayTeam.entries.firstOrNull { it.name == name } }.toSet()
-        return TodayTeam.entries.filter { it in selected }
+        return raw.split(',').mapNotNull { name -> TodayTeam.entries.firstOrNull { it.name == name } }.distinct()
     }
 
     fun setTeams(teams: List<TodayTeam>) {
         preferences.edit().putString("teams", teams.joinToString(",") { it.name }).apply()
     }
+}
+
+internal fun <T> moveTodayItem(items: List<T>, index: Int, delta: Int): List<T> {
+    val target = index + delta
+    if (index !in items.indices || target !in items.indices) return items
+    return items.toMutableList().apply { add(target, removeAt(index)) }
 }
 
 internal fun parseSymbols(input: String): List<String> {
