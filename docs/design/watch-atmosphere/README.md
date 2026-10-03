@@ -19,5 +19,7 @@ Design decisions:
 - Give an active run's next turn a prominent direction symbol. Show off-route status distinctly.
 - Keep primary controls visible inside the round safe area on both 41 mm and 45 mm watches.
 - Populate market charts from real quote points and run cues from available route data. Sample numbers and names in these concept sheets are illustrative.
+- Navigate Today by swiping left and right through full watch screens. Each followed stock and team has a reachable page with a position label. A dedicated Run page offers a clearly named "Choose run" action instead of a Runs shortcut on unrelated pages.
+- Give the active run route a visible path and current-position marker behind the turn cue, with a distinct off-route marker when needed.
 
 The implementation is validated against the watch screenshot references in `wear/src/screenshotTestDebug/reference/`; those renders show the actual app at supported sizes.
