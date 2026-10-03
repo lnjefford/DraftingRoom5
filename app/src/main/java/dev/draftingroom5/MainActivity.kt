@@ -8,6 +8,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.Window
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -15,9 +17,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -187,7 +186,7 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
-        setContent { DraftingRoom5App() }
+        setContent { DraftingRoom5App(window) }
     }
 }
 
@@ -218,16 +217,8 @@ private data class HealthUiState(
 )
 
 @Composable
-private fun DraftingRoom5App() {
+private fun DraftingRoom5App(window: Window) {
     val navigation = rememberAppNavigationState()
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, navigation) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_START) navigation.switchWorkspace(AppWorkspace.TODAY)
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
     val screen = navigation.current
     val screenState = rememberSaveableStateHolder()
     var savedRouteKeys by rememberSaveable { mutableStateOf(navigation.backStack.map(::encodeAppRoute)) }
@@ -260,6 +251,21 @@ private fun DraftingRoom5App() {
     var pendingCompletionCue by remember { mutableStateOf<String?>(null) }
     val workoutVoice = remember { WorkoutVoiceAnnouncements(context) { voiceAvailability = it } }
     var appDocument by remember { mutableStateOf(appRepository.currentOrDefaults()) }
+    val workoutScreenActive = when (screen) {
+        is AppRoute.GuidedSession -> appDocument.partialSessions.any {
+            it.routineId == screen.routineId && it.occurrence == OccurrenceKey(screen.scheduleEntryId, screen.scheduledDate)
+        }
+        is AppRoute.RunSession -> appDocument.runSessions.any {
+            it.id == screen.sessionId && it.completedAtMillis == null
+        }
+        else -> false
+    }
+    DisposableEffect(window, workoutScreenActive) {
+        if (workoutScreenActive) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            if (workoutScreenActive) window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
     LaunchedEffect(appDocument.plan, appDocument.runRoutes, appDocument.lastRunRouteId,
         appDocument.history, appDocument.occurrenceExceptions) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {

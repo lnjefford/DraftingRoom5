@@ -123,6 +123,21 @@ class AppRouteTest {
         assertEquals(AppRoute.RetirementAssets, restored.current)
     }
 
+    @Test fun restoredNavigationKeepsTheVisibleWorkoutInsteadOfReturningToToday() {
+        val workout = AppRoute.GuidedSession("routine-1", "schedule-1", java.time.LocalDate.of(2026, 10, 3))
+        val navigation = AppNavigationState(listOf(AppRoute.Today))
+        navigation.switchWorkspace(AppWorkspace.FITNESS)
+        navigation.navigate(workout)
+
+        val encoded = with(AppNavigationState.Saver) { SaverScope { true }.save(navigation) }!!
+        val restored = AppNavigationState.Saver.restore(encoded)!!
+
+        assertEquals(AppWorkspace.FITNESS, restored.activeWorkspace)
+        assertEquals(workout, restored.current)
+        assertTrue(restored.back())
+        assertEquals(AppRoute.Dashboard, restored.current)
+    }
+
     @Test
     fun retirementTabsAreRestorableRootsAndCannotCrossWorkspaceByNavigate() {
         retirementTopLevelRoutes.forEach { route ->

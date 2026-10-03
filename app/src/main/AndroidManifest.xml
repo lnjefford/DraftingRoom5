@@ -39,7 +39,8 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_paths" />
         </provider>
-        <activity android:name=".PermissionsRationaleActivity" android:exported="true">
+        <activity android:name=".PermissionsRationaleActivity" android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
@@ -52,9 +53,12 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
-        <activity android:name=".retirement.provider.LinkedAccountsActivity" android:exported="false" />
-        <activity android:name=".retirement.provider.PropertyActivity" android:exported="false" />
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name=".retirement.provider.LinkedAccountsActivity" android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity android:name=".retirement.provider.PropertyActivity" android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity android:name=".MainActivity" android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

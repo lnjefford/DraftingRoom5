@@ -14,8 +14,8 @@ android {
         minSdk = 37
         targetSdk = 37
         testInstrumentationRunner = "dev.draftingroom5.WidgetAuditInstrumentation"
-        versionCode = providers.gradleProperty("phoneVersionCode").orElse("290130").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.29.11").get()
+        versionCode = providers.gradleProperty("phoneVersionCode").orElse("290140").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.29.12").get()
         buildConfigField("String", "UPDATE_DATE", "\"October 3, 2026\"")
         buildConfigField("boolean", "PLAY_DISTRIBUTION", "false")
     }
