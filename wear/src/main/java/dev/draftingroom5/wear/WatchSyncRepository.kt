@@ -46,6 +46,8 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
 
     fun sync() = enqueue(WatchCommandType.SYNC)
 
+    fun refreshToday() = enqueue(WatchCommandType.REFRESH_TODAY)
+
     fun completeSet(exerciseId: String, setNumber: Int) = enqueue(
         type = WatchCommandType.COMPLETE_SET,
         sessionId = mutableState.value?.sessionId,

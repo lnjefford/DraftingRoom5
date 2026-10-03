@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -62,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicText
 import dev.draftingroom5.watch.WatchExercise
 import dev.draftingroom5.watch.WatchSnapshot
+import dev.draftingroom5.watch.WatchTodayBriefing
 import dev.draftingroom5.watch.WatchWorkoutStatus
 import dev.draftingroom5.watch.WatchRunCapture
 import dev.draftingroom5.watch.WatchRunCatalog
@@ -73,6 +75,10 @@ import dev.draftingroom5.watch.WatchRunSample
 import dev.draftingroom5.watch.WATCH_TREADMILL_ROUTE_ID
 import kotlinx.coroutines.delay
 import kotlin.math.ceil
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class WatchActivity : ComponentActivity() {
     private val repository by lazy { WatchSyncRepository.get(this) }
@@ -174,6 +180,7 @@ private fun DraftingRoom5Watch(
     var timer by remember { mutableStateOf(timerStore.read()) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var celebration by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var showTodayAfterComplete by remember { mutableStateOf(false) }
     val exercise = snapshot?.focusedExercise
 
     LaunchedEffect(timer, runCapture?.id, runCapture?.isRunning) {
@@ -252,14 +259,17 @@ private fun DraftingRoom5Watch(
             }
             snapshot == null -> WatchHomeScreen("CONNECTING", "Open DraftingRoom5 on your phone", repository::sync,
                 runCatalog != null, { runPicker = true })
-            snapshot?.status == WatchWorkoutStatus.NONE -> MessageScreen(
-                "TODAY", snapshot?.message ?: "No guided workout today.", "Runs", { runPicker = true },
-            )
+            snapshot?.status == WatchWorkoutStatus.NONE -> TodayScreen(checkNotNull(snapshot), repository::refreshToday,
+                repository::startToday, onRuns = { runPicker = true })
             snapshot?.status == WatchWorkoutStatus.ERROR -> MessageScreen(
                 "PHONE NEEDED", snapshot?.message ?: "Workout data is unavailable.", "Runs", { runPicker = true },
             )
-            snapshot?.status == WatchWorkoutStatus.AVAILABLE -> TodayScreen(checkNotNull(snapshot), repository::startToday) { runPicker = true }
-            snapshot?.status == WatchWorkoutStatus.COMPLETE -> CompletionScreen(checkNotNull(snapshot), onClose)
+            snapshot?.status == WatchWorkoutStatus.AVAILABLE -> TodayScreen(checkNotNull(snapshot), repository::refreshToday,
+                repository::startToday, onRuns = { runPicker = true })
+            snapshot?.status == WatchWorkoutStatus.COMPLETE -> if (showTodayAfterComplete)
+                TodayScreen(checkNotNull(snapshot), repository::refreshToday, repository::startToday,
+                    onRuns = { runPicker = true })
+                else CompletionScreen(checkNotNull(snapshot)) { showTodayAfterComplete = true }
             exercise != null -> ExerciseScreen(
                 snapshot = checkNotNull(snapshot),
                 exercise = exercise,
@@ -374,24 +384,98 @@ private fun WatchActiveRunScreen(capture: WatchRunCapture, now: Long, onPause: (
 }
 
 @Composable
-private fun TodayScreen(snapshot: WatchSnapshot, onStart: () -> Unit, onRuns: () -> Unit) {
-    val art = snapshot.exercises.firstOrNull()?.artworkId
+private fun TodayScreen(snapshot: WatchSnapshot, onSync: () -> Unit, onStart: () -> Unit,
+    onRuns: () -> Unit, previewScroll: Int = 0) {
+    val today = snapshot.today
+    val locale = LocalLocale.current.platformLocale
+    val scroll = rememberScrollState(initial = previewScroll)
     RoundProgress(0f) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 7.dp),
+            Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 23.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ArtworkHero(artworkResource(art), 30)
             Eyebrow("TODAY")
-            WatchText(
-                snapshot.routineName.orEmpty(), 18, Ivory, FontWeight.Normal, serifFamily(),
-                maxLines = 2, modifier = Modifier.semantics { heading() },
-            )
-            WatchText("${snapshot.exercises.size} exercises", 13, Secondary)
-            Spacer(Modifier.height(2.dp))
-            PrimaryButton("▶  Start", onStart)
-            Spacer(Modifier.height(3.dp))
-            WatchText("Runs", 14, Mint, modifier = Modifier.clickable(onClick = onRuns))
+            if (today == null) {
+                WatchText("Your briefing is syncing", 18, Ivory, family = serifFamily(), maxLines = 2)
+                WatchText("Keep your phone nearby", 12, Secondary)
+                SecondaryButton("Sync", onSync)
+            } else {
+                TodayWeatherSection(today)
+                Spacer(Modifier.height(8.dp))
+                Eyebrow("TODAY'S WORKOUT")
+                WatchText(today.workoutName ?: "Your day is open", 18, Ivory,
+                    family = serifFamily(), maxLines = 2, modifier = Modifier.semantics { heading() })
+                WatchText(if (today.workoutCount == 0) "No workout scheduled" else
+                    "${today.workoutCount} session${if (today.workoutCount == 1) "" else "s"} planned", 12, Secondary)
+                WatchText("${today.weekCompleted} / ${today.weekPlanned} this week", 11, Gold)
+                TodayWeekMarks(today.weekDays)
+                if (snapshot.status == WatchWorkoutStatus.AVAILABLE) {
+                    PrimaryButton("▶  Start workout", onStart)
+                } else if (snapshot.status == WatchWorkoutStatus.COMPLETE) {
+                    WatchText("Workout complete ✓", 12, Mint)
+                } else if (today.workoutCount > 0) {
+                    WatchText("Open on phone for this workout", 11, Secondary, maxLines = 2)
+                }
+                Spacer(Modifier.height(8.dp))
+                Eyebrow("YOUR STOCKS")
+                if (today.stocks.isEmpty()) WatchText("No stocks followed", 12, Secondary)
+                today.stocks.forEach { stock ->
+                    WatchText(stock.symbol, 14, Ivory, FontWeight.Bold)
+                    WatchText(stock.price?.let { String.format(Locale.US, "%,.2f", it) } ?: "Quote unavailable",
+                        19, Ivory, family = serifFamily())
+                    stock.changePercent?.let { change -> WatchText(String.format(Locale.US, "%+.2f%%", change),
+                        12, if (change >= 0) Mint else Gold) }
+                    Spacer(Modifier.height(5.dp))
+                }
+                Eyebrow("YOUR TEAMS")
+                if (today.games.isEmpty()) WatchText("No teams followed", 12, Secondary)
+                today.games.forEach { game ->
+                    WatchText(game.team, 13, Ivory, FontWeight.Bold, maxLines = 2)
+                    WatchText(if (game.opponent == null) "No upcoming game" else {
+                        val time = game.startsAtMillis?.let { millis ->
+                            DateTimeFormatter.ofPattern("EEE h:mm a", locale)
+                                .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+                        }
+                        "vs ${game.opponent}" + (time?.let { " · $it" } ?: "")
+                    }, 11, Secondary, maxLines = 2)
+                    Spacer(Modifier.height(5.dp))
+                }
+                SecondaryButton("Runs", onRuns)
+                SecondaryButton("Refresh", onSync)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TodayWeatherSection(today: WatchTodayBriefing) {
+    if (today.temperatureF == null) {
+        WatchText("Weather unavailable", 13, Secondary)
+    } else {
+        val icon = when (today.weatherKind) {
+            "CLEAR" -> "☀"
+            "CLOUDY" -> "☁"
+            "RAIN" -> "☂"
+            "SNOW" -> "❄"
+            "STORM" -> "ϟ"
+            else -> "◌"
+        }
+        WatchText("$icon ${today.temperatureF}°F", 29, Ivory, family = serifFamily())
+        WatchText("${today.location ?: "Current location"} · ${today.weatherKind.orEmpty().lowercase()
+            .replaceFirstChar { it.titlecase() }}", 12, Secondary, maxLines = 2)
+    }
+}
+
+@Composable
+private fun TodayWeekMarks(days: List<Pair<Int, Int>>) {
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        days.forEach { (planned, completed) ->
+            Box(Modifier.size(9.dp).clip(CircleShape).background(when {
+                completed > 0 -> Mint
+                planned > 0 -> Color(0xFF4E436D)
+                else -> Raised
+            }))
         }
     }
 }
@@ -665,7 +749,7 @@ internal fun WatchReviewPreview(screen: String) {
         WatchExercise("walk", "Farmer's Walk", "", 1, null, 30, 20, "farmers_walk", 0),
     )
     val snapshot = WatchSnapshot(
-        status = if (screen == "Today") WatchWorkoutStatus.AVAILABLE else WatchWorkoutStatus.ACTIVE,
+        status = if (screen.startsWith("Today")) WatchWorkoutStatus.AVAILABLE else WatchWorkoutStatus.ACTIVE,
         generation = 1,
         eventRevision = 1,
         sessionId = "preview",
@@ -676,6 +760,14 @@ internal fun WatchReviewPreview(screen: String) {
         focusedExerciseId = "hang",
         exercises = exercises,
         updatedAtMillis = 1,
+        today = WatchTodayBriefing(
+            "2026-10-01", "Fitbod workout", 1, 7, 0,
+            listOf(0 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0),
+            "Madison", 64, "CLOUDY",
+            listOf(dev.draftingroom5.watch.WatchTodayStock("AAPL", 265.13, 1.02)),
+            listOf(dev.draftingroom5.watch.WatchTodayGame("Green Bay Packers", "Bears", 1_759_500_000_000)),
+            1,
+        ),
     )
     Box(Modifier.fillMaxSize().background(Ink), contentAlignment = Alignment.Center) {
         when (screen) {
@@ -700,7 +792,10 @@ internal fun WatchReviewPreview(screen: String) {
                 WatchRunCompleteScreen(WatchRunCapture("run", plan, null, 1_000, 60_000, null, 820,
                     emptyList(), 61_000), 1, {})
             }
-            "Today" -> TodayScreen(snapshot, {}, {})
+            "Today" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 0)
+            "Today workout" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 330)
+            "Today stocks" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 840)
+            "Today teams" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 1110)
             "Exercise" -> ExerciseScreen(snapshot, exercises.first(), {}, {})
             "Ready" -> TimerScreen(exercises.first(), LocalTimer("hang", 4_000, 24_000), 1_000, true, {}, {})
             "Running" -> TimerScreen(exercises.first(), LocalTimer("hang", 1_000, 21_000), 7_000, true, {}, {})

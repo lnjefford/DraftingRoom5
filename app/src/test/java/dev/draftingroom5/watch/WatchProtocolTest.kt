@@ -8,9 +8,24 @@ import org.junit.Test
 class WatchProtocolTest {
     @Test
     fun snapshotRoundTripsEveryOwnedTarget() {
-        val snapshot = fixtureSnapshot()
+        val snapshot = fixtureSnapshot().copy(today = WatchTodayBriefing(
+            "2026-10-01", "Fitbod workout", 1, 7, 0,
+            listOf(0 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0),
+            "Madison", 64, "CLOUDY",
+            listOf(WatchTodayStock("AAPL", 265.13, 1.02)),
+            listOf(WatchTodayGame("Green Bay Packers", "Bears", 1_759_500_000_000)), 100,
+        ))
 
         assertEquals(snapshot, decodeWatchSnapshot(encodeWatchSnapshot(snapshot)))
+    }
+
+    @Test
+    fun oldWorkoutSnapshotWithoutTodayStillDecodes() {
+        val json = encodeWatchSnapshot(fixtureSnapshot()).toString(Charsets.UTF_8)
+            .replace("\"today\":null,", "")
+            .replace(",\"today\":null", "")
+
+        assertNull(decodeWatchSnapshot(json.toByteArray()).today)
     }
 
     @Test

@@ -20,10 +20,22 @@ import dev.draftingroom5.SessionRepositoryResult
 import dev.draftingroom5.RepositoryResult
 import dev.draftingroom5.dashboardSessions
 import dev.draftingroom5.durableState
+import dev.draftingroom5.TodayLocationPreferences
+import dev.draftingroom5.TodayPreferences
+import dev.draftingroom5.TodayWeatherSource
+import dev.draftingroom5.TodayMarketSource
+import dev.draftingroom5.TodayTeamSource
+import dev.draftingroom5.todayWeek
 import java.time.LocalDate
+import java.time.Instant
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 import java.util.UUID
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Phone-side authority for the compact, private watch protocol. */
 class PhoneWatchDataService : WearableListenerService() {
@@ -92,10 +104,16 @@ class PhoneWatchDataService : WearableListenerService() {
                 saveAcknowledgedIds(acknowledgements)
             }
         }
+        val cachedToday = readToday()
+        if (command.type == WatchCommandType.REFRESH_TODAY || cachedToday == null ||
+            (command.type == WatchCommandType.SYNC &&
+                System.currentTimeMillis() - cachedToday.updatedAtMillis >= TODAY_REFRESH_MILLIS)) {
+            runCatching { refreshToday() }
+        }
         val snapshot = currentSnapshot(
             acknowledgements,
             completedSessionId = command.sessionId.takeIf { command.type == WatchCommandType.FINISH_SESSION },
-        )
+        ).copy(today = readToday())
         val request = PutDataRequest.create(WATCH_SNAPSHOT_PATH)
             .setData(encodeWatchSnapshot(snapshot))
             .setUrgent()
@@ -109,7 +127,7 @@ class PhoneWatchDataService : WearableListenerService() {
 
     private fun applyCommand(repository: AppRepository, command: WatchCommand) {
         when (command.type) {
-            WatchCommandType.SYNC -> Unit
+            WatchCommandType.SYNC, WatchCommandType.REFRESH_TODAY -> Unit
             WatchCommandType.START_TODAY -> ensureTodaySession(repository)
             WatchCommandType.COMPLETE_SET -> {
                 val session = findSession(repository, command.sessionId) ?: ensureTodaySession(repository) ?: return
@@ -200,6 +218,67 @@ class PhoneWatchDataService : WearableListenerService() {
             .filter { it.routine.execution == RoutineExecution.GUIDED && it.action != SessionAction.DONE }
             .sortedBy { if (it.action == SessionAction.RESUME) 0 else 1 }
             .firstOrNull()
+
+    private fun readToday(): WatchTodayBriefing? = getSharedPreferences(PREFERENCES, MODE_PRIVATE)
+        .getString(TODAY_BRIEFING, null)
+        ?.let { runCatching { decodeWatchTodayBriefing(it) }.getOrNull() }
+        ?.takeIf { it.date == LocalDate.now().toString() }
+
+    private fun refreshToday() {
+        val document = (AppRepository.get(applicationContext).ensureLoaded() as? LoadState.Ready)?.value ?: return
+        val date = LocalDate.now()
+        val sessions = dashboardSessions(document, date)
+        val week = todayWeek(document, date)
+        val previous = readToday()
+        val favorites = TodayPreferences(this)
+        val symbols = favorites.symbols()
+        val teams = favorites.teams()
+        val city = TodayLocationPreferences(this).selectedCity()
+        val (weather, stocks, games) = runBlocking {
+            supervisorScope {
+                val weatherJob = async {
+                    withTimeoutOrNull(10_000) {
+                        val target = city ?: TodayWeatherSource.currentLocation(this@PhoneWatchDataService)?.let {
+                            dev.draftingroom5.TodayCity("Current location", it.latitude, it.longitude)
+                        }
+                        target?.let { runCatching { TodayWeatherSource.fetch(it.latitude, it.longitude, it.name) }.getOrNull() }
+                    }
+                }
+                val stockJobs = symbols.map { symbol -> async {
+                    withTimeoutOrNull(10_000) { runCatching { TodayMarketSource.fetch(symbol) }.getOrNull() }
+                } }
+                val gameJobs = teams.map { team -> async {
+                    withTimeoutOrNull(10_000) { runCatching { TodayTeamSource.fetch(team, date, Instant.now()) }.getOrNull() }
+                } }
+                Triple(weatherJob.await(), stockJobs.awaitAll(), gameJobs.awaitAll())
+            }
+        }
+        val briefing = WatchTodayBriefing(
+            date = date.toString(),
+            workoutName = sessions.firstOrNull()?.routine?.name,
+            workoutCount = sessions.size,
+            weekPlanned = week.sumOf { it.planned },
+            weekCompleted = week.sumOf { it.completed },
+            weekDays = week.map { it.planned to it.completed },
+            location = weather?.location ?: previous?.location,
+            temperatureF = weather?.temperatureF ?: previous?.temperatureF,
+            weatherKind = weather?.kind?.name ?: previous?.weatherKind,
+            stocks = symbols.mapIndexed { index, symbol ->
+                val quote = stocks[index]
+                val old = previous?.stocks?.firstOrNull { it.symbol == symbol }
+                WatchTodayStock(symbol, quote?.price ?: old?.price, quote?.changePercent ?: old?.changePercent)
+            },
+            games = teams.mapIndexed { index, team ->
+                val game = games[index]
+                val old = previous?.games?.firstOrNull { it.team == team.displayName }
+                WatchTodayGame(team.displayName, game?.opponent ?: old?.opponent,
+                    game?.startsAt?.toEpochMilli() ?: old?.startsAtMillis)
+            },
+            updatedAtMillis = System.currentTimeMillis().coerceAtLeast(0L),
+        )
+        getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit()
+            .putString(TODAY_BRIEFING, encodeWatchTodayBriefing(briefing)).apply()
+    }
 
     private fun routineSnapshot(
         document: AppDocument,
@@ -300,7 +379,9 @@ class PhoneWatchDataService : WearableListenerService() {
     private companion object {
         const val PREFERENCES = "watch_sync"
         const val ACKNOWLEDGED = "acknowledged_commands"
+        const val TODAY_BRIEFING = "today_briefing"
         const val MAX_ACKNOWLEDGEMENTS = 128
+        const val TODAY_REFRESH_MILLIS = 15 * 60 * 1000L
         val processLock = Any()
     }
 }
