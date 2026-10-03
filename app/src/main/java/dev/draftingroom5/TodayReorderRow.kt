@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -72,9 +72,7 @@ internal fun TodayReorderRow(
             .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-        trailing?.invoke()
-        Icon(Icons.Default.DragHandle,
+        Icon(Icons.Default.DragIndicator,
             contentDescription = "Drag to reorder $label, position ${position + 1} of $total",
             tint = TodayLavender,
             modifier = Modifier.size(48.dp).pointerInput(label) {
@@ -100,5 +98,7 @@ internal fun TodayReorderRow(
                     }
                 }
             }.padding(10.dp))
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        trailing?.invoke()
     }
 }
