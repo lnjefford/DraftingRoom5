@@ -8,7 +8,8 @@ import com.android.tools.screenshot.PreviewTest
 
 class WatchScreenCases : PreviewParameterProvider<String> {
     override val values = sequenceOf("Today", "Exercise", "Ready", "Running", "Set complete", "Complete",
-        "Run picker", "Run active", "Run complete", "Today workout", "Today stocks", "Today teams", "Today offline")
+        "Run picker", "Run active", "Run left turn", "Run off route", "Run complete",
+        "Today workout", "Today stocks", "Today teams", "Today offline")
 }
 
 @PreviewTest

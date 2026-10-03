@@ -22,7 +22,8 @@ data class WatchExercise(
     val completedSets: Int,
 )
 
-data class WatchTodayStock(val symbol: String, val price: Double?, val changePercent: Double?)
+data class WatchTodayStock(val symbol: String, val price: Double?, val changePercent: Double?,
+    val points: List<Double> = emptyList())
 data class WatchTodayGame(val team: String, val opponent: String?, val startsAtMillis: Long?)
 data class WatchTodayBriefing(
     val date: String,
@@ -133,6 +134,7 @@ private fun encodeToday(today: WatchTodayBriefing) = JSONObject().apply {
         put("symbol", stock.symbol)
         put("price", stock.price ?: JSONObject.NULL)
         put("changePercent", stock.changePercent ?: JSONObject.NULL)
+        put("points", JSONArray().apply { stock.points.takeLast(45).forEach(::put) })
     }) } })
     put("games", JSONArray().apply { today.games.forEach { game -> put(JSONObject().apply {
         put("team", game.team)
@@ -157,6 +159,8 @@ private fun decodeToday(value: JSONObject) = WatchTodayBriefing(
     stocks = value.getJSONArray("stocks").objects { WatchTodayStock(
         it.getString("symbol"), it.optDouble("price", Double.NaN).takeIf(Double::isFinite),
         it.optDouble("changePercent", Double.NaN).takeIf(Double::isFinite),
+        it.optJSONArray("points")?.let { points -> (0 until points.length()).map { index -> points.getDouble(index) } }
+            ?: emptyList(),
     ) },
     games = value.getJSONArray("games").objects { WatchTodayGame(
         it.getString("team"), it.nullableString("opponent"),
@@ -173,7 +177,8 @@ private fun decodeToday(value: JSONObject) = WatchTodayBriefing(
     require(it.stocks.size <= 8 && it.games.size <= 6)
     require(it.stocks.all { stock -> stock.symbol.length in 1..12 &&
         (stock.price == null || stock.price > 0.0) &&
-        (stock.changePercent == null || stock.changePercent in -1000.0..1000.0) })
+        (stock.changePercent == null || stock.changePercent in -1000.0..1000.0) &&
+        stock.points.size <= 45 && stock.points.all { point -> point.isFinite() && point > 0.0 } })
     require(it.games.all { game -> game.team.length in 1..100 && (game.opponent?.length ?: 0) <= 100 })
 }
 

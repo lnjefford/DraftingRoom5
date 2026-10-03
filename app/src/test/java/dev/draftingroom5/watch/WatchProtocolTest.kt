@@ -12,7 +12,7 @@ class WatchProtocolTest {
             "2026-10-01", "Fitbod workout", 1, 7, 0,
             listOf(0 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0),
             "Madison", 64, "CLOUDY",
-            listOf(WatchTodayStock("AAPL", 265.13, 1.02)),
+            listOf(WatchTodayStock("AAPL", 265.13, 1.02, listOf(263.1, 264.2, 265.13))),
             listOf(WatchTodayGame("Green Bay Packers", "Bears", 1_759_500_000_000)), 100,
         ))
 
@@ -26,6 +26,16 @@ class WatchProtocolTest {
             .replace(",\"today\":null", "")
 
         assertNull(decodeWatchSnapshot(json.toByteArray()).today)
+    }
+
+    @Test
+    fun oldTodayStockWithoutChartStillDecodes() {
+        val today = WatchTodayBriefing("2026-10-01", null, 0, 0, 0,
+            List(7) { 0 to 0 }, "Madison", 64, "CLOUDY",
+            listOf(WatchTodayStock("AAPL", 265.13, 1.02)), emptyList(), 100)
+        val encoded = encodeWatchTodayBriefing(today).replace(",\"points\":[]", "")
+
+        assertEquals(emptyList<Double>(), decodeWatchTodayBriefing(encoded).stocks.single().points)
     }
 
     @Test

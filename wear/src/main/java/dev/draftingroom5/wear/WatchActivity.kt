@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,13 +17,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,14 +42,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -70,6 +75,7 @@ import dev.draftingroom5.watch.WatchRunCatalog
 import dev.draftingroom5.watch.WatchRunPlan
 import dev.draftingroom5.watch.WatchRunInterval
 import dev.draftingroom5.watch.WatchRunRoute
+import dev.draftingroom5.watch.WatchRunCue
 import dev.draftingroom5.watch.WatchRunPoint
 import dev.draftingroom5.watch.WatchRunSample
 import dev.draftingroom5.watch.WATCH_TREADMILL_ROUTE_ID
@@ -114,6 +120,7 @@ private val Blue = Color(0xFF2F82FF)
 private val Mint = Color(0xFF64E6B5)
 private val Gold = Color(0xFFD8B56B)
 private val Secondary = Color(0xFFA9B8CE)
+private val Amber = Color(0xFFFFCE77)
 
 private enum class TimerPhase { READY, RUNNING, FINISHED }
 
@@ -161,6 +168,7 @@ private fun DraftingRoom5Watch(
     var selectedRun by remember { mutableStateOf<WatchRunPlan?>(null) }
     var selectedRouteId by remember { mutableStateOf<String?>(null) }
     var runError by remember { mutableStateOf<String?>(null) }
+    BackHandler(runPicker) { runPicker = false }
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
             selectedRun?.let { plan ->
@@ -206,6 +214,9 @@ private fun DraftingRoom5Watch(
     }
 
     Box(Modifier.fillMaxSize().background(Ink), contentAlignment = Alignment.Center) {
+        Image(painterResource(R.drawable.watch_dusk), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+            Ink.copy(alpha = .72f), Ink.copy(alpha = .37f), Ink.copy(alpha = .86f)))))
         when {
             runCapture != null && runCapture?.completedAtMillis == null -> WatchActiveRunScreen(
                 checkNotNull(runCapture), now,
@@ -294,15 +305,16 @@ private fun DraftingRoom5Watch(
 
 @Composable
 private fun WatchRunCompleteScreen(capture: WatchRunCapture, pendingRuns: Int, onDone: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 25.dp, vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Eyebrow("RUN COMPLETE")
+    Column(Modifier.fillMaxSize().padding(horizontal = 29.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        WatchText("RUN COMPLETE", 10, Gold, FontWeight.Bold)
+        WatchText("✓", 30, Mint, FontWeight.Bold)
         WatchText("%02d:%02d".format(capture.elapsedBeforeResumeMillis / 60_000,
-            (capture.elapsedBeforeResumeMillis / 1_000) % 60), 30, Ivory, FontWeight.Bold, serifFamily())
+            (capture.elapsedBeforeResumeMillis / 1_000) % 60), 25, Ivory, FontWeight.Bold, serifFamily())
         if (capture.plan.preferredRouteId != WATCH_TREADMILL_ROUTE_ID)
-            WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 17, Mint)
-        WatchText(if (pendingRuns > 0) "Sync pending" else "Saved on phone", 11, Secondary)
-        PrimaryButton("Done", onDone)
+            WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 14, Mint)
+        WatchText(if (pendingRuns > 0) "Sync pending" else "Saved on phone", 10, Secondary)
+        CompactButton("Done", Blue, onDone, Modifier.fillMaxWidth())
     }
 }
 
@@ -312,6 +324,7 @@ private fun WatchHomeScreen(eyebrow: String, message: String, onSync: () -> Unit
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 25.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         Eyebrow(eyebrow)
+        WatchText("◎", 42, Blue, FontWeight.Bold)
         WatchText(message, 17, Ivory, maxLines = 3)
         Spacer(Modifier.height(10.dp))
         if (hasRuns) { PrimaryButton("Runs", onRuns); Spacer(Modifier.height(5.dp)) }
@@ -323,31 +336,38 @@ private fun WatchHomeScreen(eyebrow: String, message: String, onSync: () -> Unit
 private fun WatchRunPickerScreen(catalog: WatchRunCatalog?, selected: WatchRunPlan?, routeId: String?,
     error: String?, onSelectPlan: (WatchRunPlan) -> Unit, onSelectRoute: (String?) -> Unit,
     onStart: () -> Unit, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        Eyebrow("RUNS")
-        val plans = catalog?.plans.orEmpty()
-        if (plans.isEmpty()) WatchText("No runs cached yet. Sync with your phone first.", 15, Secondary, maxLines = 3)
-        else {
-            plans.take(8).forEach { plan ->
-                SecondaryButton((if (plan == selected) "✓ " else "") + plan.routineName, { onSelectPlan(plan) })
-                Spacer(Modifier.height(4.dp))
-            }
-            if (selected != null) {
-                WatchText("Route", 12, Gold)
-                SecondaryButton(if (routeId == null) "✓ Free run" else "Free run", { onSelectRoute(null) })
-                SecondaryButton(if (routeId == WATCH_TREADMILL_ROUTE_ID) "✓ Treadmill" else "Treadmill",
-                    { onSelectRoute(WATCH_TREADMILL_ROUTE_ID) })
-                catalog?.routes?.take(12)?.forEach { route ->
-                    SecondaryButton((if (route.id == routeId) "✓ " else "") + route.name, { onSelectRoute(route.id) })
+    Box(Modifier.fillMaxSize().clip(CircleShape).background(Ink)) {
+        Image(painterResource(R.drawable.watch_athlete_run), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Ink.copy(alpha = .45f), Ink.copy(alpha = .84f)))))
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Eyebrow("RUNS")
+            val plans = catalog?.plans.orEmpty()
+            if (plans.isEmpty()) WatchText("No runs cached · Sync with phone", 12, Ivory, maxLines = 2)
+            else {
+                plans.take(8).forEach { plan ->
+                    CompactButton((if (plan == selected) "✓ " else "") + plan.routineName,
+                        Raised, { onSelectPlan(plan) }, Modifier.fillMaxWidth())
                 }
-                Spacer(Modifier.height(5.dp))
-                PrimaryButton("Start run", onStart)
+                if (selected != null) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        CompactButton(if (routeId == null) "✓ Free" else "Free", Raised,
+                            { onSelectRoute(null) }, Modifier.weight(1f))
+                        CompactButton(if (routeId == WATCH_TREADMILL_ROUTE_ID) "✓ Treadmill" else "Treadmill", Raised,
+                            { onSelectRoute(WATCH_TREADMILL_ROUTE_ID) }, Modifier.weight(1f))
+                    }
+                    catalog?.routes?.take(12)?.forEach { route ->
+                        CompactButton((if (route.id == routeId) "✓ " else "") + route.name,
+                            Raised, { onSelectRoute(route.id) }, Modifier.fillMaxWidth())
+                    }
+                }
             }
+            if (error != null) WatchText(error, 11, Amber, maxLines = 3)
         }
-        if (error != null) WatchText(error, 12, Gold, maxLines = 3)
-        Spacer(Modifier.height(5.dp))
-        SecondaryButton("Back", onBack)
+        CompactButton("‹", Raised, onBack,
+            Modifier.align(Alignment.TopStart).padding(start = 26.dp, top = 19.dp).width(30.dp))
+        if (selected != null) CompactButton("Start run", Blue, onStart,
+            Modifier.align(Alignment.BottomCenter).padding(horizontal = 32.dp, vertical = 15.dp).fillMaxWidth())
     }
 }
 
@@ -357,118 +377,206 @@ private fun WatchActiveRunScreen(capture: WatchRunCapture, now: Long, onPause: (
     val elapsed = capture.elapsedMillis(now) / 1_000
     val interval = capture.intervalAt(now)
     val total = capture.plan.intervals.sumOf { it.durationSeconds }.coerceAtLeast(1)
+    val position = capture.routePosition()
+    val cue = position?.let { (point, _) -> capture.route?.cues?.firstOrNull { it.pointIndex >= point } }
+    val offRoute = position?.second?.takeIf { it > 50 }
     RoundProgress((elapsed.toFloat() / total).coerceIn(0f, 1f)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 30.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Eyebrow(if (capture.isRunning) "RUNNING" else "PAUSED")
-            WatchText("%02d:%02d".format(elapsed / 60, elapsed % 60), 36, Ivory, FontWeight.Bold, serifFamily())
-            if (capture.plan.preferredRouteId == WATCH_TREADMILL_ROUTE_ID) WatchText("Treadmill · indoor", 12, Mint)
-            else {
-                WatchText("${"%.2f".format(capture.distanceMeters / 1000.0)} km", 16, Mint)
-                if (capture.samples.isEmpty()) WatchText("Waiting for GPS", 11, Secondary)
+            WatchText("${if (capture.isRunning) "RUNNING" else "PAUSED"} · ${interval?.second?.kind ?: "DONE"}",
+                10, Gold, FontWeight.Bold)
+            WatchText("%02d:%02d".format(elapsed / 60, elapsed % 60), 27, Ivory, FontWeight.Bold, serifFamily())
+            if (offRoute != null) {
+                WatchText("⚠", 29, Amber)
+                WatchText("OFF ROUTE · $offRoute m", 11, Amber, FontWeight.Bold)
+            } else if (cue != null) {
+                TurnArrow(cue.kind)
+                WatchText(cue.instruction, 11, Ivory, FontWeight.Bold, maxLines = 2)
+            } else {
+                WatchText(if (capture.plan.preferredRouteId == WATCH_TREADMILL_ROUTE_ID) "▰" else "◉", 23, Blue)
+                WatchText(if (capture.samples.isEmpty() && capture.plan.preferredRouteId != WATCH_TREADMILL_ROUTE_ID)
+                    "Waiting for GPS" else "${"%.2f".format(capture.distanceMeters / 1000.0)} km", 18, Mint)
             }
-            WatchText(interval?.second?.kind ?: "Plan complete", 14, Gold)
-            capture.routePosition()?.let { (point, offRouteMeters) ->
-                WatchText(if (offRouteMeters > 50) "Off route · ${offRouteMeters} m" else "Route point ${point + 1}", 11, Secondary)
-                capture.route?.cues?.firstOrNull { it.pointIndex >= point }?.let { cue ->
-                    WatchText(cue.instruction, 11, Mint, maxLines = 2)
-                }
+            capture.route?.let { route -> RunRouteLine(route, position?.first) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                CompactButton(if (capture.isRunning) "Pause" else "Resume", Blue,
+                    if (capture.isRunning) onPause else onResume, Modifier.weight(1f))
+                CompactButton("Finish", Raised, onFinish, Modifier.weight(1f))
             }
-            music()
-            Spacer(Modifier.height(4.dp))
-            PrimaryButton(if (capture.isRunning) "Pause" else "Resume", if (capture.isRunning) onPause else onResume)
-            Spacer(Modifier.height(4.dp))
-            SecondaryButton("Finish", onFinish)
         }
+    }
+}
+
+@Composable
+private fun TurnArrow(kind: String) {
+    Canvas(Modifier.size(39.dp)) {
+        val w = size.width
+        val h = size.height
+        val path = Path()
+        when (kind) {
+            "LEFT", "RIGHT" -> {
+                val mirror = kind == "RIGHT"
+                fun x(value: Float) = w * (if (mirror) 1f - value else value)
+                path.moveTo(x(.72f), h * .88f)
+                path.lineTo(x(.72f), h * .54f)
+                path.quadraticTo(x(.72f), h * .34f, x(.52f), h * .34f)
+                path.lineTo(x(.22f), h * .34f)
+                drawPath(path, Amber, style = Stroke(6.dp.toPx(), cap = StrokeCap.Round))
+                drawLine(Amber, androidx.compose.ui.geometry.Offset(x(.22f), h * .34f),
+                    androidx.compose.ui.geometry.Offset(x(.37f), h * .18f), 6.dp.toPx(), StrokeCap.Round)
+                drawLine(Amber, androidx.compose.ui.geometry.Offset(x(.22f), h * .34f),
+                    androidx.compose.ui.geometry.Offset(x(.37f), h * .50f), 6.dp.toPx(), StrokeCap.Round)
+            }
+            "U_TURN" -> {
+                path.moveTo(w * .72f, h * .88f)
+                path.lineTo(w * .72f, h * .37f)
+                path.cubicTo(w * .72f, h * .05f, w * .28f, h * .05f, w * .28f, h * .37f)
+                path.lineTo(w * .28f, h * .7f)
+                drawPath(path, Amber, style = Stroke(6.dp.toPx(), cap = StrokeCap.Round))
+                drawLine(Amber, androidx.compose.ui.geometry.Offset(w * .28f, h * .7f),
+                    androidx.compose.ui.geometry.Offset(w * .13f, h * .55f), 6.dp.toPx(), StrokeCap.Round)
+                drawLine(Amber, androidx.compose.ui.geometry.Offset(w * .28f, h * .7f),
+                    androidx.compose.ui.geometry.Offset(w * .43f, h * .55f), 6.dp.toPx(), StrokeCap.Round)
+            }
+            else -> drawLine(Amber, androidx.compose.ui.geometry.Offset(w * .5f, h * .85f),
+                androidx.compose.ui.geometry.Offset(w * .5f, h * .2f), 6.dp.toPx(), StrokeCap.Round)
+        }
+    }
+}
+
+@Composable
+private fun RunRouteLine(route: WatchRunRoute, pointIndex: Int?) {
+    Canvas(Modifier.fillMaxWidth().height(14.dp)) {
+        if (route.points.size < 2) return@Canvas
+        val center = pointIndex ?: 0
+        val slice = route.points.subList((center - 8).coerceAtLeast(0), (center + 12).coerceAtMost(route.points.size))
+        if (slice.size < 2) return@Canvas
+        val minX = slice.minOf { it.longitudeE7 }.toFloat()
+        val maxX = slice.maxOf { it.longitudeE7 }.toFloat()
+        val minY = slice.minOf { it.latitudeE7 }.toFloat()
+        val maxY = slice.maxOf { it.latitudeE7 }.toFloat()
+        val spanX = (maxX - minX).coerceAtLeast(1f)
+        val spanY = (maxY - minY).coerceAtLeast(1f)
+        val path = Path()
+        slice.forEachIndexed { index, point ->
+            val x = size.width * (.1f + .8f * (point.longitudeE7 - minX) / spanX)
+            val y = size.height * (.1f + .8f * (maxY - point.latitudeE7) / spanY)
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        drawPath(path, Blue, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+    }
+}
+
+@Composable
+private fun CompactButton(label: String, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier,
+    description: String = label) {
+    Box(modifier.height(34.dp).clip(RoundedCornerShape(18.dp)).background(color)
+        .clickable(onClick = onClick, role = Role.Button).semantics { contentDescription = description },
+        contentAlignment = Alignment.Center) {
+        WatchText(label, 12, Ivory, FontWeight.Bold)
     }
 }
 
 @Composable
 private fun TodayScreen(snapshot: WatchSnapshot, onSync: () -> Unit, onStart: () -> Unit,
-    onRuns: () -> Unit, previewScroll: Int = 0) {
+    onRuns: () -> Unit, previewPage: Int = 0) {
     val today = snapshot.today
     val locale = LocalLocale.current.platformLocale
-    val scroll = rememberScrollState(initial = previewScroll)
-    RoundProgress(0f) {
-        Column(
-            Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 23.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Eyebrow("TODAY")
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val pageHeight = maxHeight
+        val pagePixels = with(LocalDensity.current) { pageHeight.roundToPx() }
+        val scroll = rememberScrollState(initial = previewPage * pagePixels)
+        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             if (today == null) {
-                WatchText("Phone needed", 18, Ivory, family = serifFamily())
-                WatchText("Update phone app, then Sync", 12, Secondary, maxLines = 2)
-                if (snapshot.status == WatchWorkoutStatus.AVAILABLE) {
-                    WatchText(snapshot.routineName.orEmpty(), 15, Ivory, maxLines = 2)
-                    PrimaryButton("▶  Start workout", onStart)
+                AtmospherePage(R.drawable.watch_dusk, Modifier.height(pageHeight)) {
+                    Eyebrow("TODAY")
+                    WatchText("Phone needed", 19, Ivory, family = serifFamily())
+                    WatchText("Update phone app, then sync", 10, Secondary, maxLines = 2)
+                    if (snapshot.status == WatchWorkoutStatus.AVAILABLE) {
+                        CompactButton("Start workout", Blue, onStart, Modifier.fillMaxWidth())
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        CompactButton("Sync", Raised, onSync, Modifier.weight(1f))
+                        CompactButton("Runs", Raised, onRuns, Modifier.weight(1f))
+                    }
                 }
-                SecondaryButton("Sync", onSync)
-                SecondaryButton("Runs", onRuns)
             } else {
-                TodayWeatherSection(today)
-                Spacer(Modifier.height(8.dp))
-                Eyebrow("TODAY'S WORKOUT")
-                WatchText(today.workoutName ?: "Your day is open", 18, Ivory,
-                    family = serifFamily(), maxLines = 2, modifier = Modifier.semantics { heading() })
-                WatchText(if (today.workoutCount == 0) "No workout scheduled" else
-                    "${today.workoutCount} session${if (today.workoutCount == 1) "" else "s"} planned", 12, Secondary)
-                WatchText("${today.weekCompleted} / ${today.weekPlanned} this week", 11, Gold)
-                TodayWeekMarks(today.weekDays)
-                if (snapshot.status == WatchWorkoutStatus.AVAILABLE) {
-                    PrimaryButton("▶  Start workout", onStart)
-                } else if (snapshot.status == WatchWorkoutStatus.COMPLETE) {
-                    WatchText("Workout complete ✓", 12, Mint)
-                } else if (today.workoutCount > 0) {
-                    WatchText("Open on phone for this workout", 11, Secondary, maxLines = 2)
+                AtmospherePage(R.drawable.watch_dusk, Modifier.height(pageHeight)) {
+                    Eyebrow("TODAY")
+                    val icon = when (today.weatherKind) {
+                        "CLEAR" -> "☀"; "CLOUDY" -> "☁"; "RAIN" -> "☂"; "SNOW" -> "❄"; "STORM" -> "ϟ"; else -> "◌"
+                    }
+                    WatchText(icon, 22, Ivory)
+                    WatchText(today.temperatureF?.let { "$it°" } ?: "—", 39, Ivory, family = serifFamily())
+                    WatchText("${today.location ?: "Current location"} · ${today.weatherKind.orEmpty().lowercase()
+                        .replaceFirstChar { it.titlecase() }}", 10, Ivory, maxLines = 2)
+                    ScenicDivider()
+                    if (snapshot.status == WatchWorkoutStatus.AVAILABLE)
+                        CompactButton(today.workoutName ?: "Start workout", Raised, onStart, Modifier.fillMaxWidth())
+                    else CompactButton("Runs", Raised, onRuns, Modifier.fillMaxWidth())
                 }
-                Spacer(Modifier.height(8.dp))
-                Eyebrow("YOUR STOCKS")
-                if (today.stocks.isEmpty()) WatchText("No stocks followed", 12, Secondary)
-                today.stocks.forEach { stock ->
-                    WatchText(stock.symbol, 14, Ivory, FontWeight.Bold)
-                    WatchText(stock.price?.let { String.format(Locale.US, "%,.2f", it) } ?: "Quote unavailable",
-                        19, Ivory, family = serifFamily())
-                    stock.changePercent?.let { change -> WatchText(String.format(Locale.US, "%+.2f%%", change),
-                        12, if (change >= 0) Mint else Gold) }
-                    Spacer(Modifier.height(5.dp))
+                AtmospherePage(R.drawable.watch_athlete_run, Modifier.height(pageHeight)) {
+                    Eyebrow("WORKOUT")
+                    Spacer(Modifier.height(10.dp))
+                    WatchText(today.workoutName ?: "Your day is open", 18, Ivory, family = serifFamily(), maxLines = 2)
+                    WatchText("${today.weekCompleted}/${today.weekPlanned} this week", 11, Ivory)
+                    TodayWeekMarks(today.weekDays)
+                    when (snapshot.status) {
+                        WatchWorkoutStatus.AVAILABLE -> CompactButton("Start workout", Blue, onStart, Modifier.fillMaxWidth())
+                        WatchWorkoutStatus.COMPLETE -> WatchText("✓ Workout complete", 13, Mint)
+                        else -> WatchText(if (today.workoutCount == 0) "No workout scheduled" else
+                            "Open on phone for this workout", 11, Secondary, maxLines = 2)
+                    }
                 }
-                Eyebrow("YOUR TEAMS")
-                if (today.games.isEmpty()) WatchText("No teams followed", 12, Secondary)
-                today.games.forEach { game ->
-                    WatchText(game.team, 13, Ivory, FontWeight.Bold, maxLines = 2)
-                    WatchText(if (game.opponent == null) "No upcoming game" else {
-                        val time = game.startsAtMillis?.let { millis ->
-                            DateTimeFormatter.ofPattern("EEE h:mm a", locale)
-                                .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+                AtmospherePage(R.drawable.watch_dusk, Modifier.height(pageHeight)) {
+                    Eyebrow("YOUR STOCKS")
+                    if (today.stocks.isEmpty()) WatchText("No stocks followed", 14, Ivory)
+                    today.stocks.take(2).forEach { stock ->
+                        WatchText(stock.symbol, 19, Ivory, FontWeight.Bold)
+                        WatchText(stock.price?.let { String.format(Locale.US, "%,.2f", it) } ?: "Quote unavailable",
+                            32, Ivory, family = serifFamily())
+                        stock.changePercent?.let { change ->
+                            WatchText("${if (change >= 0) "↗" else "↘"}  ${String.format(Locale.US, "%+.2f%%", change)}",
+                                18, if (change >= 0) Mint else Amber, FontWeight.Bold)
                         }
-                        "vs ${game.opponent}" + (time?.let { " · $it" } ?: "")
-                    }, 11, Secondary, maxLines = 2)
-                    Spacer(Modifier.height(5.dp))
+                        StockSparkline(stock.points, if ((stock.changePercent ?: 0.0) >= 0) Mint else Amber)
+                    }
                 }
-                SecondaryButton("Runs", onRuns)
-                SecondaryButton("Refresh", onSync)
+                AtmospherePage(R.drawable.watch_stadium, Modifier.height(pageHeight)) {
+                    Eyebrow("YOUR TEAMS")
+                    if (today.games.isEmpty()) WatchText("No teams followed", 13, Ivory)
+                    today.games.take(2).forEach { game ->
+                        TeamMatchVisual(game.team, game.opponent)
+                        WatchText(game.team, 17, Ivory, FontWeight.Bold, maxLines = 2)
+                        WatchText(if (game.opponent == null) "No upcoming game" else {
+                            val time = game.startsAtMillis?.let { millis ->
+                                DateTimeFormatter.ofPattern("EEE h:mm a", locale)
+                                    .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+                            }
+                            "vs ${game.opponent}" + (time?.let { " · $it" } ?: "")
+                        }, 12, Secondary, maxLines = 2)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        CompactButton("Runs", Blue, onRuns, Modifier.weight(1f))
+                        CompactButton("Refresh", Raised, onSync, Modifier.weight(1f))
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TodayWeatherSection(today: WatchTodayBriefing) {
-    if (today.temperatureF == null) {
-        WatchText("Weather unavailable", 13, Secondary)
-    } else {
-        val icon = when (today.weatherKind) {
-            "CLEAR" -> "☀"
-            "CLOUDY" -> "☁"
-            "RAIN" -> "☂"
-            "SNOW" -> "❄"
-            "STORM" -> "ϟ"
-            else -> "◌"
+private fun TeamMatchVisual(team: String, opponent: String?) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(33.dp).clip(CircleShape).background(Color(0xFF123B2C)), contentAlignment = Alignment.Center) {
+            WatchText(team.take(1), 19, Ivory, FontWeight.Bold)
         }
-        WatchText("$icon ${today.temperatureF}°F", 29, Ivory, family = serifFamily())
-        WatchText("${today.location ?: "Current location"} · ${today.weatherKind.orEmpty().lowercase()
-            .replaceFirstChar { it.titlecase() }}", 12, Secondary, maxLines = 2)
+        WatchText("VS", 16, Amber, FontWeight.Bold, modifier = Modifier.width(43.dp))
+        Box(Modifier.size(33.dp).clip(CircleShape).background(Color(0xFF2C3155)), contentAlignment = Alignment.Center) {
+            WatchText(opponent?.take(1) ?: "?", 19, Ivory, FontWeight.Bold)
+        }
     }
 }
 
@@ -476,12 +584,60 @@ private fun TodayWeatherSection(today: WatchTodayBriefing) {
 private fun TodayWeekMarks(days: List<Pair<Int, Int>>) {
     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         days.forEach { (planned, completed) ->
-            Box(Modifier.size(9.dp).clip(CircleShape).background(when {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(when {
                 completed > 0 -> Mint
                 planned > 0 -> Color(0xFF4E436D)
                 else -> Raised
             }))
         }
+    }
+}
+
+@Composable
+private fun AtmospherePage(resource: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(modifier.fillMaxSize().clip(CircleShape).background(Ink), contentAlignment = Alignment.Center) {
+        Image(painterResource(resource), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+            Ink.copy(alpha = .63f), Ink.copy(alpha = .27f), Ink.copy(alpha = .69f), Ink.copy(alpha = .93f)))))
+        Column(Modifier.fillMaxWidth().padding(horizontal = 27.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)) { content() }
+    }
+}
+
+@Composable
+private fun ScenicDivider() {
+    Canvas(Modifier.fillMaxWidth().height(16.dp)) {
+        val left = Path().apply {
+            moveTo(size.width * .08f, size.height * .9f)
+            quadraticTo(size.width * .28f, size.height * .08f, size.width * .5f, size.height * .12f)
+        }
+        val right = Path().apply {
+            moveTo(size.width * .5f, size.height * .12f)
+            quadraticTo(size.width * .72f, size.height * .08f, size.width * .92f, size.height * .9f)
+        }
+        drawPath(left, Amber, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(right, Blue, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawCircle(Ivory, 3.dp.toPx(), androidx.compose.ui.geometry.Offset(size.width * .5f, size.height * .12f))
+    }
+}
+
+@Composable
+private fun StockSparkline(points: List<Double>, color: Color) {
+    if (points.size < 2) return
+    Canvas(Modifier.fillMaxWidth().height(35.dp)) {
+        val low = points.minOrNull() ?: return@Canvas
+        val high = points.maxOrNull() ?: return@Canvas
+        val span = (high - low).coerceAtLeast(.001)
+        val path = Path()
+        points.forEachIndexed { index, value ->
+            val x = size.width * index / (points.size - 1)
+            val y = size.height * (.85f - .7f * ((value - low) / span).toFloat())
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        drawPath(path, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawCircle(color, 3.dp.toPx(), androidx.compose.ui.geometry.Offset(size.width,
+            size.height * (.85f - .7f * ((points.last() - low) / span).toFloat())))
     }
 }
 
@@ -495,25 +651,20 @@ private fun ExerciseScreen(
     val totalSets = snapshot.exercises.sumOf { it.setCount }
     val completedSets = snapshot.exercises.sumOf { it.completedSets }
     RoundProgress(if (totalSets == 0) 0f else completedSets.toFloat() / totalSets) {
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 7.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            ArtworkHero(artworkResource(exercise.artworkId), 38)
-            Eyebrow("${snapshot.exercises.indexOf(exercise) + 1} OF ${snapshot.exercises.size}")
-            WatchText(
-                exercise.name, 19, Ivory, FontWeight.Normal, serifFamily(), maxLines = 2,
-                modifier = Modifier.semantics { heading() },
-            )
-            WatchText("Set ${exercise.completedSets + 1} of ${exercise.setCount}", 13, Secondary)
-            WatchText(exercise.targetLabel(), 18, Ivory, FontWeight.Bold)
-            Spacer(Modifier.height(5.dp))
+        AtmospherePage(artworkResource(exercise.artworkId)) {
+            WatchText("${snapshot.exercises.indexOf(exercise) + 1} OF ${snapshot.exercises.size}", 10, Gold, FontWeight.Bold)
+            WatchText(exercise.name, 18, Ivory, FontWeight.Normal, serifFamily(), maxLines = 2,
+                modifier = Modifier.semantics { heading() })
+            WatchText("Set ${exercise.completedSets + 1} of ${exercise.setCount}", 10, Secondary)
+            WatchText(exercise.targetLabel(), 16, Ivory, FontWeight.Bold)
             if (onStartTimer != null) {
-                SecondaryButton("▶  Start timer", onStartTimer)
-                Spacer(Modifier.height(4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    CompactButton("◷", Raised, onStartTimer, Modifier.width(40.dp), "Start timer")
+                    CompactButton("Complete set", Blue, onComplete, Modifier.weight(1f))
+                }
+            } else {
+                CompactButton("Complete set", Blue, onComplete, Modifier.fillMaxWidth())
             }
-            PrimaryButton("Complete set", onComplete)
-            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -549,7 +700,7 @@ private fun TimerScreen(
         TimerPhase.RUNNING -> (configured - remaining).coerceAtLeast(0) / configured.toFloat()
         TimerPhase.FINISHED -> 1f
     }
-    RoundProgress(fraction) {
+    RoundProgress(fraction, if (phase == TimerPhase.READY) Amber else Blue) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 25.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.Center,
@@ -579,36 +730,35 @@ private fun TimerScreen(
 @Composable
 private fun SetCompleteScreen(progress: Pair<Int, Int>) {
     Column(
-        Modifier.fillMaxSize().padding(30.dp),
+        Modifier.fillMaxSize().padding(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(Modifier.size(48.dp).background(Mint.copy(alpha = .14f), CircleShape), contentAlignment = Alignment.Center) {
-            WatchText("✓", 32, Mint, FontWeight.Bold)
+        Box(Modifier.size(48.dp).background(Mint.copy(alpha = .19f), CircleShape), contentAlignment = Alignment.Center) {
+            WatchText("✓", 33, Mint, FontWeight.Bold)
         }
-        Spacer(Modifier.height(7.dp))
+        Spacer(Modifier.height(3.dp))
         Eyebrow("SET COMPLETE")
-        WatchText("${progress.first} of ${progress.second}", 22, Secondary)
-        Spacer(Modifier.height(5.dp))
-        WatchText("Next set", 17, Ivory, FontWeight.Bold)
+        WatchText("${progress.first} of ${progress.second}", 18, Secondary)
+        WatchText("Next set", 13, Ivory, FontWeight.Bold)
     }
 }
 
 @Composable
 private fun CompletionScreen(snapshot: WatchSnapshot, onDone: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 25.dp, vertical = 24.dp),
+        Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 9.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(Modifier.size(48.dp).background(Mint.copy(alpha = .14f), CircleShape), contentAlignment = Alignment.Center) {
-            WatchText("✓", 32, Mint, FontWeight.Bold)
+        Box(Modifier.size(50.dp).background(Mint.copy(alpha = .19f), CircleShape), contentAlignment = Alignment.Center) {
+            WatchText("✓", 34, Mint, FontWeight.Bold)
         }
-        Spacer(Modifier.height(5.dp))
-        WatchText("SESSION\nCOMPLETE", 18, Ivory, FontWeight.Normal, serifFamily(), maxLines = 2)
-        WatchText("${snapshot.exercises.size} of ${snapshot.exercises.size} exercises", 12, Secondary)
-        Spacer(Modifier.height(7.dp))
-        PrimaryButton("Done", onDone)
+        Spacer(Modifier.height(2.dp))
+        WatchText("SESSION\nCOMPLETE", 16, Ivory, FontWeight.Normal, serifFamily(), maxLines = 2)
+        WatchText("${snapshot.exercises.size} of ${snapshot.exercises.size} exercises", 10, Secondary)
+        Spacer(Modifier.height(2.dp))
+        CompactButton("Done", Blue, onDone, Modifier.fillMaxWidth())
     }
 }
 
@@ -620,6 +770,7 @@ private fun MessageScreen(eyebrow: String, message: String, action: String, onAc
         verticalArrangement = Arrangement.Center,
     ) {
         Eyebrow(eyebrow)
+        WatchText("⚠", 43, Amber, FontWeight.Bold)
         WatchText(message, 20, Ivory, FontWeight.Normal, serifFamily(), maxLines = 3)
         Spacer(Modifier.height(15.dp))
         PrimaryButton(action, onAction)
@@ -627,8 +778,9 @@ private fun MessageScreen(eyebrow: String, message: String, action: String, onAc
 }
 
 @Composable
-private fun RoundProgress(progress: Float, content: @Composable () -> Unit) {
+private fun RoundProgress(progress: Float, progressColor: Color = Blue, content: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize()) {
+        content()
         Canvas(Modifier.fillMaxSize().padding(5.dp)) {
             drawArc(
                 color = Raised,
@@ -638,27 +790,13 @@ private fun RoundProgress(progress: Float, content: @Composable () -> Unit) {
                 style = Stroke(5.dp.toPx(), cap = StrokeCap.Round),
             )
             if (progress > 0f) drawArc(
-                color = Blue,
+                color = progressColor,
                 startAngle = -90f,
                 sweepAngle = 360f * progress.coerceIn(0f, 1f),
                 useCenter = false,
                 style = Stroke(5.dp.toPx(), cap = StrokeCap.Round),
             )
         }
-        content()
-    }
-}
-
-@Composable
-private fun ArtworkHero(resource: Int, height: Int) {
-    Box(
-        Modifier.fillMaxWidth().height(height.dp).clip(RoundedCornerShape(40.dp))
-            .drawWithContent {
-                drawContent()
-                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Ink.copy(alpha = .92f))))
-            },
-    ) {
-        Image(painterResource(resource), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
     }
 }
 
@@ -723,7 +861,7 @@ private fun WatchExercise.targetLabel(): String = buildList {
 }.joinToString(" · ").ifBlank { "$setCount sets" }
 
 private fun artworkResource(artworkId: String?): Int = when (artworkId) {
-    "dead_hang" -> R.drawable.exercise_dead_hang_header
+    "dead_hang" -> R.drawable.watch_exercise_dead_hang
     "farmers_walk" -> R.drawable.exercise_farmers_walk_header
     "grip_hold" -> R.drawable.exercise_grip_hold_header
     "rice_bag" -> R.drawable.exercise_rice_bag_header
@@ -769,12 +907,17 @@ internal fun WatchReviewPreview(screen: String) {
             "2026-10-01", "Fitbod workout", 1, 7, 0,
             listOf(0 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0, 1 to 0),
             "Madison", 64, "CLOUDY",
-            listOf(dev.draftingroom5.watch.WatchTodayStock("AAPL", 265.13, 1.02)),
+            listOf(dev.draftingroom5.watch.WatchTodayStock("AAPL", 265.13, 1.02,
+                listOf(262.45, 262.72, 262.61, 263.1, 262.88, 263.45, 263.32, 264.08, 263.95,
+                    264.41, 264.17, 264.82, 265.13))),
             listOf(dev.draftingroom5.watch.WatchTodayGame("Green Bay Packers", "Bears", 1_759_500_000_000)),
             1,
         ),
     )
     Box(Modifier.fillMaxSize().background(Ink), contentAlignment = Alignment.Center) {
+        Image(painterResource(R.drawable.watch_dusk), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+            Ink.copy(alpha = .72f), Ink.copy(alpha = .37f), Ink.copy(alpha = .86f)))))
         when (screen) {
             "Run picker" -> {
                 val plan = WatchRunPlan("run", "Morning intervals", "schedule", "2026-09-29", "2026-09-29",
@@ -791,16 +934,29 @@ internal fun WatchReviewPreview(screen: String) {
                     listOf(WatchRunSample(WatchRunPoint(410_000_000, -870_000_000), 2_000, 5))),
                     61_000, {}, {}, {}, music = { WatchSpotifyStatus("Nothing playing", {}) })
             }
+            "Run left turn", "Run off route" -> {
+                val plan = WatchRunPlan("run", "Morning intervals", "schedule", "2026-09-29", "2026-09-29",
+                    listOf(WatchRunInterval("WALK", 300), WatchRunInterval("RUN", 120)), "route")
+                val route = WatchRunRoute("route", "Neighborhood loop", listOf(
+                    WatchRunPoint(410_000_000, -870_000_000), WatchRunPoint(410_000_200, -870_000_100),
+                    WatchRunPoint(410_000_350, -870_000_250)),
+                    listOf(WatchRunCue(1, "LEFT", "Turn left at the path")))
+                val point = if (screen == "Run off route") WatchRunPoint(410_006_000, -870_000_000)
+                    else route.points.first()
+                WatchActiveRunScreen(WatchRunCapture("run", plan, route, 1_000, 0, 1_000, 820,
+                    listOf(WatchRunSample(point, 2_000, 5))), 61_000, {}, {}, {},
+                    music = { WatchSpotifyStatus("Nothing playing", {}) })
+            }
             "Run complete" -> {
                 val plan = WatchRunPlan("run", "Morning intervals", "schedule", "2026-09-29", "2026-09-29",
                     listOf(WatchRunInterval("RUN", 120)), null)
                 WatchRunCompleteScreen(WatchRunCapture("run", plan, null, 1_000, 60_000, null, 820,
                     emptyList(), 61_000), 1, {})
             }
-            "Today" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 0)
-            "Today workout" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 330)
-            "Today stocks" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 840)
-            "Today teams" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 1110)
+            "Today" -> TodayScreen(snapshot, {}, {}, {}, previewPage = 0)
+            "Today workout" -> TodayScreen(snapshot, {}, {}, {}, previewPage = 1)
+            "Today stocks" -> TodayScreen(snapshot, {}, {}, {}, previewPage = 2)
+            "Today teams" -> TodayScreen(snapshot, {}, {}, {}, previewPage = 3)
             "Today offline" -> TodayScreen(snapshot.copy(today = null), {}, {}, {})
             "Exercise" -> ExerciseScreen(snapshot, exercises.first(), {}, {})
             "Ready" -> TimerScreen(exercises.first(), LocalTimer("hang", 4_000, 24_000), 1_000, true, {}, {})

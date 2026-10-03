@@ -294,7 +294,8 @@ class PhoneWatchDataService : WearableListenerService() {
             stocks = symbols.mapIndexed { index, symbol ->
                 val quote = stocks[index]
                 val old = base.stocks.firstOrNull { it.symbol == symbol }
-                WatchTodayStock(symbol, quote?.price ?: old?.price, quote?.changePercent ?: old?.changePercent)
+                WatchTodayStock(symbol, quote?.price ?: old?.price, quote?.changePercent ?: old?.changePercent,
+                    quote?.points ?: old?.points.orEmpty())
             },
             games = teams.mapIndexed { index, team ->
                 val game = games[index]
