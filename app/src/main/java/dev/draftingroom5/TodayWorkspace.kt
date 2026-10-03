@@ -37,8 +37,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Refresh
@@ -67,6 +65,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -84,11 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import dev.draftingroom5.retirement.domain.AssetAggregator
-import dev.draftingroom5.retirement.provider.RetirementProviders
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -133,8 +128,6 @@ internal fun TodayWorkspaceScreen(
     updatePresentation: UpdateSettingsPresentation = updateSettingsPresentation(AppUpdateStatus(), false, null, BuildConfig.VERSION_NAME),
     onUpdate: () -> Unit = {},
     previewWeather: TodayWeather? = null,
-    previewRetirementBalance: String? = null,
-    previewRetirementTrend: List<TodayRetirementPoint> = emptyList(),
     previewMarketQuotes: Map<String, TodayMarketQuote> = emptyMap(),
     previewTeamGames: Map<TodayTeam, TodayNextGame> = emptyMap(),
     previewDate: LocalDate? = null,
@@ -186,24 +179,6 @@ internal fun TodayWorkspaceScreen(
             locationPreferences.markLocationPrompted()
             locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
         }
-    }
-    var retirementBalance by remember { mutableStateOf(previewRetirementBalance) }
-    var retirementMessage by remember { mutableStateOf(if (previewDate != null) "Tracked retirement value" else "Loading your plan") }
-    var retirementTrend by remember { mutableStateOf(previewRetirementTrend) }
-    LaunchedEffect(Unit) {
-        if (previewDate != null) return@LaunchedEffect
-        runCatching {
-            withContext(Dispatchers.IO) {
-                val repository = RetirementProviders.get(context).repository
-                val state = repository.load()
-                AssetAggregator.totals(state).tracked.format() to todayRetirementTrend(state)
-            }
-        }.onSuccess { (balance, trend) ->
-            retirementBalance = balance
-            retirementTrend = trend
-            retirementMessage = "Tracked retirement value"
-        }
-            .onFailure { retirementMessage = "Retirement data unavailable" }
     }
     var today by remember { mutableStateOf(previewDate ?: LocalDate.now()) }
     LaunchedEffect(previewDate) {
@@ -355,41 +330,49 @@ internal fun TodayWorkspaceScreen(
                     label = { Text("Symbols, separated by commas") }, modifier = Modifier.fillMaxWidth())
                 symbolsError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 val orderedSymbols = remember(symbolsDraft) { runCatching { parseSymbols(symbolsDraft) }.getOrNull() }
-                if (orderedSymbols != null) {
-                    Text("Displayed left to right in this order", color = TodayLavender,
+                if (orderedSymbols != null) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Drag the handle to set left-to-right order", color = TodayLavender,
                         style = MaterialTheme.typography.bodySmall)
                     orderedSymbols.forEachIndexed { index, symbol ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(symbol, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                            IconButton(enabled = index > 0, onClick = {
-                                symbolsDraft = moveTodayItem(orderedSymbols, index, -1).joinToString(", ")
-                            }) { Icon(Icons.Default.ArrowUpward, contentDescription = "Move $symbol earlier") }
-                            IconButton(enabled = index < orderedSymbols.lastIndex, onClick = {
-                                symbolsDraft = moveTodayItem(orderedSymbols, index, 1).joinToString(", ")
-                            }) { Icon(Icons.Default.ArrowDownward, contentDescription = "Move $symbol later") }
+                        key(symbol) {
+                            TodayReorderRow(symbol, index, orderedSymbols.size, onMove = { delta ->
+                                val current = runCatching { parseSymbols(symbolsDraft) }.getOrNull() ?: return@TodayReorderRow false
+                                val from = current.indexOf(symbol)
+                                if (from !in current.indices || from + delta !in current.indices) false
+                                else {
+                                    symbolsDraft = moveTodayItem(current, from, delta).joinToString(", ")
+                                    true
+                                }
+                            })
                         }
                     }
                 }
                 HorizontalDivider(color = TodayBorder)
                 TodaySettingLabel("TEAMS TO FOLLOW")
-                Text("Displayed left to right in this order", color = TodayLavender,
-                    style = MaterialTheme.typography.bodySmall)
-                teamsDraft.forEachIndexed { index, team ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(team.displayName, modifier = Modifier.weight(1f).padding(end = 16.dp))
-                        IconButton(enabled = index > 0, onClick = {
-                            teamsDraft = moveTodayItem(teamsDraft, index, -1)
-                        }) { Icon(Icons.Default.ArrowUpward, contentDescription = "Move ${team.displayName} earlier") }
-                        IconButton(enabled = index < teamsDraft.lastIndex, onClick = {
-                            teamsDraft = moveTodayItem(teamsDraft, index, 1)
-                        }) { Icon(Icons.Default.ArrowDownward, contentDescription = "Move ${team.displayName} later") }
-                        Switch(checked = true, onCheckedChange = { teamsDraft = teamsDraft - team })
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Drag the handle to set left-to-right order", color = TodayLavender,
+                        style = MaterialTheme.typography.bodySmall)
+                    teamsDraft.forEachIndexed { index, team ->
+                        key(team) {
+                            TodayReorderRow(team.displayName, index, teamsDraft.size, onMove = { delta ->
+                                val from = teamsDraft.indexOf(team)
+                                if (from !in teamsDraft.indices || from + delta !in teamsDraft.indices) false
+                                else {
+                                    teamsDraft = moveTodayItem(teamsDraft, from, delta)
+                                    true
+                                }
+                            }) {
+                                Switch(checked = true, onCheckedChange = { teamsDraft = teamsDraft - team })
+                            }
+                        }
                     }
                 }
-                TodayTeam.entries.filter { it !in teamsDraft }.forEach { team ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(team.displayName, modifier = Modifier.weight(1f).padding(end = 16.dp))
-                        Switch(checked = false, onCheckedChange = { teamsDraft = teamsDraft + team })
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TodayTeam.entries.filter { it !in teamsDraft }.forEach { team ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(team.displayName, modifier = Modifier.weight(1f).padding(end = 16.dp))
+                            Switch(checked = false, onCheckedChange = { teamsDraft = teamsDraft + team })
+                        }
                     }
                 }
                 Button(onClick = {
@@ -418,9 +401,6 @@ internal fun TodayWorkspaceScreen(
                             onAttribution = { context.openTodayLink("https://www.allinvestview.com/tools/ticker-logos/") })
                         TodayTeamsEditorial(teams, teamGames, loading = teamLoading) {
                             team -> context.openTodayLink(team.scheduleUrl)
-                        }
-                        TodayRetirementEditorial(retirementBalance, retirementMessage, retirementTrend) {
-                            onSwitchWorkspace(AppWorkspace.RETIREMENT)
                         }
                         Spacer(Modifier.height(24.dp))
                     }
@@ -484,9 +464,15 @@ private fun TodayHero(
                 }
             }
         }
-        Column(Modifier.align(Alignment.TopStart).padding(24.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", locale)).uppercase(locale),
-                style = MaterialTheme.typography.labelLarge, color = Color.White, letterSpacing = 2.sp)
+        Column(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Text(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", locale)).uppercase(locale),
+                    modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge,
+                    color = Color.White, letterSpacing = 2.sp)
+                IconButton(onClick = onRefresh, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh weather", tint = Color.White)
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Cloud, contentDescription = null, tint = TodayCopper, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.size(8.dp))
@@ -495,9 +481,6 @@ private fun TodayHero(
             }
             Text(weather?.let { "${it.location}  ·  ${kind.name.lowercase().replaceFirstChar(Char::uppercase)}" }
                 ?: message ?: "Weather loading", color = Color.White)
-        }
-        IconButton(onClick = onRefresh, modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)) {
-            Icon(Icons.Default.Refresh, contentDescription = "Refresh weather", tint = Color.White)
         }
         Text("Weather by Open-Meteo", color = Color.White.copy(alpha = 0.8f),
             style = MaterialTheme.typography.labelSmall,

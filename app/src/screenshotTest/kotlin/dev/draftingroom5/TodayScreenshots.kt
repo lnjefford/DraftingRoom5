@@ -55,14 +55,6 @@ private fun TodayWorkspacePreview(scrollOffset: Int = 0) {
             document = defaultAppDocument(),
             onSwitchWorkspace = {},
             previewWeather = TodayWeather("Madison, Wisconsin", 64, 2, 7, 0),
-            previewRetirementBalance = "\$815,582.00",
-            previewRetirementTrend = listOf(
-                TodayRetirementPoint(LocalDate.of(2026, 9, 1), 78_200_000),
-                TodayRetirementPoint(LocalDate.of(2026, 9, 8), 79_450_000),
-                TodayRetirementPoint(LocalDate.of(2026, 9, 16), 79_100_000),
-                TodayRetirementPoint(LocalDate.of(2026, 9, 23), 80_620_000),
-                TodayRetirementPoint(LocalDate.of(2026, 10, 1), 81_558_200),
-            ),
             previewDate = LocalDate.of(2026, 10, 1),
             previewMarketQuotes = previewMarketQuotes,
             previewTeamGames = previewTeamGames,
@@ -111,13 +103,6 @@ fun TodayDetailsScreenshots() {
             TodayTeamsEditorial(listOf(TodayTeam.INDIANA_FOOTBALL, TodayTeam.INDIANA_BASKETBALL) +
                 TodayTeam.entries.filter { it != TodayTeam.INDIANA_FOOTBALL && it != TodayTeam.INDIANA_BASKETBALL },
                 previewTeamGames, onOpen = {})
-            TodayRetirementEditorial("\$815,582.00", "Tracked retirement value", listOf(
-                TodayRetirementPoint(LocalDate.of(2026, 9, 1), 78_200_000),
-                TodayRetirementPoint(LocalDate.of(2026, 9, 8), 79_450_000),
-                TodayRetirementPoint(LocalDate.of(2026, 9, 16), 79_100_000),
-                TodayRetirementPoint(LocalDate.of(2026, 9, 23), 80_620_000),
-                TodayRetirementPoint(LocalDate.of(2026, 10, 1), 81_558_200),
-            )) {}
         }
     } }
 }

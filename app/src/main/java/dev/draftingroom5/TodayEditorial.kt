@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
@@ -330,50 +329,4 @@ private val TodayTeam.shortMark: String get() = when (this) {
     TodayTeam.PACKERS -> "GB"
     TodayTeam.INDIANA_FOOTBALL, TodayTeam.INDIANA_BASKETBALL -> "IU"
     TodayTeam.WISCONSIN_FOOTBALL, TodayTeam.WISCONSIN_BASKETBALL -> "WI"
-}
-
-@Composable
-internal fun TodayRetirementEditorial(balance: String?, message: String, trend: List<TodayRetirementPoint>, onOpen: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
-        TodayEditorialHeading("RETIREMENT GLANCE", "VIEW FINANCE", onOpen)
-        Text(message.uppercase(Locale.ROOT), color = TodayLavender,
-            style = MaterialTheme.typography.labelMedium, letterSpacing = 1.sp)
-        Text(balance ?: "—", color = TodayText, style = MaterialTheme.typography.displaySmall)
-        if (trend.size >= 2) {
-            TodayTrendChart(trend.map { it.cents.toFloat() })
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(trend.first().date.toString(), color = TodayLavender, style = MaterialTheme.typography.labelSmall)
-                Text("RECORDED UPDATES", color = TodayMint, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.sp)
-                Text(trend.last().date.toString(), color = TodayLavender, style = MaterialTheme.typography.labelSmall)
-            }
-        } else Text("A trend appears after two recorded balance updates", color = TodayLavender,
-            style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@Composable
-private fun TodayTrendChart(values: List<Float>) {
-    Canvas(Modifier.fillMaxWidth().height(88.dp)) {
-        val low = values.minOrNull() ?: return@Canvas
-        val high = values.maxOrNull() ?: return@Canvas
-        val range = (high - low).takeIf { it > 0f } ?: 1f
-        val top = size.height * 0.12f
-        val bottom = size.height * 0.82f
-        val line = Path()
-        values.forEachIndexed { index, value ->
-            val x = size.width * index / (values.size - 1)
-            val y = bottom - (value - low) / range * (bottom - top)
-            if (index == 0) line.moveTo(x, y) else line.lineTo(x, y)
-        }
-        val fill = Path().apply {
-            addPath(line)
-            lineTo(size.width, size.height)
-            lineTo(0f, size.height)
-            close()
-        }
-        drawPath(fill, Brush.verticalGradient(listOf(TodayMint.copy(alpha = 0.24f), TodayMint.copy(alpha = 0.01f))))
-        drawPath(line, TodayMint, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
-        val finalY = bottom - (values.last() - low) / range * (bottom - top)
-        drawCircle(TodayMint, radius = 4.dp.toPx(), center = androidx.compose.ui.geometry.Offset(size.width - 4.dp.toPx(), finalY))
-    }
 }
