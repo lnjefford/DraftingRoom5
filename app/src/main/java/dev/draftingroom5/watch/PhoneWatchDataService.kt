@@ -1,6 +1,7 @@
 package dev.draftingroom5.watch
 
 import android.net.Uri
+import android.util.Log
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.PutDataRequest
@@ -105,24 +106,34 @@ class PhoneWatchDataService : WearableListenerService() {
             }
         }
         val cachedToday = readToday()
-        if (command.type == WatchCommandType.REFRESH_TODAY || cachedToday == null ||
-            (command.type == WatchCommandType.SYNC &&
-                System.currentTimeMillis() - cachedToday.updatedAtMillis >= TODAY_REFRESH_MILLIS)) {
-            runCatching { refreshToday() }
-        }
+        val localToday = localToday(cachedToday)
         val snapshot = currentSnapshot(
             acknowledgements,
             completedSessionId = command.sessionId.takeIf { command.type == WatchCommandType.FINISH_SESSION },
-        ).copy(today = readToday())
-        val request = PutDataRequest.create(WATCH_SNAPSHOT_PATH)
-            .setData(encodeWatchSnapshot(snapshot))
-            .setUrgent()
-        Wearable.getDataClient(this).putDataItem(request).addOnSuccessListener {
-            if (command.id in acknowledgements) Wearable.getDataClient(this).deleteDataItems(commandUri)
+        ).copy(today = localToday)
+        publishSnapshot(snapshot, commandUri.takeIf { command.id in acknowledgements })
+        val needsRefresh = command.type == WatchCommandType.REFRESH_TODAY || cachedToday == null ||
+            (command.type == WatchCommandType.SYNC &&
+                System.currentTimeMillis() - cachedToday.updatedAtMillis >= TODAY_REFRESH_MILLIS)
+        if (needsRefresh && localToday != null) {
+            runCatching { refreshToday(localToday) }
+                .onFailure { Log.w(TAG, "Today briefing refresh failed", it) }
+            readToday()?.takeIf { it != localToday }?.let { updated ->
+                publishSnapshot(snapshot.copy(today = updated), null)
+            }
         }
         (AppRepository.get(applicationContext).state.value as? LoadState.Ready)?.value?.let { document ->
             runCatching { publishWatchRunCatalog(this, document) }
         }
+    }
+
+    private fun publishSnapshot(snapshot: WatchSnapshot, commandUri: Uri?) {
+        val request = PutDataRequest.create(WATCH_SNAPSHOT_PATH)
+            .setData(encodeWatchSnapshot(snapshot)).setUrgent()
+        runCatching {
+            Tasks.await(Wearable.getDataClient(this).putDataItem(request), 30, TimeUnit.SECONDS)
+            if (commandUri != null) Wearable.getDataClient(this).deleteDataItems(commandUri)
+        }.onFailure { Log.w(TAG, "Watch snapshot publish failed", it) }
     }
 
     private fun applyCommand(repository: AppRepository, command: WatchCommand) {
@@ -224,12 +235,35 @@ class PhoneWatchDataService : WearableListenerService() {
         ?.let { runCatching { decodeWatchTodayBriefing(it) }.getOrNull() }
         ?.takeIf { it.date == LocalDate.now().toString() }
 
-    private fun refreshToday() {
-        val document = (AppRepository.get(applicationContext).ensureLoaded() as? LoadState.Ready)?.value ?: return
+    private fun localToday(previous: WatchTodayBriefing?): WatchTodayBriefing? {
+        val document = (AppRepository.get(applicationContext).ensureLoaded() as? LoadState.Ready)?.value ?: return null
         val date = LocalDate.now()
         val sessions = dashboardSessions(document, date)
         val week = todayWeek(document, date)
-        val previous = readToday()
+        val favorites = TodayPreferences(this)
+        val symbols = favorites.symbols()
+        val teams = favorites.teams()
+        val city = TodayLocationPreferences(this).selectedCity()
+        return WatchTodayBriefing(
+            date = date.toString(),
+            workoutName = sessions.firstOrNull()?.routine?.name,
+            workoutCount = sessions.size,
+            weekPlanned = week.sumOf { it.planned },
+            weekCompleted = week.sumOf { it.completed },
+            weekDays = week.map { it.planned to it.completed },
+            location = previous?.location ?: city?.name,
+            temperatureF = previous?.temperatureF,
+            weatherKind = previous?.weatherKind,
+            stocks = symbols.map { symbol -> previous?.stocks?.firstOrNull { it.symbol == symbol }
+                ?: WatchTodayStock(symbol, null, null) },
+            games = teams.map { team -> previous?.games?.firstOrNull { it.team == team.displayName }
+                ?: WatchTodayGame(team.displayName, null, null) },
+            updatedAtMillis = previous?.updatedAtMillis ?: 0L,
+        )
+    }
+
+    private fun refreshToday(base: WatchTodayBriefing) {
+        val date = LocalDate.now()
         val favorites = TodayPreferences(this)
         val symbols = favorites.symbols()
         val teams = favorites.teams()
@@ -253,24 +287,18 @@ class PhoneWatchDataService : WearableListenerService() {
                 Triple(weatherJob.await(), stockJobs.awaitAll(), gameJobs.awaitAll())
             }
         }
-        val briefing = WatchTodayBriefing(
-            date = date.toString(),
-            workoutName = sessions.firstOrNull()?.routine?.name,
-            workoutCount = sessions.size,
-            weekPlanned = week.sumOf { it.planned },
-            weekCompleted = week.sumOf { it.completed },
-            weekDays = week.map { it.planned to it.completed },
-            location = weather?.location ?: previous?.location,
-            temperatureF = weather?.temperatureF ?: previous?.temperatureF,
-            weatherKind = weather?.kind?.name ?: previous?.weatherKind,
+        val briefing = base.copy(
+            location = weather?.location ?: base.location,
+            temperatureF = weather?.temperatureF ?: base.temperatureF,
+            weatherKind = weather?.kind?.name ?: base.weatherKind,
             stocks = symbols.mapIndexed { index, symbol ->
                 val quote = stocks[index]
-                val old = previous?.stocks?.firstOrNull { it.symbol == symbol }
+                val old = base.stocks.firstOrNull { it.symbol == symbol }
                 WatchTodayStock(symbol, quote?.price ?: old?.price, quote?.changePercent ?: old?.changePercent)
             },
             games = teams.mapIndexed { index, team ->
                 val game = games[index]
-                val old = previous?.games?.firstOrNull { it.team == team.displayName }
+                val old = base.games.firstOrNull { it.team == team.displayName }
                 WatchTodayGame(team.displayName, game?.opponent ?: old?.opponent,
                     game?.startsAt?.toEpochMilli() ?: old?.startsAtMillis)
             },
@@ -380,6 +408,7 @@ class PhoneWatchDataService : WearableListenerService() {
         const val PREFERENCES = "watch_sync"
         const val ACKNOWLEDGED = "acknowledged_commands"
         const val TODAY_BRIEFING = "today_briefing"
+        const val TAG = "PhoneWatchDataService"
         const val MAX_ACKNOWLEDGEMENTS = 128
         const val TODAY_REFRESH_MILLIS = 15 * 60 * 1000L
         val processLock = Any()

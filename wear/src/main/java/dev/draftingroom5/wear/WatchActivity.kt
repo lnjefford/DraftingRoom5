@@ -397,9 +397,14 @@ private fun TodayScreen(snapshot: WatchSnapshot, onSync: () -> Unit, onStart: ()
         ) {
             Eyebrow("TODAY")
             if (today == null) {
-                WatchText("Your briefing is syncing", 18, Ivory, family = serifFamily(), maxLines = 2)
-                WatchText("Keep your phone nearby", 12, Secondary)
+                WatchText("Phone needed", 18, Ivory, family = serifFamily())
+                WatchText("Update phone app, then Sync", 12, Secondary, maxLines = 2)
+                if (snapshot.status == WatchWorkoutStatus.AVAILABLE) {
+                    WatchText(snapshot.routineName.orEmpty(), 15, Ivory, maxLines = 2)
+                    PrimaryButton("▶  Start workout", onStart)
+                }
                 SecondaryButton("Sync", onSync)
+                SecondaryButton("Runs", onRuns)
             } else {
                 TodayWeatherSection(today)
                 Spacer(Modifier.height(8.dp))
@@ -796,6 +801,7 @@ internal fun WatchReviewPreview(screen: String) {
             "Today workout" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 330)
             "Today stocks" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 840)
             "Today teams" -> TodayScreen(snapshot, {}, {}, {}, previewScroll = 1110)
+            "Today offline" -> TodayScreen(snapshot.copy(today = null), {}, {}, {})
             "Exercise" -> ExerciseScreen(snapshot, exercises.first(), {}, {})
             "Ready" -> TimerScreen(exercises.first(), LocalTimer("hang", 4_000, 24_000), 1_000, true, {}, {})
             "Running" -> TimerScreen(exercises.first(), LocalTimer("hang", 1_000, 21_000), 7_000, true, {}, {})
