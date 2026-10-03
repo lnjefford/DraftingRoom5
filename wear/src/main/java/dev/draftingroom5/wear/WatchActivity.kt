@@ -12,8 +12,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -376,52 +378,103 @@ private fun WatchRunPickerScreen(catalog: WatchRunCatalog?, selected: WatchRunPl
 private fun WatchActiveRunScreen(capture: WatchRunCapture, now: Long, onPause: () -> Unit,
     onResume: () -> Unit, onFinish: () -> Unit, music: @Composable () -> Unit = { WatchSpotifyRow() }) {
     val elapsed = capture.elapsedMillis(now) / 1_000
-    val interval = capture.intervalAt(now)
-    val total = capture.plan.intervals.sumOf { it.durationSeconds }.coerceAtLeast(1)
     val position = capture.routePosition()
     val cue = position?.let { (point, _) -> capture.route?.cues?.firstOrNull { it.pointIndex >= point } }
     val offRoute = position?.second?.takeIf { it > 50 }
-    RoundProgress((elapsed.toFloat() / total).coerceIn(0f, 1f)) {
-        Box(Modifier.fillMaxSize().clip(CircleShape)) {
+    Box(Modifier.fillMaxSize().clip(CircleShape).background(Ink)) {
+        Image(painterResource(R.drawable.watch_route_twilight), null, Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+            Ink.copy(alpha = .34f), Ink.copy(alpha = .08f), Ink.copy(alpha = .42f)))))
+        Box(Modifier.fillMaxSize()) {
             capture.route?.let { route ->
                 RunRouteMap(route, position?.first, capture.samples.lastOrNull()?.point, offRoute != null)
             }
             Column(Modifier.align(Alignment.TopCenter).fillMaxWidth()
-                .padding(horizontal = 30.dp, vertical = 17.dp),
+                .padding(horizontal = 27.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                WatchText("${if (capture.isRunning) "RUNNING" else "PAUSED"} · ${interval?.second?.kind ?: "DONE"}",
-                    9, Gold, FontWeight.Bold)
-                WatchText("%02d:%02d".format(elapsed / 60, elapsed % 60), 25, Ivory,
-                    FontWeight.Bold, serifFamily())
+                verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                WatchText("%02d:%02d".format(elapsed / 60, elapsed % 60), 11, Ivory,
+                    FontWeight.Bold, letterSpacing = 1.2f)
+                Box(Modifier.border(1.dp, Blue.copy(alpha = .9f), RoundedCornerShape(15.dp))
+                    .background(Ink.copy(alpha = .64f), RoundedCornerShape(15.dp))
+                    .padding(horizontal = 8.dp, vertical = 1.dp)) {
+                    BasicText(if (capture.isRunning) "RUN" else "PAUSED",
+                        style = TextStyle(color = Ivory, fontSize = 7.sp, fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp))
+                }
+                Spacer(Modifier.height(4.dp))
                 if (offRoute != null) {
-                    WatchText("⚠", 32, Amber)
-                    WatchText("OFF ROUTE · $offRoute m", 12, Amber, FontWeight.Bold)
+                    WatchText("⚠", 30, Amber)
+                    WatchText("OFF ROUTE", 15, Ivory, FontWeight.Bold, letterSpacing = 2f)
+                    WatchText("$offRoute m", 12, Ivory)
                 } else if (cue != null) {
                     TurnArrow(cue.kind)
-                    WatchText(cue.instruction, 11, Ivory, FontWeight.Bold, maxLines = 2)
+                    WatchText("NEXT TURN", 7, Ivory, FontWeight.Bold, letterSpacing = 1.7f)
+                    WatchText(when (cue.kind) {
+                        "LEFT" -> "Turn left"
+                        "RIGHT" -> "Turn right"
+                        "U_TURN" -> "U-turn"
+                        else -> cue.instruction
+                    }, 16, Ivory, FontWeight.Bold, maxLines = 2)
                 } else {
-                    WatchText(if (capture.plan.preferredRouteId == WATCH_TREADMILL_ROUTE_ID) "▰" else "◉",
-                        30, Blue)
+                    Spacer(Modifier.height(17.dp))
+                    WatchText(if (capture.plan.preferredRouteId == WATCH_TREADMILL_ROUTE_ID)
+                        "TREADMILL" else "RUNNING", 14, Ivory, FontWeight.Bold, letterSpacing = 1.3f)
                     WatchText(if (capture.samples.isEmpty() && capture.plan.preferredRouteId != WATCH_TREADMILL_ROUTE_ID)
                         "Waiting for GPS" else "${"%.2f".format(capture.distanceMeters / 1000.0)} km",
-                        18, Mint)
+                        12, Ivory)
                 }
             }
-            Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .padding(horizontal = 30.dp, vertical = 15.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                CompactButton(if (capture.isRunning) "Pause" else "Resume", Blue,
-                    if (capture.isRunning) onPause else onResume, Modifier.weight(1f))
-                CompactButton("Finish", Raised, onFinish, Modifier.weight(1f))
+            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 7.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RunControlButton(if (capture.isRunning) "PAUSE" else "RESUME",
+                    capture.isRunning, if (capture.isRunning) onPause else onResume)
+                if (!capture.isRunning) RunControlButton("FINISH", false, onFinish)
             }
+        }
+        Canvas(Modifier.fillMaxSize()) {
+            drawCircle(Blue.copy(alpha = .52f), radius = size.minDimension / 2f - 1.dp.toPx(),
+                style = Stroke(.75.dp.toPx()))
         }
     }
 }
 
 @Composable
+private fun RunControlButton(label: String, pause: Boolean, onClick: () -> Unit) {
+    Row(Modifier.height(25.dp)
+        .border(BorderStroke(1.dp, Blue.copy(alpha = .48f)), RoundedCornerShape(18.dp))
+        .background(Ink.copy(alpha = .78f), RoundedCornerShape(18.dp))
+        .clickable(onClick = onClick, role = Role.Button)
+        .semantics { contentDescription = label; role = Role.Button }
+        .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(Modifier.size(9.dp)) {
+            val stroke = 2.dp.toPx()
+            if (pause) {
+                drawLine(Ivory, androidx.compose.ui.geometry.Offset(size.width * .3f, size.height * .1f),
+                    androidx.compose.ui.geometry.Offset(size.width * .3f, size.height * .9f), stroke, StrokeCap.Round)
+                drawLine(Ivory, androidx.compose.ui.geometry.Offset(size.width * .7f, size.height * .1f),
+                    androidx.compose.ui.geometry.Offset(size.width * .7f, size.height * .9f), stroke, StrokeCap.Round)
+            } else {
+                val icon = Path().apply {
+                    moveTo(size.width * .2f, size.height * .1f)
+                    lineTo(size.width * .87f, size.height * .5f)
+                    lineTo(size.width * .2f, size.height * .9f)
+                    close()
+                }
+                drawPath(icon, Ivory)
+            }
+        }
+        BasicText(label, style = TextStyle(color = Ivory, fontSize = 8.sp, fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp))
+    }
+}
+
+@Composable
 private fun TurnArrow(kind: String) {
-    Canvas(Modifier.size(44.dp)) {
+    Canvas(Modifier.size(51.dp)) {
         val w = size.width
         val h = size.height
         val path = Path()
@@ -429,15 +482,19 @@ private fun TurnArrow(kind: String) {
             "LEFT", "RIGHT" -> {
                 val mirror = kind == "RIGHT"
                 fun x(value: Float) = w * (if (mirror) 1f - value else value)
-                path.moveTo(x(.72f), h * .88f)
-                path.lineTo(x(.72f), h * .54f)
-                path.quadraticTo(x(.72f), h * .34f, x(.52f), h * .34f)
-                path.lineTo(x(.22f), h * .34f)
-                drawPath(path, Amber, style = Stroke(6.dp.toPx(), cap = StrokeCap.Round))
-                drawLine(Amber, androidx.compose.ui.geometry.Offset(x(.22f), h * .34f),
-                    androidx.compose.ui.geometry.Offset(x(.37f), h * .18f), 6.dp.toPx(), StrokeCap.Round)
-                drawLine(Amber, androidx.compose.ui.geometry.Offset(x(.22f), h * .34f),
-                    androidx.compose.ui.geometry.Offset(x(.37f), h * .50f), 6.dp.toPx(), StrokeCap.Round)
+                path.moveTo(x(.10f), h * .40f)
+                path.lineTo(x(.43f), h * .12f)
+                path.lineTo(x(.43f), h * .30f)
+                path.lineTo(x(.64f), h * .30f)
+                path.quadraticTo(x(.88f), h * .30f, x(.88f), h * .55f)
+                path.lineTo(x(.88f), h * .91f)
+                path.lineTo(x(.64f), h * .91f)
+                path.lineTo(x(.64f), h * .57f)
+                path.quadraticTo(x(.64f), h * .53f, x(.59f), h * .53f)
+                path.lineTo(x(.43f), h * .53f)
+                path.lineTo(x(.43f), h * .71f)
+                path.close()
+                drawPath(path, Ivory)
             }
             "U_TURN" -> {
                 path.moveTo(w * .72f, h * .88f)
@@ -460,39 +517,118 @@ private fun TurnArrow(kind: String) {
 private fun RunRouteMap(route: WatchRunRoute, pointIndex: Int?, current: WatchRunPoint?, offRoute: Boolean) {
     Canvas(Modifier.fillMaxSize()) {
         if (route.points.size < 2) return@Canvas
-        val center = pointIndex ?: 0
-        val slice = route.points.subList((center - 12).coerceAtLeast(0), (center + 16).coerceAtMost(route.points.size))
-        if (slice.size < 2) return@Canvas
-        val minX = slice.minOf { it.longitudeE7 }.toFloat()
-        val maxX = slice.maxOf { it.longitudeE7 }.toFloat()
-        val minY = slice.minOf { it.latitudeE7 }.toFloat()
-        val maxY = slice.maxOf { it.latitudeE7 }.toFloat()
-        val spanX = (maxX - minX).coerceAtLeast(1f)
-        val spanY = (maxY - minY).coerceAtLeast(1f)
+        val center = (pointIndex ?: 0).coerceIn(route.points.indices)
+        val slice = route.points.subList(center, (center + 16).coerceAtMost(route.points.size))
+        val anchor = route.points[center]
+        val previousRoutePoint = route.points.getOrNull(center - 1)
+        val headingX = if (previousRoutePoint != null)
+            (anchor.longitudeE7 - previousRoutePoint.longitudeE7).toFloat()
+            else (route.points[center + 1].longitudeE7 - anchor.longitudeE7).toFloat()
+        val headingY = if (previousRoutePoint != null)
+            (anchor.latitudeE7 - previousRoutePoint.latitudeE7).toFloat()
+            else (route.points[center + 1].latitudeE7 - anchor.latitudeE7).toFloat()
+        val headingLength = kotlin.math.sqrt(headingX * headingX + headingY * headingY).coerceAtLeast(1f)
+        val east = headingX / headingLength
+        val north = headingY / headingLength
+        fun forward(point: WatchRunPoint): Float =
+            (point.longitudeE7 - anchor.longitudeE7) * east +
+                (point.latitudeE7 - anchor.latitudeE7) * north
+        fun side(point: WatchRunPoint): Float =
+            (point.longitudeE7 - anchor.longitudeE7) * north -
+                (point.latitudeE7 - anchor.latitudeE7) * east
+        val forwardRange = maxOf(slice.maxOf { kotlin.math.abs(forward(it)) }, headingLength, 1f)
+        val sideRange = maxOf(slice.maxOf { kotlin.math.abs(side(it)) }, headingLength, 1f)
+        val currentY = if (offRoute) .81f else .77f
         fun map(point: WatchRunPoint) = androidx.compose.ui.geometry.Offset(
-            size.width * (.16f + .68f * (point.longitudeE7 - minX) / spanX),
-            size.height * (.66f + .11f * (maxY - point.latitudeE7) / spanY))
+            size.width * (.52f + .32f * side(point) / sideRange),
+            size.height * (currentY - .07f * forward(point) / forwardRange -
+                .10f * kotlin.math.abs(side(point)) / sideRange))
         val path = Path()
-        slice.forEachIndexed { index, point ->
-            val mapped = map(point)
-            if (index == 0) path.moveTo(mapped.x, mapped.y) else path.lineTo(mapped.x, mapped.y)
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val mapped = buildList<androidx.compose.ui.geometry.Offset> {
+            slice.map(::map).forEachIndexed { index, point ->
+                if (index > 1) {
+                    val previous = last()
+                    val deltaX = point.x - previous.x
+                    val deltaY = point.y - previous.y
+                    if (kotlin.math.abs(deltaX) > canvasWidth * .16f &&
+                        kotlin.math.abs(deltaY) > canvasHeight * .06f) {
+                        add(androidx.compose.ui.geometry.Offset(previous.x + deltaX * .55f,
+                            previous.y + deltaY * .08f))
+                    }
+                }
+                add(point)
+            }
         }
-        drawPath(path, Blue.copy(alpha = .28f), style = Stroke(12.dp.toPx(), cap = StrokeCap.Round))
-        drawPath(path, Blue, style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+        path.moveTo(size.width * .50f, size.height * 1.10f)
+        path.cubicTo(size.width * .50f, size.height * .96f,
+            mapped.first().x, size.height * (currentY + .04f),
+            mapped.first().x, mapped.first().y)
+        for (index in 1 until mapped.lastIndex) {
+            val previous = mapped[index - 1]
+            val corner = mapped[index]
+            val next = mapped[index + 1]
+            path.lineTo(corner.x + (previous.x - corner.x) * .18f,
+                corner.y + (previous.y - corner.y) * .18f)
+            path.quadraticTo(corner.x, corner.y,
+                corner.x + (next.x - corner.x) * .18f,
+                corner.y + (next.y - corner.y) * .18f)
+        }
+        path.lineTo(mapped.last().x, mapped.last().y)
+        drawPath(path, Blue.copy(alpha = .28f), style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(path, Blue, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+        val farPoint = mapped.last()
+        val beforeFar = mapped.getOrNull(mapped.lastIndex - 1)
+            ?: route.points.getOrNull(center - 1)?.let(::map)
+        val previousPoint = route.points.getOrNull(center - 1)
+        val routeX = if (mapped.size == 1) {
+            val direction = if (previousPoint == null ||
+                anchor.longitudeE7 <= previousPoint.longitudeE7) -1f else 1f
+            size.width * .30f * direction
+        } else farPoint.x - (beforeFar?.x ?: farPoint.x)
+        val routeY = if (mapped.size == 1) -size.height * .07f
+            else farPoint.y - (beforeFar?.y ?: farPoint.y)
+        val farX = routeX
+        val farY = if (kotlin.math.abs(routeX) + kotlin.math.abs(routeY) < 1f)
+            -size.height * .1f else routeY
+        val edgeX = when {
+            farX > 0f -> (size.width * 1.05f - farPoint.x) / farX
+            farX < 0f -> (-size.width * .05f - farPoint.x) / farX
+            else -> Float.POSITIVE_INFINITY
+        }
+        val edgeY = when {
+            farY > 0f -> (size.height * 1.05f - farPoint.y) / farY
+            farY < 0f -> (-size.height * .05f - farPoint.y) / farY
+            else -> Float.POSITIVE_INFINITY
+        }
+        val fadeDistance = minOf(edgeX, edgeY).coerceAtLeast(1f)
+        val beyond = androidx.compose.ui.geometry.Offset(
+            farPoint.x + farX * fadeDistance,
+            farPoint.y + farY * fadeDistance)
+        val fade = Path().apply {
+            moveTo(farPoint.x, farPoint.y)
+            lineTo(beyond.x, beyond.y)
+        }
+        drawPath(fade, Brush.linearGradient(
+            listOf(Blue.copy(alpha = .28f), Blue.copy(alpha = 0f)), farPoint, beyond),
+            style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(fade, Brush.linearGradient(listOf(Blue, Blue.copy(alpha = 0f)), farPoint, beyond),
+            style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
         if (pointIndex != null) {
-            val nearest = map(route.points[center.coerceIn(route.points.indices)])
+            val nearest = map(anchor)
             if (offRoute && current != null) {
                 val projected = map(current)
                 val actual = androidx.compose.ui.geometry.Offset(
-                    projected.x.coerceIn(size.width * .12f, size.width * .88f),
-                    projected.y.coerceIn(size.height * .62f, size.height * .79f))
+                    projected.x.coerceIn(size.width * .22f, size.width * .78f),
+                    projected.y.coerceIn(size.height * .68f, size.height * .86f))
                 drawLine(Ivory.copy(alpha = .75f), nearest, actual, 2.dp.toPx(),
                     pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(7f, 6f)))
-                drawCircle(Amber.copy(alpha = .26f), 10.dp.toPx(), actual)
-                drawCircle(Ivory, 4.dp.toPx(), actual)
+                drawCircle(Amber.copy(alpha = .26f), 8.dp.toPx(), actual)
+                drawCircle(Ivory, 3.5.dp.toPx(), actual)
             } else {
-                drawCircle(Blue.copy(alpha = .30f), 10.dp.toPx(), nearest)
-                drawCircle(Ivory, 4.dp.toPx(), nearest)
+                drawCircle(Blue.copy(alpha = .30f), 8.dp.toPx(), nearest)
+                drawCircle(Ivory, 3.5.dp.toPx(), nearest)
             }
         }
     }
@@ -1029,7 +1165,7 @@ internal fun WatchReviewPreview(screen: String) {
                     WatchRunPoint(410_000_000, -870_000_000), WatchRunPoint(410_000_200, -870_000_000),
                     WatchRunPoint(410_000_200, -870_000_250)),
                     listOf(WatchRunCue(1, "LEFT", "Turn left at the path")))
-                val point = if (screen == "Run off route") WatchRunPoint(410_006_000, -870_000_000)
+                val point = if (screen == "Run off route") WatchRunPoint(410_000_100, -869_991_000)
                     else route.points.first()
                 WatchActiveRunScreen(WatchRunCapture("run", plan, route, 1_000, 0, 1_000, 820,
                     listOf(WatchRunSample(point, 2_000, 5))), 61_000, {}, {}, {},
