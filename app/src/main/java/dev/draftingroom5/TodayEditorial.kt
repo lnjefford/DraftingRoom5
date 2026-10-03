@@ -255,7 +255,7 @@ internal fun TodayTeamsEditorial(teams: List<TodayTeam>, games: Map<TodayTeam, T
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             teams.forEach { team ->
                 TodayTeamCard(team, games[team], loading,
-                    Modifier.width(if (largeText) 290.dp else 216.dp).height(if (largeText) 340.dp else 244.dp)) {
+                    Modifier.width(if (largeText) 290.dp else 216.dp).height(if (largeText) 276.dp else 176.dp)) {
                     onOpen(team)
                 }
             }
@@ -271,7 +271,7 @@ private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolea
     val locale = LocalConfiguration.current.locales[0]
     val shape = RoundedCornerShape(18.dp)
     Column(modifier.clip(shape).background(TodayEditorialCardSurface).border(1.dp, TodayBorder.copy(alpha = 0.7f), shape)
-        .clickable(onClick = onOpen).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        .clickable(onClick = onOpen).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(Color.White),
                 contentAlignment = Alignment.Center) {
@@ -290,20 +290,17 @@ private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolea
         if (game == null) {
             Text(if (loading) "Loading schedule…" else "No upcoming game posted", color = TodayText,
                 style = MaterialTheme.typography.titleMedium, maxLines = 2)
-            Spacer(Modifier.weight(1f))
-            Text("View full schedule ↗", color = TodayLavender, style = MaterialTheme.typography.labelSmall)
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TodayOpponentLogo(game.opponentLogo, game.opponent.take(2))
                 Text("${if (game.home) "vs" else "@"} ${game.opponent}", color = TodayText,
                     style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Spacer(Modifier.weight(1f))
-            Text(game.startsAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEE, MMM d", locale)),
-                color = TodayCopper, style = MaterialTheme.typography.labelLarge)
-            Text(if (game.timeConfirmed) game.startsAt.atZone(ZoneId.systemDefault()).format(
-                DateTimeFormatter.ofPattern("h:mm a", locale)) else "Time TBD",
-                color = TodayLavender, style = MaterialTheme.typography.labelSmall)
+            val localStart = game.startsAt.atZone(ZoneId.systemDefault())
+            val date = localStart.format(DateTimeFormatter.ofPattern("EEE, MMM d", locale))
+            val time = if (game.timeConfirmed) localStart.format(DateTimeFormatter.ofPattern("h:mm a", locale)) else "Time TBD"
+            Text("$date · $time", color = TodayCopper, style = MaterialTheme.typography.labelMedium,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
