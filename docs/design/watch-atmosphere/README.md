@@ -33,6 +33,8 @@ its active screen takes over until the activity finishes. The mockup values, tea
 dates are illustrative. The Today's scenic background should respond to daypart,
 season, and weather; ambient particles stay behind the data and stop when motion is
 disabled or the screen is not interactive.
+The Stocks and Next Games detail views share the same light-blue Back control
+without a pill and the two-line "Scroll for more" cue.
 
 Design decisions:
 
