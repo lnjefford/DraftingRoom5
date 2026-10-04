@@ -541,8 +541,8 @@ private fun RunRouteMap(route: WatchRunRoute, pointIndex: Int?, current: WatchRu
         val currentY = if (offRoute) .81f else .77f
         fun map(point: WatchRunPoint) = androidx.compose.ui.geometry.Offset(
             size.width * (.52f + .32f * side(point) / sideRange),
-            size.height * (currentY - .07f * forward(point) / forwardRange -
-                .10f * kotlin.math.abs(side(point)) / sideRange))
+            size.height * (currentY - .21f * forward(point) / forwardRange -
+                .04f * kotlin.math.abs(side(point)) / sideRange))
         val path = Path()
         val canvasWidth = size.width
         val canvasHeight = size.height
@@ -561,7 +561,7 @@ private fun RunRouteMap(route: WatchRunRoute, pointIndex: Int?, current: WatchRu
                 add(point)
             }
         }
-        path.moveTo(size.width * .50f, size.height * 1.10f)
+        path.moveTo(size.width * .50f, size.height * 1.18f)
         path.cubicTo(size.width * .50f, size.height * .96f,
             mapped.first().x, size.height * (currentY + .04f),
             mapped.first().x, mapped.first().y)
@@ -576,45 +576,40 @@ private fun RunRouteMap(route: WatchRunRoute, pointIndex: Int?, current: WatchRu
                 corner.y + (next.y - corner.y) * .18f)
         }
         path.lineTo(mapped.last().x, mapped.last().y)
-        drawPath(path, Blue.copy(alpha = .28f), style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
-        drawPath(path, Blue, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
         val farPoint = mapped.last()
         val beforeFar = mapped.getOrNull(mapped.lastIndex - 1)
-            ?: route.points.getOrNull(center - 1)?.let(::map)
-        val previousPoint = route.points.getOrNull(center - 1)
-        val routeX = if (mapped.size == 1) {
-            val direction = if (previousPoint == null ||
-                anchor.longitudeE7 <= previousPoint.longitudeE7) -1f else 1f
-            size.width * .30f * direction
-        } else farPoint.x - (beforeFar?.x ?: farPoint.x)
-        val routeY = if (mapped.size == 1) -size.height * .07f
-            else farPoint.y - (beforeFar?.y ?: farPoint.y)
-        val farX = routeX
-        val farY = if (kotlin.math.abs(routeX) + kotlin.math.abs(routeY) < 1f)
-            -size.height * .1f else routeY
-        val edgeX = when {
-            farX > 0f -> (size.width * 1.05f - farPoint.x) / farX
-            farX < 0f -> (-size.width * .05f - farPoint.x) / farX
-            else -> Float.POSITIVE_INFINITY
-        }
-        val edgeY = when {
-            farY > 0f -> (size.height * 1.05f - farPoint.y) / farY
-            farY < 0f -> (-size.height * .05f - farPoint.y) / farY
-            else -> Float.POSITIVE_INFINITY
-        }
-        val fadeDistance = minOf(edgeX, edgeY).coerceAtLeast(1f)
+        val outward = if (beforeFar == null) 0f else farPoint.x - beforeFar.x
+        // Carry the road past the circular edge. The bend follows the real route,
+        // then the distant section climbs toward the horizon before disappearing.
+        val horizon = androidx.compose.ui.geometry.Offset(
+            (farPoint.x + outward * 1.8f).coerceIn(-size.width * .18f, size.width * 1.18f),
+            -size.height * .12f)
+        val directionX = horizon.x - farPoint.x
+        val directionY = horizon.y - farPoint.y
+        val originX = farPoint.x - size.width / 2f
+        val originY = farPoint.y - size.height / 2f
+        val radius = size.minDimension / 2f
+        val a = directionX * directionX + directionY * directionY
+        val b = 2f * (originX * directionX + originY * directionY)
+        val c = originX * originX + originY * originY - radius * radius
+        val edge = ((-b + kotlin.math.sqrt(b * b - 4f * a * c)) / (2f * a))
+            .coerceAtLeast(0f)
         val beyond = androidx.compose.ui.geometry.Offset(
-            farPoint.x + farX * fadeDistance,
-            farPoint.y + farY * fadeDistance)
+            farPoint.x + directionX * edge * 1.12f,
+            farPoint.y + directionY * edge * 1.12f)
         val fade = Path().apply {
             moveTo(farPoint.x, farPoint.y)
-            lineTo(beyond.x, beyond.y)
+            cubicTo(farPoint.x + outward * .55f, farPoint.y - size.height * .11f,
+                beyond.x, beyond.y + size.height * .11f, beyond.x, beyond.y)
         }
-        drawPath(fade, Brush.linearGradient(
-            listOf(Blue.copy(alpha = .28f), Blue.copy(alpha = 0f)), farPoint, beyond),
-            style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
-        drawPath(fade, Brush.linearGradient(listOf(Blue, Blue.copy(alpha = 0f)), farPoint, beyond),
-            style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+        val fadeStart = beforeFar ?: farPoint
+        val glow = Brush.linearGradient(
+            listOf(Blue.copy(alpha = .28f), Blue.copy(alpha = 0f)), fadeStart, beyond)
+        val line = Brush.linearGradient(listOf(Blue, Blue.copy(alpha = 0f)), fadeStart, beyond)
+        drawPath(path, glow, style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(path, line, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(fade, glow, style = Stroke(8.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(fade, line, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
         if (pointIndex != null) {
             val nearest = map(anchor)
             if (offRoute && current != null) {
