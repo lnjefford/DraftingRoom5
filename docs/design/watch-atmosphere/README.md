@@ -11,6 +11,11 @@ The user selected the Atmosphere direction for the watch app and approved its im
 | [Additional states](additional-states.png) | Timer finished, done today, open day, no cached runs |
 | [Consistent athlete](consistent-athlete.png) | Corrected person-based views using the phone app's female athlete as reference |
 | [Turn directions](turn-directions.png) | Large turn cues and off-route state during runs |
+| [Today run](today-run.png) | Dedicated horizontally paged Today run card |
+| [Empty and free run states](empty-and-free-run.png) | Empty stocks and teams, waiting for GPS, treadmill run |
+| [Right turn](right-turn.png) | Mirrored right-turn route guidance |
+
+[Screen audit](SCREEN_AUDIT.md) maps every concept panel to the 41 mm and 45 mm watch screenshot cases.
 
 Design decisions:
 
@@ -21,5 +26,7 @@ Design decisions:
 - Populate market charts from real quote points and run cues from available route data. Sample numbers and names in these concept sheets are illustrative.
 - Navigate Today by swiping left and right through full watch screens. Each followed stock and team has a reachable page with a position label. A dedicated Run page offers a clearly named "Choose run" action instead of a Runs shortcut on unrelated pages.
 - Give the active run route a visible path and current-position marker behind the turn cue, with a distinct off-route marker when needed.
+- Keep the route entering from below the visible face and fading beyond its distant edge.
+- Later navigation decisions supersede early concept-sheet "Runs" buttons on unrelated Today pages: swiping reaches the dedicated Run page.
 
 The implementation is validated against the watch screenshot references in `wear/src/screenshotTestDebug/reference/`; those renders show the actual app at supported sizes.
