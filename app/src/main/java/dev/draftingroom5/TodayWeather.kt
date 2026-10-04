@@ -19,6 +19,14 @@ import kotlin.coroutines.resume
 
 internal enum class TodayWeatherKind { CLEAR, CLOUDY, RAIN, SNOW, STORM, UNKNOWN }
 internal enum class TodayDaypart { DAWN, DAY, DUSK, NIGHT }
+internal enum class TodaySeason { SPRING, SUMMER, AUTUMN, WINTER }
+
+internal fun seasonForDate(date: java.time.LocalDate): TodaySeason = when (date.monthValue) {
+    in 3..5 -> TodaySeason.SPRING
+    in 6..8 -> TodaySeason.SUMMER
+    in 9..11 -> TodaySeason.AUTUMN
+    else -> TodaySeason.WINTER
+}
 
 internal data class TodayWeather(
     val location: String,

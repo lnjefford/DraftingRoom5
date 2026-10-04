@@ -2,6 +2,7 @@ package dev.draftingroom5
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.LocalDate
 
 class TodayWeatherTest {
     @Test fun mapsOpenMeteoWeatherCodesToDistinctScenes() {
@@ -23,5 +24,13 @@ class TodayWeatherTest {
         assertEquals(TodayDaypart.DAY, daypartForHour(12))
         assertEquals(TodayDaypart.DUSK, daypartForHour(18))
         assertEquals(TodayDaypart.NIGHT, daypartForHour(22))
+    }
+
+    @Test fun seasonChangesAtCalendarBoundaries() {
+        assertEquals(TodaySeason.WINTER, seasonForDate(LocalDate.of(2026, 2, 28)))
+        assertEquals(TodaySeason.SPRING, seasonForDate(LocalDate.of(2026, 3, 1)))
+        assertEquals(TodaySeason.SUMMER, seasonForDate(LocalDate.of(2026, 6, 1)))
+        assertEquals(TodaySeason.AUTUMN, seasonForDate(LocalDate.of(2026, 9, 1)))
+        assertEquals(TodaySeason.WINTER, seasonForDate(LocalDate.of(2026, 12, 1)))
     }
 }

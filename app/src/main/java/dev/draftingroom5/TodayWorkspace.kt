@@ -9,13 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -73,7 +67,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -449,21 +442,9 @@ private fun TodayHero(
     val context = LocalContext.current
     val locale = LocalLocale.current.platformLocale
     val motion = remember { ValueAnimator.areAnimatorsEnabled() }
-    val transition = rememberInfiniteTransition(label = "Today ambient weather")
-    val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart), label = "Weather drift")
     val heroHeight = if (LocalDensity.current.fontScale >= 1.5f) 460.dp else 232.dp
     Box(Modifier.fillMaxWidth().height(heroHeight)) {
-        if (motion && kind in setOf(TodayWeatherKind.RAIN, TodayWeatherKind.SNOW, TodayWeatherKind.STORM)) {
-            Canvas(Modifier.fillMaxSize()) {
-                repeat(42) { index ->
-                    val x = (index * 67.3f % size.width)
-                    val y = ((index * 113.7f + phase * size.height) % size.height)
-                    if (kind == TodayWeatherKind.SNOW) drawCircle(Color.White.copy(alpha = 0.45f), 2.2f, androidx.compose.ui.geometry.Offset(x, y))
-                    else drawLine(TodayLavender.copy(alpha = 0.28f), androidx.compose.ui.geometry.Offset(x, y),
-                        androidx.compose.ui.geometry.Offset(x - 5f, y + 18f), 1.2f, cap = StrokeCap.Round)
-                }
-            }
-        }
+        if (motion) TodayAmbientMotion(kind, seasonForDate(date))
         Column(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(verticalAlignment = Alignment.Top) {
                 Text(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d", locale)).uppercase(locale),

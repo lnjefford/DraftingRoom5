@@ -17,6 +17,23 @@ The user selected the Atmosphere direction for the watch app and approved its im
 
 [Screen audit](SCREEN_AUDIT.md) maps every concept panel to the 41 mm and 45 mm watch screenshot cases.
 
+## Next Today navigation concept
+
+These newer mockups are design proposals and have not yet replaced the shipped watch UI:
+
+| Screen | Mockup |
+| --- | --- |
+| One-page Today summary: weather, largest absolute move among followed stocks, next game | [Compact Today](today-compact-concept.png) |
+| Rightward swipe to today's watch-startable activities | [Fitness start](fitness-start-concept.png) |
+| Tap the stock summary to see every followed stock in one scrollable detail list | [Stocks list](stocks-list-concept.png) |
+| Tap the game summary to see each followed team's next game in one scrollable detail list | [Next games list](games-list-concept.png) |
+
+Each detail list has a persistent Back action to Today. When a watch activity is running,
+its active screen takes over until the activity finishes. The mockup values, teams, and
+dates are illustrative. The Today's scenic background should respond to daypart,
+season, and weather; ambient particles stay behind the data and stop when motion is
+disabled or the screen is not interactive.
+
 Design decisions:
 
 - Use a dark navy atmosphere, scenic imagery, amber horizon, restrained blue actions, and clear visual hierarchy instead of text-heavy watch pages.
