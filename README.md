@@ -6,6 +6,13 @@ The Today workspace opens first whenever the app starts. It shows scheduled work
 
 The current release adds custom timed walk/run sessions, GPS tracking, routes drawn on OpenStreetMap or imported from GPX, and phone-free run recording on Wear OS. Cached plans and routes let the watch record without a nearby phone; completed runs transfer into phone history when the Wear Data Layer reconnects. The run screen has lightweight Spotify status and a clickable Spotify logo/row; enabling Android notification-listener access shows the currently playing title.
 
+The watch redesign for v0.29.20 adds a compact Today summary with responsive
+seasonal Madison scenery, weather, the largest followed stock movement and the
+next game. Swipe right to Fitness to start today's native run plans or guided
+workouts. Stocks and games open complete lists with real team logos, matching
+blue Back controls and touch/rotary scrolling. Active activities take over until
+completion; cached workout selection and commands remain available offline.
+
 Map tiles are fetched only for the area being viewed and cached locally; newly viewed areas require network access. Saved route geometry and recorded GPS samples remain on-device. Spotify song-info access reads active media-session metadata locally and is not required to record a run.
 
 ## Current scope

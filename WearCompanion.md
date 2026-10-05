@@ -1,13 +1,19 @@
 # Wear OS companion specification
 
-Status: guided companion plus standalone run capture.
+Status: compact Today hub, guided companion and standalone run capture.
 
 ## Product boundary
 
-The watch app is a wrist-first controller for today's guided workout, not a copy of the phone dashboard. It owns the glanceable physical-workout loop:
+The watch opens to a compact Today screen with weather, the followed stock with
+the greatest absolute percentage movement, and the earliest future game across
+followed teams. Stock and game taps open all followed items with matching light
+blue Back controls and two horizontal scroll lines. Both touch and rotary
+scrolling are supported. A rightward swipe opens Fitness with today's native run
+plans and unfinished guided workouts. Active activities take over until finished.
+The guided workout loop is:
 
-1. Show the first resumable or scheduled guided routine for today.
-2. Start or resume that routine.
+1. Show today's watch-startable routines, or the active routine when resuming.
+2. Start the selected occurrence or resume the active routine.
 3. Show one focused exercise, its existing artwork, set position, and structured target.
 4. Run the existing 10-second readiness countdown and exercise timer.
 5. Complete sets explicitly and advance focus.
@@ -22,7 +28,11 @@ For runs, the watch caches the next seven days of scheduled walk/run plans and b
 - Deep ink navy canvas and raised navy controls.
 - Ivory primary type, cool blue-gray secondary type, electric-blue actions, mint completion, and restrained drafting gold labels.
 - DM Serif Display is reserved for routine, exercise, and completion titles; compact sans serif carries controls and time-critical information.
-- Exercise artwork appears on Today and active-exercise screens. Countdown and running-timer screens remain image-free for glanceability.
+- Today uses Madison lakeshore scenery selected by season and local daypart,
+  with weather veils, leaves/petals, rain/snow and restrained summer/winter glints.
+  Motion stops in ambient mode, while inactive, or with system animations disabled.
+- Fitness uses compact activity cards with native Start actions. Exercise artwork
+  appears on active-exercise screens; timers use a calm scenic background.
 - A thin perimeter arc communicates overall set progress or the active countdown/timer.
 - The 41 mm layout exposes the primary action without requiring a scroll. A second action may remain immediately below it and reachable with normal rotary/touch scrolling. The 45 mm layout exposes both exercise actions.
 
@@ -36,7 +46,10 @@ The local timer deliberately does not rewrite the phone's elapsed-realtime timer
 
 Both APKs use the same application ID and release signature. Communication uses Google Play services' private Wear Data Layer:
 
-- The phone publishes a compact snapshot at `/draftingroom5/phone/snapshot`.
+- The phone publishes a snapshot at `/draftingroom5/phone/snapshot`, including
+  cached exercises and exact occurrence IDs for all today's guided workouts.
+  Payloads above 90 KB use a Data Layer Asset, bounded at 16 MiB on receipt;
+  a smaller inline current-routine snapshot preserves older-watch compatibility.
 - The watch persists commands under `/draftingroom5/watch/command/<UUID>` as urgent data items.
 - Data items buffer while devices are disconnected and synchronize after reconnection.
 - The phone processes commands serially, publishes its new authoritative snapshot, and deletes a command only after that publication succeeds.

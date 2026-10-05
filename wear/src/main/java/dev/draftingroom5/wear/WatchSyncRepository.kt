@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataItem
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import dev.draftingroom5.watch.WATCH_COMMAND_PATH_PREFIX
@@ -26,6 +27,7 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
     private val appContext = context.applicationContext
     private val preferences = appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
     private val dataClient = Wearable.getDataClient(appContext)
+    private val snapshotWorker = java.util.concurrent.Executors.newSingleThreadExecutor()
     private var baseSnapshot: WatchSnapshot? = readSnapshot(preferences)
     private var pendingCommands: List<WatchCommand> = readCommands(preferences)
     private val mutableState = MutableStateFlow(projectPendingCommands(baseSnapshot, pendingCommands))
@@ -43,6 +45,7 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
     }
 
     fun startToday() = enqueue(WatchCommandType.START_TODAY)
+    fun startWorkout(id: String) = enqueue(WatchCommandType.START_TODAY, todayWorkoutId = id)
 
     fun sync() = enqueue(WatchCommandType.SYNC)
 
@@ -73,11 +76,29 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
         try {
             dataEvents.forEach { event ->
                 if (event.type == DataEvent.TYPE_CHANGED && event.dataItem.uri.path == WATCH_SNAPSHOT_PATH) {
-                    runCatching { decodeWatchSnapshot(checkNotNull(event.dataItem.data)) }.onSuccess(::acceptSnapshot)
+                    acceptDataItem(event.dataItem.freeze())
                 }
             }
         } finally {
             dataEvents.release()
+        }
+    }
+
+    fun acceptDataItem(item: DataItem) {
+        val asset = item.assets[dev.draftingroom5.watch.WATCH_SNAPSHOT_ASSET_KEY]
+        if (asset == null) {
+            runCatching { decodeWatchSnapshot(checkNotNull(item.data)) }.onSuccess(::acceptSnapshot)
+            return
+        }
+        dataClient.getFdForAsset(asset).addOnSuccessListener { response ->
+            snapshotWorker.execute {
+                try {
+                    val bytes = response.inputStream.use { readWatchLogo(it, dev.draftingroom5.watch.MAX_WATCH_SNAPSHOT_BYTES) }
+                    acceptSnapshot(decodeWatchSnapshot(bytes))
+                } catch (_: Exception) {
+                    // Preserve the previous complete offline snapshot on transfer failure.
+                } finally { response.release() }
+            }
         }
     }
 
@@ -86,6 +107,7 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
         sessionId: String? = null,
         exerciseId: String? = null,
         setNumber: Int? = null,
+        todayWorkoutId: String? = null,
     ) = synchronized(lock) {
         if (type == WatchCommandType.SYNC && pendingCommands.any { it.type == WatchCommandType.SYNC }) return@synchronized
         val command = WatchCommand(
@@ -95,6 +117,7 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
             exerciseId = exerciseId,
             setNumber = setNumber,
             createdAtMillis = System.currentTimeMillis().coerceAtLeast(0L),
+            todayWorkoutId = todayWorkoutId,
         )
         pendingCommands = (pendingCommands + command).takeLast(MAX_PENDING_COMMANDS)
         persist()

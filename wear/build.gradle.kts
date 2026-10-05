@@ -13,8 +13,8 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 30
         targetSdk = 37
-        versionCode = providers.gradleProperty("wearVersionCode").orElse("290211").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.29.19").get()
+        versionCode = providers.gradleProperty("wearVersionCode").orElse("290221").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.29.20").get()
     }
 
     signingConfigs {
@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.wear.compose.foundation)
+    implementation("androidx.wear:wear:1.4.0")
     implementation(libs.androidx.wear.compose.material3)
     implementation(libs.google.play.services.wearable)
     testImplementation(libs.junit)

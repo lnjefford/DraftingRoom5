@@ -128,8 +128,16 @@ class PhoneWatchDataService : WearableListenerService() {
     }
 
     private fun publishSnapshot(snapshot: WatchSnapshot, commandUri: Uri?) {
+        val full = encodeWatchSnapshot(snapshot)
+        val large = full.size > 90_000
+        // Older watches can still display the current routine while the new
+        // watch receives every scheduled workout through the larger asset.
+        val inline = if (large) encodeWatchSnapshot(snapshot.copy(today = snapshot.today?.copy(workouts = emptyList()))) else full
         val request = PutDataRequest.create(WATCH_SNAPSHOT_PATH)
-            .setData(encodeWatchSnapshot(snapshot)).setUrgent()
+            .setUrgent()
+        if (inline.size <= 90_000) request.setData(inline)
+        if (large) request.putAsset(dev.draftingroom5.watch.WATCH_SNAPSHOT_ASSET_KEY,
+            com.google.android.gms.wearable.Asset.createFromBytes(full))
         runCatching {
             Tasks.await(Wearable.getDataClient(this).putDataItem(request), 30, TimeUnit.SECONDS)
             if (commandUri != null) Wearable.getDataClient(this).deleteDataItems(commandUri)
@@ -139,7 +147,7 @@ class PhoneWatchDataService : WearableListenerService() {
     private fun applyCommand(repository: AppRepository, command: WatchCommand) {
         when (command.type) {
             WatchCommandType.SYNC, WatchCommandType.REFRESH_TODAY -> Unit
-            WatchCommandType.START_TODAY -> ensureTodaySession(repository)
+            WatchCommandType.START_TODAY -> ensureTodaySession(repository, command.todayWorkoutId)
             WatchCommandType.COMPLETE_SET -> {
                 val session = findSession(repository, command.sessionId) ?: ensureTodaySession(repository) ?: return
                 val exerciseId = command.exerciseId ?: return
@@ -174,10 +182,15 @@ class PhoneWatchDataService : WearableListenerService() {
         }
     }
 
-    private fun ensureTodaySession(repository: AppRepository): GuidedSession? {
+    private fun ensureTodaySession(repository: AppRepository, workoutId: String? = null): GuidedSession? {
         findSession(repository, null)?.let { return it }
         val document = (repository.state.value as? LoadState.Ready)?.value ?: return null
-        val candidate = todayCandidate(document) ?: return null
+        val candidate = if (workoutId == null) todayCandidate(document) else
+            dashboardSessions(document, LocalDate.now()).firstOrNull {
+                it.routine.execution == RoutineExecution.GUIDED && it.action != SessionAction.DONE &&
+                    "${it.occurrence.scheduleEntryId}@${it.occurrence.scheduledDate}" == workoutId
+            }
+        candidate ?: return null
         if (candidate.action == SessionAction.RESUME) {
             return document.partialSessions.firstOrNull { it.occurrence == candidate.occurrence }
         }
@@ -254,6 +267,12 @@ class PhoneWatchDataService : WearableListenerService() {
             location = previous?.location ?: city?.name,
             temperatureF = previous?.temperatureF,
             weatherKind = previous?.weatherKind,
+            localHour = previous?.localHour,
+            workouts = sessions.filter { it.routine.execution == RoutineExecution.GUIDED && it.action != SessionAction.DONE }
+                .map { candidate -> dev.draftingroom5.watch.WatchTodayWorkout(
+                    "${candidate.occurrence.scheduleEntryId}@${candidate.occurrence.scheduledDate}",
+                    candidate.routine.id, candidate.routine.name, candidate.occurrence.scheduleEntryId,
+                    candidate.occurrence.scheduledDate.toString(), candidate.routine.exercises.map { it.toWatchExercise(0) }) },
             stocks = symbols.map { symbol -> previous?.stocks?.firstOrNull { it.symbol == symbol }
                 ?: WatchTodayStock(symbol, null, null) },
             games = teams.map { team -> previous?.games?.firstOrNull { it.team == team.displayName }
@@ -291,6 +310,7 @@ class PhoneWatchDataService : WearableListenerService() {
             location = weather?.location ?: base.location,
             temperatureF = weather?.temperatureF ?: base.temperatureF,
             weatherKind = weather?.kind?.name ?: base.weatherKind,
+            localHour = weather?.localHour ?: base.localHour,
             stocks = symbols.mapIndexed { index, symbol ->
                 val quote = stocks[index]
                 val old = base.stocks.firstOrNull { it.symbol == symbol }
@@ -301,7 +321,8 @@ class PhoneWatchDataService : WearableListenerService() {
                 val game = games[index]
                 val old = base.games.firstOrNull { it.team == team.displayName }
                 WatchTodayGame(team.displayName, game?.opponent ?: old?.opponent,
-                    game?.startsAt?.toEpochMilli() ?: old?.startsAtMillis)
+                    game?.startsAt?.toEpochMilli() ?: old?.startsAtMillis,
+                    game?.teamLogo ?: old?.teamLogo, game?.opponentLogo ?: old?.opponentLogo)
             },
             updatedAtMillis = System.currentTimeMillis().coerceAtLeast(0L),
         )

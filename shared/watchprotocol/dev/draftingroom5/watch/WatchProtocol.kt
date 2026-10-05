@@ -4,6 +4,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 const val WATCH_SNAPSHOT_PATH = "/draftingroom5/phone/snapshot"
+const val WATCH_SNAPSHOT_ASSET_KEY = "snapshot"
+const val MAX_WATCH_SNAPSHOT_BYTES = 16 * 1024 * 1024
 const val WATCH_COMMAND_PATH_PREFIX = "/draftingroom5/watch/command/"
 const val WATCH_PROTOCOL_VERSION = 1
 
@@ -24,7 +26,10 @@ data class WatchExercise(
 
 data class WatchTodayStock(val symbol: String, val price: Double?, val changePercent: Double?,
     val points: List<Double> = emptyList())
-data class WatchTodayGame(val team: String, val opponent: String?, val startsAtMillis: Long?)
+data class WatchTodayGame(val team: String, val opponent: String?, val startsAtMillis: Long?,
+    val teamLogo: String? = null, val opponentLogo: String? = null)
+data class WatchTodayWorkout(val id: String, val routineId: String, val name: String,
+    val scheduleEntryId: String, val scheduledDate: String, val exercises: List<WatchExercise>)
 data class WatchTodayBriefing(
     val date: String,
     val workoutName: String?,
@@ -38,6 +43,8 @@ data class WatchTodayBriefing(
     val stocks: List<WatchTodayStock>,
     val games: List<WatchTodayGame>,
     val updatedAtMillis: Long,
+    val localHour: Int? = null,
+    val workouts: List<WatchTodayWorkout> = emptyList(),
 )
 
 data class WatchSnapshot(
@@ -68,6 +75,7 @@ data class WatchCommand(
     val exerciseId: String? = null,
     val setNumber: Int? = null,
     val createdAtMillis: Long,
+    val todayWorkoutId: String? = null,
 )
 
 fun encodeWatchSnapshot(snapshot: WatchSnapshot): ByteArray = JSONObject().apply {
@@ -90,7 +98,7 @@ fun encodeWatchSnapshot(snapshot: WatchSnapshot): ByteArray = JSONObject().apply
 }.toString().toByteArray(Charsets.UTF_8)
 
 fun decodeWatchSnapshot(bytes: ByteArray): WatchSnapshot {
-    require(bytes.size <= 100_000) { "Watch snapshot is too large." }
+    require(bytes.size <= MAX_WATCH_SNAPSHOT_BYTES) { "Watch snapshot is too large." }
     val value = JSONObject(bytes.toString(Charsets.UTF_8))
     require(value.getInt("protocol") == WATCH_PROTOCOL_VERSION) { "Unsupported watch protocol." }
     val exercises = value.getJSONArray("exercises").objects(::decodeExercise)
@@ -130,6 +138,12 @@ private fun encodeToday(today: WatchTodayBriefing) = JSONObject().apply {
     putNullable("location", today.location)
     put("temperatureF", today.temperatureF ?: JSONObject.NULL)
     putNullable("weatherKind", today.weatherKind)
+    put("localHour", today.localHour ?: JSONObject.NULL)
+    put("workouts", JSONArray().apply { today.workouts.forEach { workout -> put(JSONObject().apply {
+        put("id", workout.id); put("routineId", workout.routineId); put("name", workout.name)
+        put("scheduleEntryId", workout.scheduleEntryId); put("scheduledDate", workout.scheduledDate)
+        put("exercises", JSONArray().apply { workout.exercises.forEach { put(encodeExercise(it)) } })
+    }) } })
     put("stocks", JSONArray().apply { today.stocks.forEach { stock -> put(JSONObject().apply {
         put("symbol", stock.symbol)
         put("price", stock.price ?: JSONObject.NULL)
@@ -140,6 +154,8 @@ private fun encodeToday(today: WatchTodayBriefing) = JSONObject().apply {
         put("team", game.team)
         putNullable("opponent", game.opponent)
         put("startsAtMillis", game.startsAtMillis ?: JSONObject.NULL)
+        putNullable("teamLogo", game.teamLogo)
+        putNullable("opponentLogo", game.opponentLogo)
     }) } })
     put("updatedAtMillis", today.updatedAtMillis)
 }
@@ -165,15 +181,29 @@ private fun decodeToday(value: JSONObject) = WatchTodayBriefing(
     games = value.getJSONArray("games").objects { WatchTodayGame(
         it.getString("team"), it.nullableString("opponent"),
         if (it.isNull("startsAtMillis")) null else it.getLong("startsAtMillis"),
+        it.nullableString("teamLogo"), it.nullableString("opponentLogo"),
     ) },
     updatedAtMillis = value.nonNegativeLong("updatedAtMillis"),
+    localHour = if (value.isNull("localHour")) null else value.getInt("localHour"),
+    workouts = value.optJSONArray("workouts")?.objects { workout -> WatchTodayWorkout(
+        workout.getString("id"), workout.getString("routineId"), workout.getString("name"),
+        workout.getString("scheduleEntryId"), workout.getString("scheduledDate"),
+        workout.getJSONArray("exercises").objects(::decodeExercise)) } ?: emptyList(),
 ).also {
+    require(it.workouts.size <= 100 && it.workouts.map(WatchTodayWorkout::id).distinct().size == it.workouts.size)
+    require(it.workouts.all { workout -> workout.id.length in 1..256 && workout.routineId.length in 1..128 &&
+        workout.name.length in 1..200 && workout.scheduleEntryId.length in 1..128 &&
+        workout.scheduledDate.length == 10 && workout.exercises.isNotEmpty() &&
+        workout.exercises.map(WatchExercise::id).distinct().size == workout.exercises.size })
     require(it.date.length == 10 && it.workoutCount in 0..100 && it.weekPlanned in 0..700)
     require(it.weekCompleted in 0..it.weekPlanned && it.weekDays.size == 7)
     require(it.weekDays.all { (planned, done) -> planned in 0..100 && done in 0..planned })
     require(it.workoutName == null || it.workoutName.length <= 200)
     require(it.location == null || it.location.length <= 100)
     require(it.temperatureF == null || it.temperatureF in -150..150)
+    require(it.localHour == null || it.localHour in 0..23)
+    require(it.games.all { game -> listOfNotNull(game.teamLogo, game.opponentLogo).all { url ->
+        url.length <= 500 && url.startsWith("https://a.espncdn.com/") } })
     require(it.stocks.size <= 8 && it.games.size <= 6)
     require(it.stocks.all { stock -> stock.symbol.length in 1..12 &&
         (stock.price == null || stock.price > 0.0) &&
@@ -189,6 +219,7 @@ fun encodeWatchCommand(command: WatchCommand): ByteArray = JSONObject().apply {
     put("protocol", WATCH_PROTOCOL_VERSION)
     put("id", command.id)
     put("type", command.type.name)
+    putNullable("todayWorkoutId", command.todayWorkoutId)
     putNullable("sessionId", command.sessionId)
     putNullable("exerciseId", command.exerciseId)
     if (command.setNumber == null) put("setNumber", JSONObject.NULL) else put("setNumber", command.setNumber)
@@ -206,6 +237,7 @@ fun decodeWatchCommand(bytes: ByteArray): WatchCommand {
         exerciseId = value.nullableString("exerciseId"),
         setNumber = if (value.isNull("setNumber")) null else value.getInt("setNumber"),
         createdAtMillis = value.nonNegativeLong("createdAtMillis"),
+        todayWorkoutId = value.nullableString("todayWorkoutId"),
     ).also(::validateCommand)
 }
 
@@ -225,12 +257,24 @@ fun projectPendingCommands(base: WatchSnapshot?, commands: List<WatchCommand>): 
     commands.sortedBy(WatchCommand::createdAtMillis).forEach { command ->
         projected = when (command.type) {
             WatchCommandType.SYNC, WatchCommandType.REFRESH_TODAY -> projected
-            WatchCommandType.START_TODAY -> if (projected.status == WatchWorkoutStatus.AVAILABLE) {
-                projected.copy(status = WatchWorkoutStatus.ACTIVE)
-            } else projected
+            WatchCommandType.START_TODAY -> {
+                val selected = projected.today?.workouts?.firstOrNull { it.id == command.todayWorkoutId }
+                if (projected.status in setOf(WatchWorkoutStatus.NONE, WatchWorkoutStatus.AVAILABLE, WatchWorkoutStatus.COMPLETE) && selected != null) {
+                    projected.copy(status = WatchWorkoutStatus.ACTIVE, sessionId = null,
+                        routineId = selected.routineId, routineName = selected.name,
+                        scheduleEntryId = selected.scheduleEntryId, scheduledDate = selected.scheduledDate,
+                        exercises = selected.exercises, focusedExerciseId = selected.exercises.first().id)
+                } else if (projected.status == WatchWorkoutStatus.AVAILABLE && command.todayWorkoutId == null) {
+                    projected.copy(status = WatchWorkoutStatus.ACTIVE)
+                } else projected
+            }
             WatchCommandType.COMPLETE_SET -> projectCompleteSet(projected, command)
             WatchCommandType.FINISH_SESSION -> if (projected.status == WatchWorkoutStatus.READY_TO_FINISH) {
-                projected.copy(status = WatchWorkoutStatus.COMPLETE)
+                projected.copy(status = WatchWorkoutStatus.COMPLETE, today = projected.today?.let { today ->
+                    today.copy(workouts = today.workouts.filterNot {
+                        it.scheduleEntryId == projected.scheduleEntryId && it.scheduledDate == projected.scheduledDate
+                    })
+                })
             } else projected
         }
     }
@@ -303,6 +347,8 @@ private fun validateSnapshot(snapshot: WatchSnapshot) {
 
 private fun validateCommand(command: WatchCommand) {
     require(command.createdAtMillis >= 0)
+    require(command.todayWorkoutId == null ||
+        (command.type == WatchCommandType.START_TODAY && command.todayWorkoutId.length in 1..256))
     when (command.type) {
         WatchCommandType.COMPLETE_SET -> {
             require(!command.exerciseId.isNullOrBlank())

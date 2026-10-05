@@ -12,7 +12,9 @@ class WatchScreenCases : PreviewParameterProvider<String> {
         "Today workout", "Today stocks", "Today teams", "Today offline", "Today more stocks", "Today run",
         "Timer finished", "Run paused", "Run at turn", "Run U-turn", "Today workout done",
         "Today open day", "Run no cached", "Connecting", "Phone needed",
-        "Today no stocks", "Today no teams", "Run waiting GPS", "Run treadmill", "Run right turn")
+        "Today no stocks", "Today no teams", "Run waiting GPS", "Run treadmill", "Run right turn",
+        "Today spring", "Today summer", "Today winter", "Today rain", "Today snow", "Today night",
+        "Today day", "Today dawn", "Today storm")
 }
 
 @PreviewTest

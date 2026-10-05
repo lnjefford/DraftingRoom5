@@ -34,6 +34,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -90,14 +91,29 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class WatchActivity : ComponentActivity() {
+    private var resumed by mutableStateOf(false)
+    private var ambient by mutableStateOf(false)
     private val repository by lazy { WatchSyncRepository.get(this) }
     private val runRepository by lazy { WatchRunRepository.get(this) }
     private val runRecorder by lazy { WatchRunRecorder.get(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { DraftingRoom5Watch(repository, runRepository, runRecorder, onClose = ::finish) }
+        lifecycle.addObserver(androidx.wear.ambient.AmbientLifecycleObserver(this,
+            object : androidx.wear.ambient.AmbientLifecycleObserver.AmbientLifecycleCallback {
+                override fun onEnterAmbient(ambientDetails: androidx.wear.ambient.AmbientLifecycleObserver.AmbientDetails) { ambient = true }
+                override fun onExitAmbient() { ambient = false }
+                override fun onUpdateAmbient() = Unit
+            }))
+        setContent {
+            CompositionLocalProvider(LocalWatchMotionAllowed provides (resumed && !ambient)) {
+                DraftingRoom5Watch(repository, runRepository, runRecorder, onClose = ::finish)
+            }
+        }
     }
+
+    override fun onResume() { super.onResume(); resumed = true }
+    override fun onPause() { resumed = false; super.onPause() }
 
     override fun onStart() {
         super.onStart()
@@ -189,16 +205,41 @@ private fun DraftingRoom5Watch(
                     runPicker = false
                 }
             }
-        } else runError = if (selectedRouteId == WATCH_TREADMILL_ROUTE_ID)
-            "Location permission keeps the watch timer active in the background. GPS stays off."
-            else "Location permission is needed to record a run."
+        } else {
+            runError = if (selectedRouteId == WATCH_TREADMILL_ROUTE_ID)
+                "Location permission keeps the watch timer active in the background. GPS stays off."
+                else "Location permission is needed to record a run."
+            runPicker = true
+        }
     }
     val timerStore = remember { LocalTimerStore(context) }
+    val startNativeRun: (WatchRunPlan) -> Unit = { plan ->
+        selectedRun = plan
+        selectedRouteId = plan.preferredRouteId ?: runCatalog?.lastRouteId
+        runError = null
+        if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            val started = runRecorder.start(plan.copy(preferredRouteId = selectedRouteId),
+                runCatalog?.routes?.firstOrNull { it.id == selectedRouteId }, System.currentTimeMillis())
+            if (started == null) { runError = "Could not start run."; runPicker = true }
+            else WatchRunService.start(context, started.id)
+        } else locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
     var timer by remember { mutableStateOf(timerStore.read()) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var celebration by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var showTodayAfterComplete by remember { mutableStateOf(false) }
     val exercise = snapshot?.focusedExercise
+    val startNativeWorkout: (String?) -> Unit = { id ->
+        if (id == null) repository.startToday() else repository.startWorkout(id)
+        val first = repository.state.value?.takeIf { it.status == WatchWorkoutStatus.ACTIVE }
+            ?.focusedExercise?.takeIf { it.completedSets < it.setCount }
+        first?.durationSeconds?.let { seconds ->
+            val started = System.currentTimeMillis()
+            timer = LocalTimer(first.id, started + 10_000L, started + 10_000L + seconds * 1_000L)
+            timerStore.write(timer)
+            if (snapshot?.hapticsEnabled != false) vibrate(context, long = false)
+        }
+    }
 
     LaunchedEffect(timer, runCapture?.id, runCapture?.isRunning) {
         while (timer != null || runCapture?.isRunning == true) {
@@ -213,6 +254,7 @@ private fun DraftingRoom5Watch(
         }
     }
     LaunchedEffect(snapshot?.status) {
+        if (snapshot?.status in setOf(WatchWorkoutStatus.ACTIVE, WatchWorkoutStatus.READY_TO_FINISH)) runPicker = false
         if (snapshot?.status == WatchWorkoutStatus.READY_TO_FINISH) repository.finishSession()
     }
     LaunchedEffect(celebration) {
@@ -235,7 +277,7 @@ private fun DraftingRoom5Watch(
             )
             runCapture?.completedAtMillis != null && runCapture?.id != dismissedRunId -> WatchRunCompleteScreen(
                 checkNotNull(runCapture), pendingRuns, onDone = { dismissedRunId = runCapture?.id })
-            runPicker -> WatchRunPickerScreen(
+            runPicker && snapshot?.status !in setOf(WatchWorkoutStatus.ACTIVE, WatchWorkoutStatus.READY_TO_FINISH) -> WatchRunPickerScreen(
                 runCatalog,
                 selectedRun,
                 selectedRouteId,
@@ -281,15 +323,18 @@ private fun DraftingRoom5Watch(
             snapshot == null -> WatchHomeScreen("CONNECTING", "Open DraftingRoom5 on your phone", repository::sync,
                 runCatalog != null, { runPicker = true })
             snapshot?.status == WatchWorkoutStatus.NONE -> TodayScreen(checkNotNull(snapshot), repository::refreshToday,
-                repository::startToday, { runPicker = true }, runCatalog?.plans?.size ?: 0)
+                { startNativeWorkout(null) }, { runPicker = true }, runCatalog?.plans?.size ?: 0,
+                catalog = runCatalog, onStartRun = startNativeRun, onSelectWorkout = startNativeWorkout)
             snapshot?.status == WatchWorkoutStatus.ERROR -> MessageScreen(
                 "PHONE NEEDED", snapshot?.message ?: "Workout data is unavailable.", "Choose run", { runPicker = true },
             )
             snapshot?.status == WatchWorkoutStatus.AVAILABLE -> TodayScreen(checkNotNull(snapshot), repository::refreshToday,
-                repository::startToday, { runPicker = true }, runCatalog?.plans?.size ?: 0)
+                { startNativeWorkout(null) }, { runPicker = true }, runCatalog?.plans?.size ?: 0,
+                catalog = runCatalog, onStartRun = startNativeRun, onSelectWorkout = startNativeWorkout)
             snapshot?.status == WatchWorkoutStatus.COMPLETE -> if (showTodayAfterComplete)
-                TodayScreen(checkNotNull(snapshot), repository::refreshToday, repository::startToday,
-                    { runPicker = true }, runCatalog?.plans?.size ?: 0)
+                TodayScreen(checkNotNull(snapshot), repository::refreshToday, { startNativeWorkout(null) },
+                    { runPicker = true }, runCatalog?.plans?.size ?: 0,
+                    catalog = runCatalog, onStartRun = startNativeRun, onSelectWorkout = startNativeWorkout)
                 else CompletionScreen(checkNotNull(snapshot)) { showTodayAfterComplete = true }
             exercise != null -> ExerciseScreen(
                 snapshot = checkNotNull(snapshot),
@@ -763,124 +808,19 @@ private fun CompactButton(label: String, color: Color, onClick: () -> Unit, modi
     }
 }
 
-private enum class TodayPageKind { OFFLINE, WEATHER, WORKOUT, RUN, STOCK, TEAM }
-private data class TodayPage(val kind: TodayPageKind, val itemIndex: Int = 0)
-
 @Composable
 private fun TodayScreen(snapshot: WatchSnapshot, onSync: () -> Unit, onStart: () -> Unit,
-    onChooseRun: () -> Unit, savedRuns: Int, previewPage: Int = 0) {
-    val today = snapshot.today
-    val locale = LocalLocale.current.platformLocale
-    val weatherTop = if (LocalConfiguration.current.screenWidthDp >= 210) 32.dp else 17.dp
-    val pages = if (today == null) listOf(TodayPage(TodayPageKind.OFFLINE)) else buildList {
-        add(TodayPage(TodayPageKind.WEATHER))
-        add(TodayPage(TodayPageKind.WORKOUT))
-        add(TodayPage(TodayPageKind.RUN))
-        if (today.stocks.isEmpty()) add(TodayPage(TodayPageKind.STOCK))
-        else today.stocks.indices.forEach { add(TodayPage(TodayPageKind.STOCK, it)) }
-        if (today.games.isEmpty()) add(TodayPage(TodayPageKind.TEAM))
-        else today.games.indices.forEach { add(TodayPage(TodayPageKind.TEAM, it)) }
-    }
-    val pager = rememberPagerState(initialPage = previewPage.coerceIn(0, pages.lastIndex)) { pages.size }
-    Box(Modifier.fillMaxSize().clip(CircleShape).background(Ink)) {
-        HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { pageIndex ->
-            val page = pages[pageIndex]
-            val artwork = when (page.kind) {
-                TodayPageKind.WORKOUT -> when {
-                    today?.workoutCount == 0 -> R.drawable.watch_open_day
-                    snapshot.status == WatchWorkoutStatus.COMPLETE -> R.drawable.watch_workout_done
-                    else -> R.drawable.watch_athlete_run
-                }
-                TodayPageKind.RUN -> R.drawable.watch_athlete_run
-                TodayPageKind.TEAM -> R.drawable.watch_stadium
-                else -> R.drawable.watch_dusk
-            }
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Image(painterResource(artwork), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                val openDay = page.kind == TodayPageKind.WORKOUT && today?.workoutCount == 0
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(if (openDay)
-                    listOf(Ink.copy(alpha = .18f), Ink.copy(alpha = .16f), Ink.copy(alpha = .62f))
-                    else listOf(Ink.copy(alpha = .68f), Ink.copy(alpha = .31f), Ink.copy(alpha = .88f)))))
-                if (page.kind == TodayPageKind.OFFLINE) {
-                    TodayOfflinePage(snapshot.status == WatchWorkoutStatus.AVAILABLE, onStart, onSync)
-                } else if (page.kind == TodayPageKind.WORKOUT) {
-                    TodayWorkoutPage(checkNotNull(today), snapshot.status, onStart)
-                } else if (page.kind == TodayPageKind.RUN) {
-                    TodayRunPage(savedRuns, onSync, onChooseRun)
-                } else Column((if (page.kind == TodayPageKind.WEATHER)
-                    Modifier.align(Alignment.TopCenter).fillMaxWidth()
-                        .padding(horizontal = 29.dp, vertical = weatherTop)
-                    else Modifier.fillMaxWidth().padding(horizontal = 29.dp, vertical = 22.dp)),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    when (page.kind) {
-                        TodayPageKind.OFFLINE -> Unit
-                        TodayPageKind.WEATHER -> {
-                            val briefing = checkNotNull(today)
-                            val icon = when (briefing.weatherKind) {
-                                "CLEAR" -> "☀"; "CLOUDY" -> "☁"; "RAIN" -> "☂"; "SNOW" -> "❄"
-                                "STORM" -> "ϟ"; else -> "◌"
-                            }
-                            WatchText(icon, 22, Ivory)
-                            WatchText(briefing.temperatureF?.let { "$it°" } ?: "—", 39, Ivory, family = serifFamily())
-                            WatchText("${briefing.location ?: "Current location"} · ${briefing.weatherKind.orEmpty().lowercase()
-                                .replaceFirstChar { it.titlecase() }}", 10, Ivory, maxLines = 2)
-                            ScenicDivider()
-                            if (snapshot.status == WatchWorkoutStatus.AVAILABLE && briefing.workoutName != null)
-                                CompactButton(briefing.workoutName, Raised, onStart,
-                                    Modifier.fillMaxWidth(), "Start ${briefing.workoutName}")
-                        }
-                        TodayPageKind.WORKOUT -> Unit
-                        TodayPageKind.RUN -> Unit
-                        TodayPageKind.STOCK -> {
-                            val briefing = checkNotNull(today)
-                            val stock = briefing.stocks.getOrNull(page.itemIndex)
-                            Eyebrow(if (stock == null) "YOUR STOCKS" else
-                                "STOCK ${page.itemIndex + 1} OF ${briefing.stocks.size}")
-                            if (stock == null) EmptyTodayContent(true)
-                            else TodayStockPage(stock)
-                        }
-                        TodayPageKind.TEAM -> {
-                            val briefing = checkNotNull(today)
-                            val game = briefing.games.getOrNull(page.itemIndex)
-                            Eyebrow(if (game == null) "YOUR TEAMS" else
-                                "TEAM ${page.itemIndex + 1} OF ${briefing.games.size}")
-                            if (game == null) EmptyTodayContent(false)
-                            else {
-                                TeamMatchVisual(game.team, game.opponent)
-                                val teamLabel = game.team.substringAfterLast(' ')
-                                val opponentLabel = game.opponent?.substringAfterLast(' ')
-                                WatchText(if (opponentLabel == null) teamLabel else
-                                    "$teamLabel vs $opponentLabel", 15, Ivory, FontWeight.Bold,
-                                    maxLines = 2)
-                                WatchText(if (game.opponent == null) "No upcoming game" else {
-                                    val time = game.startsAtMillis?.let { millis ->
-                                        DateTimeFormatter.ofPattern("EEE h:mm a", locale)
-                                            .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
-                                    }
-                                    "Upcoming" + (time?.let { " · $it" } ?: "")
-                                }, 11, Secondary, maxLines = 2)
-                            }
-                        }
-                    }
-                }
-                if (page.kind == TodayPageKind.WEATHER) CompactButton("↻", Raised, onSync,
-                    Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 32.dp).width(34.dp),
-                    "Refresh Today")
-            }
-        }
-        if (pages.size > 1) {
-            val pageLabel = when (pager.currentPage) {
-                0 -> "1 / ${pages.size} · SWIPE ›"
-                pages.lastIndex -> "‹ ${pages.size} / ${pages.size}"
-                else -> "‹ ${pager.currentPage + 1} / ${pages.size} ›"
-            }
-            WatchText(pageLabel, 9, Secondary, modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(horizontal = 62.dp, vertical = 8.dp))
-        }
-    }
+    onChooseRun: () -> Unit, savedRuns: Int, previewPage: Int = 0,
+    catalog: WatchRunCatalog? = null, onStartRun: (WatchRunPlan) -> Unit = { onChooseRun() },
+    onSelectWorkout: (String?) -> Unit = { onStart() }) {
+    WatchTodayHub(snapshot, catalog, onSync, onSelectWorkout, onStartRun,
+        previewPage = if (previewPage in 1..2) 1 else 0,
+        previewDetail = when (previewPage) {
+            3, 6 -> WatchTodayDetail.STOCKS
+            7 -> WatchTodayDetail.GAMES
+            else -> null
+        }, previewScroll = previewPage == 6)
 }
-
 @Composable
 private fun BoxScope.TodayOfflinePage(hasWorkout: Boolean, onStart: () -> Unit,
     onSync: () -> Unit) {
@@ -1472,17 +1412,23 @@ internal fun WatchReviewPreview(screen: String) {
                 WatchTodayStock("AAPL", 265.13, 1.02,
                     listOf(262.45, 262.72, 262.61, 263.1, 262.88, 263.45, 263.32, 264.08,
                         263.95, 264.41, 264.17, 264.82, 265.13)),
-                WatchTodayStock("^IXIC", 18412.25, -0.34,
-                    listOf(18490.0, 18470.0, 18486.0, 18433.0, 18412.25)),
-                WatchTodayStock("MSFT", 428.56, 0.71,
-                    listOf(425.0, 425.7, 426.3, 427.8, 428.56)),
-                WatchTodayStock("NVDA", 137.90, 2.10,
-                    listOf(134.2, 134.9, 135.1, 136.8, 137.90)),
+                WatchTodayStock("NVDA", 188.46, 0.41, listOf(187.9, 188.2, 188.46)),
+                WatchTodayStock("MSFT", 517.72, -0.38, listOf(519.0, 518.1, 517.72)),
+                WatchTodayStock("TSLA", 436.18, 0.76, listOf(433.0, 434.2, 436.18)),
             ),
-            listOf(dev.draftingroom5.watch.WatchTodayGame("Green Bay Packers", "Bears", 1_759_500_000_000)),
-            1,
+            listOf(
+                dev.draftingroom5.watch.WatchTodayGame("Green Bay Packers", "Chicago Bears",
+                    java.time.Instant.parse("2026-10-04T20:25:00Z").toEpochMilli()),
+                dev.draftingroom5.watch.WatchTodayGame("Milwaukee Bucks", "New York Knicks",
+                    java.time.Instant.parse("2026-10-05T23:30:00Z").toEpochMilli()),
+                dev.draftingroom5.watch.WatchTodayGame("Wisconsin Badgers", "Iowa Hawkeyes",
+                    java.time.Instant.parse("2026-10-10T19:30:00Z").toEpochMilli())),
+            1, localHour = 18,
         ),
     )
+    val todayRuns = WatchRunCatalog(1, listOf(WatchRunPlan("run", "Morning intervals", "run-schedule",
+        "2026-10-01", "2026-10-01", listOf(WatchRunInterval("WALK", 300),
+            WatchRunInterval("RUN", 1200)), null)), emptyList(), null)
     Box(Modifier.fillMaxSize().background(Ink), contentAlignment = Alignment.Center) {
         Image(painterResource(R.drawable.watch_dusk), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
@@ -1569,22 +1515,37 @@ internal fun WatchReviewPreview(screen: String) {
                     listOf(WatchRunSample(route.points.first(), 2_000, 5)), 61_000), 1, {})
             }
             "Today" -> TodayScreen(snapshot, {}, {}, {}, 2, previewPage = 0)
-            "Today workout" -> TodayScreen(snapshot, {}, {}, {}, 2, previewPage = 1)
+            "Today workout" -> TodayScreen(snapshot, {}, {}, {}, 2, previewPage = 1, catalog = todayRuns)
             "Today workout done" -> TodayScreen(snapshot.copy(status = WatchWorkoutStatus.COMPLETE,
                 today = snapshot.today?.copy(weekCompleted = 7, weekDays = List(7) { 1 to 1 })),
                 {}, {}, {}, 2, previewPage = 1)
             "Today open day" -> TodayScreen(snapshot.copy(status = WatchWorkoutStatus.NONE,
                 today = snapshot.today?.copy(workoutName = null, workoutCount = 0)),
                 {}, {}, {}, 2, previewPage = 1)
-            "Today run" -> TodayScreen(snapshot, {}, {}, {}, 2, previewPage = 2)
+            "Today run" -> TodayScreen(snapshot, {}, {}, {}, 2, previewPage = 2, catalog = todayRuns)
             "Today stocks" -> TodayScreen(snapshot, {}, {}, {}, 2, previewPage = 3)
             "Today no stocks" -> TodayScreen(snapshot.copy(today = snapshot.today?.copy(stocks = emptyList())),
                 {}, {}, {}, 2, previewPage = 3)
-            "Today more stocks" -> TodayScreen(snapshot, {}, {}, {}, 2, previewPage = 6)
+            "Today more stocks" -> TodayScreen(snapshot.copy(today = snapshot.today?.copy(stocks =
+                snapshot.today.stocks + listOf(WatchTodayStock("GOOG", 243.90, 0.22),
+                    WatchTodayStock("AMZN", 221.14, -0.52), WatchTodayStock("META", 713.08, 0.16),
+                    WatchTodayStock("^IXIC", 18412.25, -0.34)))), {}, {}, {}, 2, previewPage = 6)
             "Today teams" -> TodayScreen(snapshot, {}, {}, {}, 2, previewPage = 7)
             "Today no teams" -> TodayScreen(snapshot.copy(today = snapshot.today?.copy(games = emptyList())),
                 {}, {}, {}, 2, previewPage = 7)
             "Today offline" -> TodayScreen(snapshot.copy(today = null), {}, {}, {}, 0)
+            "Today spring", "Today summer", "Today winter", "Today rain", "Today snow", "Today night",
+            "Today day", "Today dawn", "Today storm" -> {
+                val date = when(screen) {
+                    "Today spring" -> "2026-04-01"
+                    "Today summer" -> "2026-07-01"
+                    "Today winter", "Today snow" -> "2026-01-01"
+                    else -> "2026-10-01"
+                }
+                TodayScreen(snapshot.copy(today=snapshot.today?.copy(date=date,
+                    weatherKind=when(screen) { "Today rain" -> "RAIN"; "Today snow" -> "SNOW"; "Today storm" -> "STORM"; else -> "CLEAR" },
+                    localHour=when(screen) { "Today night" -> 23; "Today day" -> 12; "Today dawn" -> 6; else -> 18 })), {}, {}, {}, 2)
+            }
             "Run no cached" -> WatchRunPickerScreen(WatchRunCatalog(1, emptyList(), emptyList(), null),
                 null, null, null, {}, {}, {}, {}, {})
             "Connecting" -> WatchHomeScreen("CONNECTING", "Open DraftingRoom5 on your phone", {}, false, {})

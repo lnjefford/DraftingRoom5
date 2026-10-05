@@ -13,8 +13,7 @@ class WatchDataListenerService : WearableListenerService() {
         try {
             dataEvents.forEach { event ->
                 if (event.type == DataEvent.TYPE_CHANGED && event.dataItem.uri.path == WATCH_SNAPSHOT_PATH) {
-                    runCatching { decodeWatchSnapshot(checkNotNull(event.dataItem.data)) }
-                        .onSuccess { WatchSyncRepository.storeIncoming(applicationContext, it) }
+                    WatchSyncRepository.get(applicationContext).acceptDataItem(event.dataItem.freeze())
                 }
                 if (event.type == DataEvent.TYPE_CHANGED && event.dataItem.uri.path == WATCH_RUN_CATALOG_PATH) {
                     WatchRunRepository.get(applicationContext).acceptDataItem(event.dataItem.freeze())
