@@ -37,6 +37,11 @@ gradle.beforeProject {
     }
     val projectDependencies = dependencies
     configurations.configureEach {
+        if (name == "androidLintTool" || name == "_internal-screenshot-validation-junit-engine") {
+            projectDependencies.constraints.add(name, "com.google.guava:guava:33.7.2-jre") {
+                because("Patch transitive Guava in lint and screenshot tooling; reevaluate with AGP updates")
+            }
+        }
         if (isCanBeDeclared) {
             val configurationName = name
             securityFloors.forEach { coordinate ->

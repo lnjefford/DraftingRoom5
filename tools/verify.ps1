@@ -44,7 +44,7 @@ function Invoke-GradleChecked([string]$Label, [string[]]$Arguments) {
         if ($first.ExitCode -eq 0) { return }
 
         $lockFailure = $first.Text -match 'AccessDeniedException|Access is denied|Unable to delete directory|being used by another process|Could not connect to Kotlin compile daemon'
-        $memoryFailure = $first.Text -match 'OutOfMemoryError|Java heap space|GC overhead limit exceeded'
+        $memoryFailure = $first.Text -match 'OutOfMemoryError|Java heap space|GC overhead limit exceeded|std::bad_alloc'
         if (-not $lockFailure -and -not $memoryFailure) {
             throw "$Label failed. See $($first.Log)"
         }

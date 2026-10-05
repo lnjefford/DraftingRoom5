@@ -97,7 +97,7 @@ their normal in-repository build paths because they do not set `DR5_BUILD_ROOT`.
 The checked-in Gradle defaults use a 3 GiB heap, at most two workers, in-process
 Kotlin compilation, no VFS watcher, a 2 GiB screenshot renderer, and build/config
 caching. The verification script additionally runs memory-heavy gates
-sequentially. If it recognizes a transient Windows lock or heap failure, it stops
+sequentially. If it recognizes a transient Windows lock or Java/native heap failure, it stops
 Gradle and retries that one gate once with a single worker. A second failure is
 reported rather than hidden.
 
