@@ -24,11 +24,12 @@ gradle.beforeProject {
         "org.bouncycastle:bcutil-jdk18on:1.86",
         "org.bitbucket.b_c:jose4j:0.9.7",
         "org.jdom:jdom2:2.0.6.1",
-        "org.apache.commons:commons-lang3:3.20.0",
+        "org.apache.commons:commons-lang3:3.21.0",
         "org.apache.httpcomponents:httpclient:4.5.14",
     )
+    val buildscriptSecurityFloors = securityFloors + "com.google.guava:guava:33.7.2-jre"
     buildscript.dependencies.constraints {
-        securityFloors.forEach { coordinate ->
+        buildscriptSecurityFloors.forEach { coordinate ->
             add("classpath", coordinate) {
                 because("Patch transitive build-tool advisories; see docs/dependency-maintenance/2026-09-28.md")
             }

@@ -14,9 +14,9 @@ android {
         minSdk = 37
         targetSdk = 37
         testInstrumentationRunner = "dev.draftingroom5.WidgetAuditInstrumentation"
-        versionCode = providers.gradleProperty("phoneVersionCode").orElse("290220").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.29.20").get()
-        buildConfigField("String", "UPDATE_DATE", "\"October 4, 2026\"")
+        versionCode = providers.gradleProperty("phoneVersionCode").orElse("290230").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.29.21").get()
+        buildConfigField("String", "UPDATE_DATE", "\"October 5, 2026\"")
         buildConfigField("boolean", "PLAY_DISTRIBUTION", "false")
     }
 
@@ -57,7 +57,7 @@ dependencies {
             because("Keep transitive Fragment compatible with Activity Result APIs")
         }
         implementation(libs.google.guava) {
-            because("Fix GHSA-5mg8-w23w-74h3 and GHSA-7g45-4rm6-3mm3 in transitive Guava")
+            because("Fix GHSA-5mg8-w23w-74h3, GHSA-7g45-4rm6-3mm3, and GHSA-xxph-c9ww-hj94 in transitive Guava")
         }
     }
     // Reevaluate SDK releases during weekly maintenance, including native API migrations.
