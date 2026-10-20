@@ -14,9 +14,9 @@ android {
         minSdk = 37
         targetSdk = 37
         testInstrumentationRunner = "dev.draftingroom5.WidgetAuditInstrumentation"
-        versionCode = providers.gradleProperty("phoneVersionCode").orElse("290230").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.29.21").get()
-        buildConfigField("String", "UPDATE_DATE", "\"October 5, 2026\"")
+        versionCode = providers.gradleProperty("phoneVersionCode").orElse("290240").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.29.22").get()
+        buildConfigField("String", "UPDATE_DATE", "\"October 20, 2026\"")
         buildConfigField("boolean", "PLAY_DISTRIBUTION", "false")
     }
 
@@ -61,7 +61,7 @@ dependencies {
         }
     }
     // Reevaluate SDK releases during weekly maintenance, including native API migrations.
-    implementation("com.plaid.link:sdk-core:6.2.2")
+    implementation("com.plaid.link:sdk-core:6.3.0")
     screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16") {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }
