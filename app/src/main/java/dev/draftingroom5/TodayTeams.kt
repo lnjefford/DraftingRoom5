@@ -21,6 +21,8 @@ internal data class TodayNextGame(
     val opponentLogo: String?,
 )
 
+internal data class TodayTeamSnapshot(val record: String?, val nextGame: TodayNextGame?)
+
 private data class TeamEndpoint(val sport: String, val league: String, val id: String)
 
 private fun TodayTeam.endpoint(): TeamEndpoint = when (this) {
@@ -57,19 +59,36 @@ internal fun parseTodayNextGame(team: TodayTeam, text: String, now: Instant): To
     }.minByOrNull { it.startsAt }
 }
 
+internal fun parseTodayTeamSnapshot(team: TodayTeam, text: String, now: Instant): TodayTeamSnapshot {
+    val own = JSONObject(text).getJSONObject("team")
+    val items = own.optJSONObject("record")?.optJSONArray("items")
+    val overall = items?.let { records ->
+        (0 until records.length()).mapNotNull { records.optJSONObject(it) }
+            .firstOrNull { it.optString("type").equals("total", true) ||
+                it.optString("description").equals("overall", true) }
+    }
+    val summary = own.optString("recordSummary").ifBlank { overall?.optString("summary").orEmpty() }.trim()
+        .takeIf { it.matches(Regex("\\d+-\\d+(?:-\\d+)?")) }
+    return TodayTeamSnapshot(summary, parseTodayNextGame(team, text, now))
+}
+
 internal object TodayTeamSource {
-    suspend fun fetch(team: TodayTeam, today: LocalDate, now: Instant = Instant.now()): TodayNextGame? =
+    suspend fun fetch(team: TodayTeam, today: LocalDate, now: Instant = Instant.now()): TodayTeamSnapshot =
         withContext(Dispatchers.IO) {
             val endpoint = team.endpoint()
             val season = if (endpoint.league == "mens-college-basketball" && today.monthValue >= 7)
                 today.year + 1 else today.year
+            var current: TodayTeamSnapshot? = null
             for (year in season..season + 1) {
                 val address = "https://site.api.espn.com/apis/site/v2/sports/${endpoint.sport}/${endpoint.league}" +
                     "/teams/${endpoint.id}/schedule?season=$year"
-                val game = parseTodayNextGame(team, readTeamText(address), now)
-                if (game != null) return@withContext game
+                val snapshot = runCatching { parseTodayTeamSnapshot(team, readTeamText(address), now) }
+                    .getOrElse { error -> current?.let { return@withContext it } ?: throw error }
+                if (year == season) current = snapshot
+                if (snapshot.nextGame != null) return@withContext TodayTeamSnapshot(
+                    current?.record ?: snapshot.record, snapshot.nextGame)
             }
-            null
+            current ?: TodayTeamSnapshot(null, null)
         }
 
     suspend fun logo(address: String): Bitmap? = withContext(Dispatchers.IO) {

@@ -29,6 +29,18 @@ class TodayTeamsTest {
         assertNull(parseTodayNextGame(TodayTeam.BREWERS, response, Instant.parse("2026-10-05T00:00:00Z")))
     }
 
+    @Test fun readsOverallRecordEvenWithoutUpcomingGame() {
+        val schedule = response.replace("\"logo\":", "\"recordSummary\":\"89-73\",\"logo\":")
+        val snapshot = parseTodayTeamSnapshot(TodayTeam.BREWERS, schedule, Instant.parse("2026-10-05T00:00:00Z"))
+        assertEquals("89-73", snapshot.record)
+        assertNull(snapshot.nextGame)
+    }
+
+    @Test fun ignoresMalformedRecord() {
+        val schedule = response.replace("\"logo\":", "\"recordSummary\":\"TBD\",\"logo\":")
+        assertNull(parseTodayTeamSnapshot(TodayTeam.BREWERS, schedule, Instant.parse("2026-10-02T00:00:00Z")).record)
+    }
+
     @Test fun reorderMovesOnlyWithinBounds() {
         val teams = listOf(TodayTeam.BREWERS, TodayTeam.PACKERS, TodayTeam.INDIANA_FOOTBALL)
         assertEquals(listOf(TodayTeam.PACKERS, TodayTeam.BREWERS, TodayTeam.INDIANA_FOOTBALL),

@@ -245,7 +245,7 @@ private fun TodayMarketSparkline(points: List<Double>, color: Color) {
 }
 
 @Composable
-internal fun TodayTeamsEditorial(teams: List<TodayTeam>, games: Map<TodayTeam, TodayNextGame>,
+internal fun TodayTeamsEditorial(teams: List<TodayTeam>, snapshots: Map<TodayTeam, TodayTeamSnapshot>,
                                   loading: Boolean = false, onOpen: (TodayTeam) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TodayEditorialHeading("YOUR TEAMS")
@@ -253,8 +253,8 @@ internal fun TodayTeamsEditorial(teams: List<TodayTeam>, games: Map<TodayTeam, T
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             teams.forEach { team ->
-                TodayTeamCard(team, games[team], loading,
-                    Modifier.width(if (largeText) 290.dp else 216.dp).height(if (largeText) 276.dp else 176.dp)) {
+                TodayTeamCard(team, snapshots[team], loading,
+                    Modifier.width(if (largeText) 290.dp else 216.dp).height(if (largeText) 286.dp else 204.dp)) {
                     onOpen(team)
                 }
             }
@@ -265,10 +265,11 @@ internal fun TodayTeamsEditorial(teams: List<TodayTeam>, games: Map<TodayTeam, T
 }
 
 @Composable
-private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolean,
+private fun TodayTeamCard(team: TodayTeam, snapshot: TodayTeamSnapshot?, loading: Boolean,
                           modifier: Modifier = Modifier, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     val shape = RoundedCornerShape(18.dp)
+    val game = snapshot?.nextGame
     Column(modifier.clip(shape).background(TodayEditorialCardSurface).border(1.dp, TodayBorder.copy(alpha = 0.7f), shape)
         .clickable(onClick = onOpen).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -284,6 +285,7 @@ private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolea
         }
         Text(team.displayName, color = TodayText, style = MaterialTheme.typography.titleMedium,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
+        TodayTeamRecord(snapshot?.record)
         Text("NEXT GAME", color = TodayLavender, style = MaterialTheme.typography.labelSmall,
             letterSpacing = 1.sp)
         if (game == null) {
@@ -300,6 +302,32 @@ private fun TodayTeamCard(team: TodayTeam, game: TodayNextGame?, loading: Boolea
             val time = if (game.timeConfirmed) localStart.format(DateTimeFormatter.ofPattern("h:mm a", locale)) else "Time TBD"
             Text("$date · $time", color = TodayCopper, style = MaterialTheme.typography.labelMedium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun TodayTeamRecord(record: String?) {
+    val parts = record?.split('-')?.mapNotNull(String::toIntOrNull)
+    val wins = parts?.getOrNull(0) ?: 0
+    val losses = parts?.getOrNull(1) ?: 0
+    val ties = parts?.getOrNull(2) ?: 0
+    val total = wins + losses + ties
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text(if (record == null) "RECORD UNAVAILABLE" else "RECORD  $wins W  ·  $losses L" +
+            if (parts?.size == 3) "  ·  $ties T" else "",
+            color = TodayLavender, style = MaterialTheme.typography.labelSmall,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp))
+            .background(TodayBorder).semantics {
+                contentDescription = if (record == null) "Season record unavailable" else
+                    "$wins wins, $losses losses, $ties ties"
+            }) {
+            if (total > 0) {
+                if (wins > 0) Box(Modifier.weight(wins.toFloat()).fillMaxWidth().height(5.dp).background(TodayMint))
+                if (ties > 0) Box(Modifier.weight(ties.toFloat()).fillMaxWidth().height(5.dp).background(TodayCopper))
+                if (losses > 0) Box(Modifier.weight(losses.toFloat()).fillMaxWidth().height(5.dp).background(Color(0xFF715A78)))
+            }
         }
     }
 }

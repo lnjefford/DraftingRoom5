@@ -122,7 +122,7 @@ internal fun TodayWorkspaceScreen(
     onUpdate: () -> Unit = {},
     previewWeather: TodayWeather? = null,
     previewMarketQuotes: Map<String, TodayMarketQuote> = emptyMap(),
-    previewTeamGames: Map<TodayTeam, TodayNextGame> = emptyMap(),
+    previewTeamSnapshots: Map<TodayTeam, TodayTeamSnapshot> = emptyMap(),
     previewDate: LocalDate? = null,
     previewSettings: Boolean = false,
     previewScrollOffset: Int = 0,
@@ -194,19 +194,17 @@ internal fun TodayWorkspaceScreen(
             delay(15 * 60 * 1000L)
         }
     }
-    var teamGames by remember { mutableStateOf(previewTeamGames) }
+    var teamSnapshots by remember { mutableStateOf(previewTeamSnapshots) }
     var teamLoading by remember { mutableStateOf(previewDate == null) }
     LaunchedEffect(teams, previewDate) {
         if (previewDate != null) return@LaunchedEffect
         teamLoading = true
         while (true) {
             val now = java.time.Instant.now()
-            teamGames = teamGames.filter { (team, game) -> team in teams && game.startsAt > now }
+            teamSnapshots = teamSnapshots.filterKeys { it in teams }
             teams.forEach { team ->
                 runCatching { TodayTeamSource.fetch(team, LocalDate.now(), now) }
-                    .onSuccess { game ->
-                        teamGames = if (game == null) teamGames - team else teamGames + (team to game)
-                    }
+                    .onSuccess { snapshot -> teamSnapshots = teamSnapshots + (team to snapshot) }
             }
             teamLoading = false
             delay(30 * 60 * 1000L)
@@ -389,12 +387,12 @@ internal fun TodayWorkspaceScreen(
                     TodayHero(kind, today, weather, weatherMessage, onRefresh = { refreshSerial++ })
                     Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(34.dp)) {
                         TodayWorkoutEditorial(workouts, week, today) { onSwitchWorkspace(AppWorkspace.FITNESS) }
+                        TodayTeamsEditorial(teams, teamSnapshots, loading = teamLoading) {
+                            team -> context.openTodayLink(team.scheduleUrl)
+                        }
                         TodayMarketsEditorial(symbols, marketQuotes, loadLogos = previewDate == null, loading = marketLoading,
                             onOpen = { symbol -> context.openTodayLink(marketUrl(symbol)) },
                             onAttribution = { context.openTodayLink("https://www.allinvestview.com/tools/ticker-logos/") })
-                        TodayTeamsEditorial(teams, teamGames, loading = teamLoading) {
-                            team -> context.openTodayLink(team.scheduleUrl)
-                        }
                         Spacer(Modifier.height(24.dp))
                     }
                 }

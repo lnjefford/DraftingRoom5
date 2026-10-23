@@ -23,13 +23,13 @@ private val previewMarketQuotes = mapOf(
     "^IXIC" to TodayMarketQuote("^IXIC", 22_384.47, 22_310.25, "USD", previewMarketTime,
         listOf(22_120.0, 22_180.0, 22_160.0, 22_260.0, 22_230.0, 22_290.0, 22_270.0, 22_384.47)),
 )
-private val previewTeamGames = mapOf(
-    TodayTeam.BREWERS to TodayNextGame(TodayTeam.BREWERS, "Padres",
-        Instant.parse("2026-10-04T00:30:00Z"), true, true, null, null),
-    TodayTeam.PACKERS to TodayNextGame(TodayTeam.PACKERS, "Buccaneers",
-        Instant.parse("2026-10-04T17:00:00Z"), false, true, null, null),
-    TodayTeam.INDIANA_FOOTBALL to TodayNextGame(TodayTeam.INDIANA_FOOTBALL, "Rutgers",
-        Instant.parse("2026-10-03T19:00:00Z"), false, true, null, null),
+private val previewTeamSnapshots = mapOf(
+    TodayTeam.BREWERS to TodayTeamSnapshot("89-73", TodayNextGame(TodayTeam.BREWERS, "Padres",
+        Instant.parse("2026-10-04T00:30:00Z"), true, true, null, null)),
+    TodayTeam.PACKERS to TodayTeamSnapshot("3-1", TodayNextGame(TodayTeam.PACKERS, "Buccaneers",
+        Instant.parse("2026-10-04T17:00:00Z"), false, true, null, null)),
+    TodayTeam.INDIANA_FOOTBALL to TodayTeamSnapshot("4-0", TodayNextGame(TodayTeam.INDIANA_FOOTBALL, "Rutgers",
+        Instant.parse("2026-10-03T19:00:00Z"), false, true, null, null)),
 )
 
 @PreviewTest
@@ -57,7 +57,7 @@ private fun TodayWorkspacePreview(scrollOffset: Int = 0) {
             previewWeather = TodayWeather("Madison, Wisconsin", 64, 2, 7, 0),
             previewDate = LocalDate.of(2026, 10, 1),
             previewMarketQuotes = previewMarketQuotes,
-            previewTeamGames = previewTeamGames,
+            previewTeamSnapshots = previewTeamSnapshots,
             previewScrollOffset = scrollOffset,
         )
     } }
@@ -99,10 +99,10 @@ fun TodayDetailsScreenshots() {
     DraftingRoom5Theme { TodayTheme {
         Column(Modifier.fillMaxSize().background(TodayBackground).verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(34.dp)) {
-            TodayMarketsEditorial(listOf("AAPL", "^IXIC"), previewMarketQuotes, onOpen = {})
             TodayTeamsEditorial(listOf(TodayTeam.INDIANA_FOOTBALL, TodayTeam.INDIANA_BASKETBALL) +
                 TodayTeam.entries.filter { it != TodayTeam.INDIANA_FOOTBALL && it != TodayTeam.INDIANA_BASKETBALL },
-                previewTeamGames, onOpen = {})
+                previewTeamSnapshots, onOpen = {})
+            TodayMarketsEditorial(listOf("AAPL", "^IXIC"), previewMarketQuotes, onOpen = {})
         }
     } }
 }

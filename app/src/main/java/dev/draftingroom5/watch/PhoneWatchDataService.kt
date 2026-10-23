@@ -318,7 +318,7 @@ class PhoneWatchDataService : WearableListenerService() {
                     quote?.points ?: old?.points.orEmpty())
             },
             games = teams.mapIndexed { index, team ->
-                val game = games[index]
+                val game = games[index]?.nextGame
                 val old = base.games.firstOrNull { it.team == team.displayName }
                 WatchTodayGame(team.displayName, game?.opponent ?: old?.opponent,
                     game?.startsAt?.toEpochMilli() ?: old?.startsAtMillis,
