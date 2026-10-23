@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,9 +37,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +59,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -157,6 +163,7 @@ internal fun RunSessionScreen(
     var confirmFinish by remember { mutableStateOf(reviewConfirmFinish) }
     var message by remember { mutableStateOf<String?>(null) }
     var recenterTick by remember { mutableIntStateOf(0) }
+    var controlsHeightPx by remember { mutableIntStateOf(0) }
     LaunchedEffect(session.id, reviewNow) {
         if (reviewNow == null) while (true) { now = System.currentTimeMillis(); delay(500) }
     }
@@ -208,10 +215,13 @@ internal fun RunSessionScreen(
         },
         containerColor = Color.Transparent,
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
-            if (treadmill) Box(Modifier.fillMaxSize().background(AppBackgroundDeep),
-                contentAlignment = Alignment.Center) {
-                Text("TREADMILL · INDOOR RUN", color = AppMint, style = MaterialTheme.typography.labelLarge)
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
+            val controlsHeight = with(LocalDensity.current) { controlsHeightPx.toDp() }
+            if (treadmill) Box(Modifier.fillMaxWidth().height((maxHeight - controlsHeight).coerceAtLeast(0.dp))) {
+                Image(painterResource(R.drawable.run_treadmill_session), null,
+                    Modifier.fillMaxSize(), alignment = Alignment.BottomCenter, contentScale = ContentScale.Crop)
+                Text("TREADMILL · INDOOR RUN", Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
+                    color = AppMint, style = MaterialTheme.typography.labelLarge)
             } else RunLiveMap(session, Modifier.fillMaxSize(), recenterTick)
             if (cue != null && (session.isRunning || complete)) {
                 Column(Modifier.fillMaxWidth().padding(14.dp).clip(RoundedCornerShape(18.dp))
@@ -247,7 +257,8 @@ internal fun RunSessionScreen(
                         .padding(10.dp), color = MaterialTheme.colorScheme.error)
                 if (!treadmill) Text("© OpenStreetMap contributors", Modifier.padding(start = 12.dp, bottom = 4.dp),
                     style = MaterialTheme.typography.labelSmall, color = Color.White)
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                Column(Modifier.fillMaxWidth().onSizeChanged { controlsHeightPx = it.height }
+                    .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                     .background(AppSurface).border(1.dp, AppBorder, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                     .padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Box(Modifier.align(Alignment.CenterHorizontally).width(42.dp).height(5.dp)
