@@ -61,7 +61,7 @@ dependencies {
         }
     }
     // Reevaluate SDK releases during weekly maintenance, including native API migrations.
-    implementation("com.plaid.link:sdk-core:6.3.0")
+    implementation("com.plaid.link:sdk-core:6.3.1")
     screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16") {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }
