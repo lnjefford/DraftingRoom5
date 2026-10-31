@@ -736,6 +736,7 @@ fun RunActiveScreenshots() {
 
 @PreviewTest
 @Preview(name = "Compact", widthDp = 320, heightDp = 800)
+@Preview(name = "Phone", widthDp = 360, heightDp = 800)
 @Preview(name = "Tall", widthDp = 412, heightDp = 1100)
 @Composable
 fun RunTreadmillScreenshots() {
@@ -744,7 +745,8 @@ fun RunTreadmillScreenshots() {
             RunInterval("run", RunIntervalKind.RUN, 600)), TREADMILL_ROUTE_ID))
     val session = RunSession("preview-indoor", OccurrenceKey("preview-schedule", java.time.LocalDate.parse("2026-09-29")),
         routine, null, 1_000, 0, 1_000, 0, emptyList())
-    DraftingRoom5Theme { RunSessionScreen(session, { true }, { true }, { true }, {}, reviewNow = 61_000) }
+    DraftingRoom5Theme { RunSessionScreen(session, { true }, { true }, { true }, {},
+        music = { SpotifyPreviewRow() }, reviewNow = 61_000) }
 }
 
 @PreviewTest

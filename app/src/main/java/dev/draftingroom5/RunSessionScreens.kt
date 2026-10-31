@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,11 +36,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -59,9 +58,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -70,6 +70,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.util.GeoPoint
+import kotlin.math.roundToInt
 
 @Composable
 internal fun RunStartScreen(
@@ -163,7 +164,6 @@ internal fun RunSessionScreen(
     var confirmFinish by remember { mutableStateOf(reviewConfirmFinish) }
     var message by remember { mutableStateOf<String?>(null) }
     var recenterTick by remember { mutableIntStateOf(0) }
-    var controlsHeightPx by remember { mutableIntStateOf(0) }
     LaunchedEffect(session.id, reviewNow) {
         if (reviewNow == null) while (true) { now = System.currentTimeMillis(); delay(500) }
     }
@@ -215,12 +215,25 @@ internal fun RunSessionScreen(
         },
         containerColor = Color.Transparent,
     ) { padding ->
-        BoxWithConstraints(Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep)) {
-            val controlsHeight = with(LocalDensity.current) { controlsHeightPx.toDp() }
-            if (treadmill) Box(Modifier.fillMaxWidth().height((maxHeight - controlsHeight).coerceAtLeast(0.dp))) {
-                Image(painterResource(R.drawable.run_treadmill_session), null,
-                    Modifier.fillMaxSize(), alignment = Alignment.BottomCenter, contentScale = ContentScale.Crop)
-                Text("TREADMILL · INDOOR RUN", Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
+        Layout(modifier = Modifier.fillMaxSize().padding(padding).background(AppBackgroundDeep), content = {
+            Box(Modifier.fillMaxSize()) {
+            if (treadmill) Box(Modifier.fillMaxSize()) {
+                val artwork = ImageBitmap.imageResource(R.drawable.run_treadmill_session)
+                Canvas(Modifier.fillMaxSize()) {
+                    if (size.height <= 0f) return@Canvas
+                    val aspect = size.width / size.height
+                    val sourceWidth = if (aspect < artwork.width.toFloat() / artwork.height)
+                        (artwork.height * aspect).roundToInt() else artwork.width
+                    val sourceHeight = if (aspect < artwork.width.toFloat() / artwork.height)
+                        artwork.height else (artwork.width / aspect).roundToInt()
+                    val sourceLeft = (artwork.width - sourceWidth) / 2
+                    val sourceTop = ((artwork.height * 0.47f).roundToInt() - sourceHeight / 2)
+                        .coerceIn(0, artwork.height - sourceHeight)
+                    drawImage(artwork, srcOffset = IntOffset(sourceLeft, sourceTop),
+                        srcSize = IntSize(sourceWidth, sourceHeight),
+                        dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()))
+                }
+                Text("TREADMILL · INDOOR RUN", Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
                     color = AppMint, style = MaterialTheme.typography.labelLarge)
             } else RunLiveMap(session, Modifier.fillMaxSize(), recenterTick)
             if (cue != null && (session.isRunning || complete)) {
@@ -243,7 +256,8 @@ internal fun RunSessionScreen(
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            }
+            Column(Modifier.fillMaxWidth()) {
                 if (!treadmill) Row(Modifier.fillMaxWidth().padding(end = 16.dp, bottom = 8.dp),
                     horizontalArrangement = Arrangement.End) {
                     IconButton(onClick = { recenterTick++ }, modifier = Modifier.size(52.dp)
@@ -257,7 +271,7 @@ internal fun RunSessionScreen(
                         .padding(10.dp), color = MaterialTheme.colorScheme.error)
                 if (!treadmill) Text("© OpenStreetMap contributors", Modifier.padding(start = 12.dp, bottom = 4.dp),
                     style = MaterialTheme.typography.labelSmall, color = Color.White)
-                Column(Modifier.fillMaxWidth().onSizeChanged { controlsHeightPx = it.height }
+                Column(Modifier.fillMaxWidth()
                     .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                     .background(AppSurface).border(1.dp, AppBorder, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                     .padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -315,6 +329,15 @@ internal fun RunSessionScreen(
                     }
                     message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
+            }
+        }) { measurables, constraints ->
+            val controls = measurables[1].measure(constraints.copy(minHeight = 0))
+            val backgroundHeight = if (treadmill) (constraints.maxHeight - controls.height).coerceAtLeast(0)
+                else constraints.maxHeight
+            val background = measurables[0].measure(Constraints.fixed(constraints.maxWidth, backgroundHeight))
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                background.place(0, 0)
+                controls.place(0, constraints.maxHeight - controls.height)
             }
         }
     }
