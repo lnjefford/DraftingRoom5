@@ -3,6 +3,7 @@ package dev.draftingroom5.wear
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import android.util.Log
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
@@ -11,6 +12,7 @@ import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import dev.draftingroom5.watch.WATCH_COMMAND_PATH_PREFIX
 import dev.draftingroom5.watch.WATCH_SNAPSHOT_PATH
+import dev.draftingroom5.watch.WATCH_SYNC_REQUEST_PATH
 import dev.draftingroom5.watch.WatchCommand
 import dev.draftingroom5.watch.WatchCommandType
 import dev.draftingroom5.watch.WatchSnapshot
@@ -28,11 +30,15 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
     private val appContext = context.applicationContext
     private val preferences = appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
     private val dataClient = Wearable.getDataClient(appContext)
+    private val nodeClient = Wearable.getNodeClient(appContext)
+    private val messageClient = Wearable.getMessageClient(appContext)
     private val snapshotWorker = java.util.concurrent.Executors.newSingleThreadExecutor()
     private var baseSnapshot: WatchSnapshot? = readSnapshot(preferences)
     private var pendingCommands: List<WatchCommand> = readCommands(preferences)
     private val mutableState = MutableStateFlow(projectPendingCommands(baseSnapshot, pendingCommands))
     val state: StateFlow<WatchSnapshot?> = mutableState
+    private val mutableConnectionMessage = MutableStateFlow("Checking phone connection")
+    val connectionMessage: StateFlow<String> = mutableConnectionMessage
 
     fun start() {
         reload()
@@ -42,6 +48,7 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
         }
         resendPending()
         enqueue(WatchCommandType.SYNC)
+        requestPhoneSnapshot()
     }
 
     fun stop() {
@@ -51,9 +58,15 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
     fun startToday() = enqueue(WatchCommandType.START_TODAY)
     fun startWorkout(id: String) = enqueue(WatchCommandType.START_TODAY, todayWorkoutId = id)
 
-    fun sync() = enqueue(WatchCommandType.SYNC)
+    fun sync() {
+        enqueue(WatchCommandType.SYNC)
+        requestPhoneSnapshot()
+    }
 
-    fun refreshToday() = enqueue(WatchCommandType.REFRESH_TODAY)
+    fun refreshToday() {
+        enqueue(WatchCommandType.REFRESH_TODAY)
+        requestPhoneSnapshot()
+    }
 
     fun completeSet(exerciseId: String, setNumber: Int) = enqueue(
         type = WatchCommandType.COMPLETE_SET,
@@ -74,6 +87,7 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
         pendingCommands = pendingCommands.filterNot { it.id in snapshot.acknowledgedCommandIds }
         persist()
         publish()
+        mutableConnectionMessage.value = "Connected to phone"
     }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
@@ -131,6 +145,26 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
 
     private fun resendPending() = synchronized(lock) { pendingCommands.forEach(::send) }
 
+    private fun requestPhoneSnapshot() {
+        nodeClient.connectedNodes.addOnSuccessListener { nodes ->
+            if (nodes.isEmpty()) {
+                mutableConnectionMessage.value = "No phone connection. Check pairing and app install."
+            } else {
+                mutableConnectionMessage.value = "Phone reachable. Waiting for data."
+                nodes.forEach { node ->
+                    messageClient.sendMessage(node.id, WATCH_SYNC_REQUEST_PATH, byteArrayOf())
+                        .addOnFailureListener { error ->
+                            Log.w(TAG, "Sync request to phone failed", error)
+                            mutableConnectionMessage.value = "Phone app not reachable. Check both app installs."
+                        }
+                }
+            }
+        }.addOnFailureListener { error ->
+            Log.w(TAG, "Could not find phone", error)
+            mutableConnectionMessage.value = "Could not check phone connection."
+        }
+    }
+
     private fun send(command: WatchCommand) {
         val request = PutDataRequest.create(WATCH_COMMAND_PATH_PREFIX + command.id)
             .setData(encodeWatchCommand(command))
@@ -156,6 +190,7 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
     }
 
     companion object {
+        private const val TAG = "WatchSyncRepository"
         private const val PREFERENCES = "watch_state"
         private const val SNAPSHOT = "snapshot"
         private const val COMMANDS = "commands"

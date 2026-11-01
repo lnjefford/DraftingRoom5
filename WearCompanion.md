@@ -46,6 +46,13 @@ The local timer deliberately does not rewrite the phone's elapsed-realtime timer
 
 Both APKs use the same application ID and release signature. Communication uses Google Play services' private Wear Data Layer:
 
+The installed phone and watch packages must have matching signing certificates.
+Install both from the same distribution source (both Google Play or both signed
+GitHub APKs); Play may sign its delivered packages with a different key from
+the GitHub release APKs. The watch's connecting screen reports whether it can
+see a phone node, and its Sync action sends a direct request as well as a
+buffered command.
+
 - The phone publishes a snapshot at `/draftingroom5/phone/snapshot`, including
   cached exercises and exact occurrence IDs for all today's guided workouts.
   Payloads above 90 KB use a Data Layer Asset, bounded at 16 MiB on receipt;

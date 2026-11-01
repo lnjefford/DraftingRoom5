@@ -7,6 +7,7 @@ const val WATCH_SNAPSHOT_PATH = "/draftingroom5/phone/snapshot"
 const val WATCH_SNAPSHOT_ASSET_KEY = "snapshot"
 const val MAX_WATCH_SNAPSHOT_BYTES = 16 * 1024 * 1024
 const val WATCH_COMMAND_PATH_PREFIX = "/draftingroom5/watch/command/"
+const val WATCH_SYNC_REQUEST_PATH = "/draftingroom5/watch/sync-request"
 const val WATCH_PROTOCOL_VERSION = 1
 
 enum class WatchWorkoutStatus { NONE, AVAILABLE, ACTIVE, READY_TO_FINISH, COMPLETE, ERROR }

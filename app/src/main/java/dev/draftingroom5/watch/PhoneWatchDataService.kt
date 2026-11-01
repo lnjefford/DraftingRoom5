@@ -6,6 +6,7 @@ import android.net.Uri
 import android.util.Log
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
@@ -42,6 +43,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /** Phone-side authority for the compact, private watch protocol. */
 class PhoneWatchDataService : WearableListenerService() {
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        if (messageEvent.path == WATCH_SYNC_REQUEST_PATH) {
+            runCatching { publishFromPhone() }
+                .onFailure { Log.w(TAG, "Watch sync request failed", it) }
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_PUBLISH) {
             Thread({

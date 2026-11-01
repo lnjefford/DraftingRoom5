@@ -179,6 +179,7 @@ private fun DraftingRoom5Watch(
 ) {
     val context = LocalContext.current
     val snapshot by repository.state.collectAsState()
+    val connectionMessage by repository.connectionMessage.collectAsState()
     val runCatalog by runRepository.catalog.collectAsState()
     val runCapture by runRecorder.capture.collectAsState()
     val pendingRuns by runRecorder.pendingCount.collectAsState()
@@ -320,7 +321,7 @@ private fun DraftingRoom5Watch(
                     },
                 )
             }
-            snapshot == null -> WatchHomeScreen("CONNECTING", "Open DraftingRoom5 on your phone", repository::sync,
+            snapshot == null -> WatchHomeScreen("CONNECTING", connectionMessage, repository::sync,
                 runCatalog != null, { runPicker = true })
             snapshot?.status == WatchWorkoutStatus.NONE -> TodayScreen(checkNotNull(snapshot), repository::refreshToday,
                 { startNativeWorkout(null) }, { runPicker = true }, runCatalog?.plans?.size ?: 0,
