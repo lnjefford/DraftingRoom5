@@ -8,7 +8,7 @@ The watch opens to a compact Today screen with weather, the followed stock with
 the greatest absolute percentage movement, and the earliest future game across
 followed teams. Stock and game taps open all followed items with matching light
 blue Back controls and two horizontal scroll lines. Both touch and rotary
-scrolling are supported. A rightward swipe opens Fitness with today's native run
+scrolling are supported. A leftward swipe opens Fitness with today's native run
 plans and unfinished guided workouts. Active activities take over until finished.
 The guided workout loop is:
 

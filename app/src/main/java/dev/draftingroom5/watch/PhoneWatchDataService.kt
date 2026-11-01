@@ -1,5 +1,7 @@
 package dev.draftingroom5.watch
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import com.google.android.gms.wearable.DataEvent
@@ -40,6 +42,43 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /** Phone-side authority for the compact, private watch protocol. */
 class PhoneWatchDataService : WearableListenerService() {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_PUBLISH) {
+            Thread({
+                try { publishFromPhone() }
+                catch (error: Exception) { Log.w(TAG, "Watch sync from phone failed", error) }
+                finally { stopSelf(startId) }
+            }, "watch-phone-sync").start()
+        }
+        return START_NOT_STICKY
+    }
+
+    private fun publishFromPhone() = synchronized(processLock) {
+        val client = Wearable.getDataClient(this)
+        val items = Tasks.await(client.getDataItems(Uri.parse("wear://*$WATCH_COMMAND_PATH_PREFIX"),
+            com.google.android.gms.wearable.DataClient.FILTER_PREFIX), 30, TimeUnit.SECONDS)
+        var foundCommand = false
+        try {
+            items.forEach { item ->
+                runCatching { decodeWatchCommand(checkNotNull(item.data)) }.onSuccess { command ->
+                    foundCommand = true
+                    process(command, item.uri)
+                }
+            }
+        } finally { items.release() }
+        if (!foundCommand) {
+            val today = localToday(readToday())
+            val snapshot = currentSnapshot(acknowledgedIds()).copy(today = today)
+            publishSnapshot(snapshot, null)
+            if (today != null && (today.updatedAtMillis == 0L ||
+                    System.currentTimeMillis() - today.updatedAtMillis >= TODAY_REFRESH_MILLIS)) {
+                runCatching { refreshToday(today) }
+                    .onFailure { Log.w(TAG, "Today briefing refresh failed", it) }
+                readToday()?.takeIf { it != today }?.let { publishSnapshot(snapshot.copy(today = it), null) }
+            }
+        }
+    }
+
     override fun onDataChanged(dataEvents: DataEventBuffer) {
         val commands = mutableListOf<Pair<WatchCommand, Uri>>()
         val runResults = mutableListOf<Pair<com.google.android.gms.wearable.DataItemAsset, String>>()
@@ -426,7 +465,11 @@ class PhoneWatchDataService : WearableListenerService() {
         getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit().putStringSet(ACKNOWLEDGED, retained).apply()
     }
 
-    private companion object {
+    companion object {
+        private const val ACTION_PUBLISH = "dev.draftingroom5.watch.PUBLISH"
+        fun requestPublish(context: Context) {
+            context.startService(Intent(context, PhoneWatchDataService::class.java).setAction(ACTION_PUBLISH))
+        }
         const val PREFERENCES = "watch_sync"
         const val ACKNOWLEDGED = "acknowledged_commands"
         const val TODAY_BRIEFING = "today_briefing"

@@ -2,6 +2,7 @@ package dev.draftingroom5.wear
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
@@ -36,6 +37,9 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
     fun start() {
         reload()
         dataClient.addListener(this)
+        dataClient.getDataItems(Uri.parse("wear://*$WATCH_SNAPSHOT_PATH")).addOnSuccessListener { items ->
+            try { items.forEach { acceptDataItem(it.freeze()) } } finally { items.release() }
+        }
         resendPending()
         enqueue(WatchCommandType.SYNC)
     }

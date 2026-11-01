@@ -178,6 +178,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         LivingIconWidgetProvider.refreshIfPresent(this)
+        dev.draftingroom5.watch.PhoneWatchDataService.requestPublish(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -271,6 +272,9 @@ private fun DraftingRoom5App(window: Window) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching { dev.draftingroom5.watch.publishWatchRunCatalog(context, appDocument) }
         }
+    }
+    LaunchedEffect(appDocument.generation) {
+        dev.draftingroom5.watch.PhoneWatchDataService.requestPublish(context)
     }
     val repositoryState by appRepository.state.collectAsState()
     var documentError by remember { mutableStateOf<String?>(

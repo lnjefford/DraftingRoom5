@@ -121,7 +121,7 @@ internal fun WatchTodayHub(snapshot: WatchSnapshot, catalog: WatchRunCatalog?, o
         if (detail != null) {
             HubDetail(checkNotNull(detail), briefing, scale, previewScroll) { detail = null }
         } else {
-            HorizontalPager(pager, reverseLayout = true, modifier = Modifier.fillMaxSize()) { page ->
+            HorizontalPager(pager, modifier = Modifier.fillMaxSize()) { page ->
                 Box(Modifier.fillMaxSize()) {
                     if (page == 0) HubSummary(briefing, scale, hour, clock,
                         { detail = WatchTodayDetail.STOCKS }, { detail = WatchTodayDetail.GAMES }, onSync)
@@ -239,14 +239,6 @@ private fun BoxScope.HubSummary(today: WatchTodayBriefing?, s: Float, hour: Int,
     val game = nextWatchGame(today?.games.orEmpty(), now)
     Column(Modifier.align(Alignment.TopCenter).padding(top=(116*s).dp).width((142*s).dp),
         verticalArrangement=Arrangement.spacedBy((4*s).dp)) {
-        HubGlass(Modifier.fillMaxWidth().height((23*s).dp).clickable(onClick=onStocks,role=Role.Button)) {
-            Row(Modifier.fillMaxSize().padding(horizontal=(9*s).dp), verticalAlignment=Alignment.CenterVertically,
-                horizontalArrangement=Arrangement.spacedBy((5*s).dp)) {
-                HubText(stock?.symbol ?: "Your stocks", 10*s, HubIvory, bold=true)
-                HubText(percent(stock?.changePercent),10*s, movementColor(stock?.changePercent),bold=true)
-                Sparkline(stock?.points.orEmpty(), movementColor(stock?.changePercent),Modifier.weight(1f).height((10*s).dp))
-            }
-        }
         HubGlass(Modifier.fillMaxWidth().height((25*s).dp).clickable(onClick=onGames,role=Role.Button)) {
             Row(Modifier.fillMaxSize().padding(horizontal=(8*s).dp), verticalAlignment=Alignment.CenterVertically,
                 horizontalArrangement=Arrangement.spacedBy((5*s).dp)) {
@@ -259,6 +251,14 @@ private fun BoxScope.HubSummary(today: WatchTodayBriefing?, s: Float, hour: Int,
                         7.5f*s,HubIvory,bold=true,align=TextAlign.Start)
                     HubText(gameTime(game?.startsAtMillis).uppercase(),7*s,HubSecondary,align=TextAlign.Start)
                 }
+            }
+        }
+        HubGlass(Modifier.fillMaxWidth().height((23*s).dp).clickable(onClick=onStocks,role=Role.Button)) {
+            Row(Modifier.fillMaxSize().padding(horizontal=(9*s).dp), verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy((5*s).dp)) {
+                HubText(stock?.symbol ?: "Your stocks", 10*s, HubIvory, bold=true)
+                HubText(percent(stock?.changePercent),10*s, movementColor(stock?.changePercent),bold=true)
+                Sparkline(stock?.points.orEmpty(), movementColor(stock?.changePercent),Modifier.weight(1f).height((10*s).dp))
             }
         }
     }
