@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WatchFace width="450" height="450">
+    <Metadata key="CLOCK_TYPE" value="ANALOG" />
+    <Metadata key="PREVIEW_TIME" value="16:35:25" />
+    <UserConfigurations>
+        <ColorConfiguration id="accent" displayName="accent_label" defaultValue="mint">
+            <ColorOption id="mint" displayName="accent_mint" colors="#FF69E6CA" />
+            <ColorOption id="sky" displayName="accent_sky" colors="#FF8DCDF5" />
+            <ColorOption id="gold" displayName="accent_gold" colors="#FFF5CD77" />
+        </ColorConfiguration>
+    </UserConfigurations>
+    <Scene>
+        <PartDraw x="0" y="0" width="450" height="450">
+            <Ellipse x="0" y="0" width="450" height="450"><Fill color="#FF05090B" /></Ellipse>
+            <Ellipse x="9" y="9" width="432" height="432"><Stroke color="#FF303A3D" thickness="2" /></Ellipse>
+            <Line startX="225.00" startY="28.00" endX="225.00" endY="16.00"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="246.32" startY="22.12" endX="246.85" endY="17.14"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="267.41" startY="25.46" endX="268.45" endY="20.57"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="288.04" startY="30.98" endX="289.58" endY="26.23"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="307.97" startY="38.64" endX="310.01" endY="34.07"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="323.50" startY="54.39" endX="329.50" endY="44.00"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="344.91" startY="59.96" endX="347.85" endY="55.92"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="361.50" startY="73.40" endX="364.85" endY="69.68"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="376.60" startY="88.50" endX="380.32" endY="85.15"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="390.04" startY="105.09" endX="394.08" endY="102.15"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="395.61" startY="126.50" endX="406.00" endY="120.50"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="411.36" startY="142.03" endX="415.93" endY="139.99"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="419.02" startY="161.96" endX="423.77" endY="160.42"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="424.54" startY="182.59" endX="429.43" endY="181.55"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="427.88" startY="203.68" endX="432.86" endY="203.15"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="422.00" startY="225.00" endX="434.00" endY="225.00"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="427.88" startY="246.32" endX="432.86" endY="246.85"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="424.54" startY="267.41" endX="429.43" endY="268.45"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="419.02" startY="288.04" endX="423.77" endY="289.58"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="411.36" startY="307.97" endX="415.93" endY="310.01"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="395.61" startY="323.50" endX="406.00" endY="329.50"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="390.04" startY="344.91" endX="394.08" endY="347.85"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="376.60" startY="361.50" endX="380.32" endY="364.85"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="361.50" startY="376.60" endX="364.85" endY="380.32"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="344.91" startY="390.04" endX="347.85" endY="394.08"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="323.50" startY="395.61" endX="329.50" endY="406.00"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="307.97" startY="411.36" endX="310.01" endY="415.93"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="288.04" startY="419.02" endX="289.58" endY="423.77"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="267.41" startY="424.54" endX="268.45" endY="429.43"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="246.32" startY="427.88" endX="246.85" endY="432.86"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="225.00" startY="422.00" endX="225.00" endY="434.00"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="203.68" startY="427.88" endX="203.15" endY="432.86"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="182.59" startY="424.54" endX="181.55" endY="429.43"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="161.96" startY="419.02" endX="160.42" endY="423.77"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="142.03" startY="411.36" endX="139.99" endY="415.93"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="126.50" startY="395.61" endX="120.50" endY="406.00"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="105.09" startY="390.04" endX="102.15" endY="394.08"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="88.50" startY="376.60" endX="85.15" endY="380.32"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="73.40" startY="361.50" endX="69.68" endY="364.85"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="59.96" startY="344.91" endX="55.92" endY="347.85"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="54.39" startY="323.50" endX="44.00" endY="329.50"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="38.64" startY="307.97" endX="34.07" endY="310.01"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="30.98" startY="288.04" endX="26.23" endY="289.58"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="25.46" startY="267.41" endX="20.57" endY="268.45"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="22.12" startY="246.32" endX="17.14" endY="246.85"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="28.00" startY="225.00" endX="16.00" endY="225.00"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="22.12" startY="203.68" endX="17.14" endY="203.15"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="25.46" startY="182.59" endX="20.57" endY="181.55"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="30.98" startY="161.96" endX="26.23" endY="160.42"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="38.64" startY="142.03" endX="34.07" endY="139.99"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="54.39" startY="126.50" endX="44.00" endY="120.50"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="59.96" startY="105.09" endX="55.92" endY="102.15"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="73.40" startY="88.50" endX="69.68" endY="85.15"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="88.50" startY="73.40" endX="85.15" endY="69.68"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="105.09" startY="59.96" endX="102.15" endY="55.92"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="126.50" startY="54.39" endX="120.50" endY="44.00"><Stroke color="#FFE8E8E8" thickness="3" cap="ROUND" /></Line>
+            <Line startX="142.03" startY="38.64" endX="139.99" endY="34.07"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="161.96" startY="30.98" endX="160.42" endY="26.23"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="182.59" startY="25.46" endX="181.55" endY="20.57"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+            <Line startX="203.68" startY="22.12" endX="203.15" endY="17.14"><Stroke color="#FF454C50" thickness="1.2" cap="ROUND" /></Line>
+        </PartDraw>
+        <PartText x="291" y="51" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">1</Font></Text></PartText>
+        <PartText x="355" y="115" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">2</Font></Text></PartText>
+        <PartText x="378" y="202" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">3</Font></Text></PartText>
+        <PartText x="355" y="289" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">4</Font></Text></PartText>
+        <PartText x="291" y="353" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">5</Font></Text></PartText>
+        <PartText x="204" y="376" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">6</Font></Text></PartText>
+        <PartText x="117" y="353" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">7</Font></Text></PartText>
+        <PartText x="53" y="289" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">8</Font></Text></PartText>
+        <PartText x="30" y="202" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">9</Font></Text></PartText>
+        <PartText x="53" y="115" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">10</Font></Text></PartText>
+        <PartText x="117" y="51" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">11</Font></Text></PartText>
+        <PartText x="204" y="28" width="42" height="46"><Variant mode="AMBIENT" target="alpha" value="155" /><Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFF6F6F6">12</Font></Text></PartText>
+        <PartAnimatedImage x="111" y="143" width="54" height="54">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <AnimationController play="ON_VISIBLE" repeat="FALSE" beforePlaying="THUMBNAIL" afterPlaying="THUMBNAIL" />
+            <SequenceImages thumbnail="weather_frame_0">
+                <Image resource="weather_frame_0" />
+                <Image resource="weather_frame_0" />
+                <Image resource="weather_frame_0" />
+                <Image resource="weather_frame_0" />
+                <Image resource="weather_frame_1" />
+                <Image resource="weather_frame_1" />
+                <Image resource="weather_frame_1" />
+                <Image resource="weather_frame_1" />
+                <Image resource="weather_frame_2" />
+                <Image resource="weather_frame_2" />
+                <Image resource="weather_frame_2" />
+                <Image resource="weather_frame_2" />
+                <Image resource="weather_frame_3" />
+                <Image resource="weather_frame_3" />
+                <Image resource="weather_frame_3" />
+                <Image resource="weather_frame_3" />
+                <Image resource="weather_frame_4" />
+                <Image resource="weather_frame_4" />
+                <Image resource="weather_frame_4" />
+                <Image resource="weather_frame_4" />
+                <Image resource="weather_frame_5" />
+                <Image resource="weather_frame_5" />
+                <Image resource="weather_frame_5" />
+                <Image resource="weather_frame_5" />
+            </SequenceImages>
+            <Thumbnail resource="weather_frame_0" />
+        </PartAnimatedImage>
+        <PartText x="72" y="238" width="132" height="26">
+            <Text><Font family="SYNC_TO_DEVICE" size="15" color="#FFB8C8CC">WEATHER</Font></Text>
+        </PartText>
+        <PartText x="246" y="238" width="132" height="26">
+            <Variant mode="AMBIENT" target="alpha" value="155" />
+            <Text><Font family="SYNC_TO_DEVICE" size="15" color="[CONFIGURATION.accent]">STAND</Font></Text>
+        </PartText>
+        <ComplicationSlot slotId="1" x="72" y="124" width="132" height="132"
+            supportedTypes="SHORT_TEXT EMPTY" displayName="weather_slot">
+            <BoundingOval x="0" y="0" width="132" height="132" />
+            <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY"
+                primaryProvider="dev.draftingroom5/dev.draftingroom5.wear.WeatherComplicationService" primaryProviderType="SHORT_TEXT" />
+            <Complication type="SHORT_TEXT">
+                <PartText x="6" y="61" width="120" height="50">
+                    <Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFFFFFFF"><Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY">
+                <PartText x="6" y="62" width="120" height="42">
+                    <Text><Font family="SYNC_TO_DEVICE" size="16" color="#FF7B8888">--</Font></Text>
+                </PartText>
+            </Complication>
+        </ComplicationSlot>
+        <ComplicationSlot slotId="2" x="246" y="124" width="132" height="132"
+            supportedTypes="SHORT_TEXT EMPTY" displayName="stand_slot">
+            <BoundingOval x="0" y="0" width="132" height="132" />
+            <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY"
+                primaryProvider="dev.draftingroom5/dev.draftingroom5.wear.StandComplicationService" primaryProviderType="SHORT_TEXT" />
+            <Complication type="SHORT_TEXT">
+                <PartText x="6" y="61" width="120" height="50">
+                    <Text><Font family="SYNC_TO_DEVICE" size="30" color="#FFFFFFFF"><Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template></Font></Text>
+                </PartText>
+            </Complication>
+            <Complication type="EMPTY">
+                <PartText x="6" y="62" width="120" height="42">
+                    <Text><Font family="SYNC_TO_DEVICE" size="16" color="#FF7B8888">--</Font></Text>
+                </PartText>
+            </Complication>
+        </ComplicationSlot>
+        <PartText x="175" y="346" width="100" height="48">
+            <Text><Font family="SYNC_TO_DEVICE" size="28" color="#FFF6F6F6"><Template><![CDATA[%s %d]]><Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template></Font></Text>
+        </PartText>
+        <AnalogClock x="0" y="0" width="450" height="450">
+            <HourHand resource="hour" x="214" y="83" width="22" height="170" pivotX="0.5" pivotY="0.835" tintColor="[CONFIGURATION.accent]">
+                <Variant mode="AMBIENT" target="alpha" value="155" />
+            </HourHand>
+            <MinuteHand resource="minute" x="218" y="48" width="14" height="210" pivotX="0.5" pivotY="0.843" />
+            <SecondHand resource="second" x="222" y="39" width="5" height="220" pivotX="0.5" pivotY="0.845" tintColor="[CONFIGURATION.accent]">
+                <Variant mode="AMBIENT" target="alpha" value="0" />
+            </SecondHand>
+        </AnalogClock>
+    </Scene>
+</WatchFace>

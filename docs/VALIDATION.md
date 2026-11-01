@@ -64,6 +64,10 @@ refreshing. Never accept reference changes solely to make validation green.
   assembly.
 - Kotlin files containing Compose UI or in-app visual resources: `Changed`
   adds that module's screenshot validation.
+- Watch Face Format files in `face/`: `Changed` runs face lint and APK
+  assembly. Validate `face/src/main/res/raw/watchface.xml` with Google's
+  `wff-validator.jar` version 1 before tagging; the release workflow repeats
+  that schema check. The face is a separate code-free package.
 - Shared protocol, root Gradle, or cross-module changes: use `Commit`, or
   `Changed -Scope All` during iteration.
 - Broad UI changes or screenshot-tooling changes: use `Release`.

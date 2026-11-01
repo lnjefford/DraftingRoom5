@@ -6,7 +6,11 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-    <queries><package android:name="com.spotify.music" /></queries>
+    <queries>
+        <package android:name="com.spotify.music" />
+        <package android:name="com.google.android.apps.weather" />
+        <package android:name="com.google.android.wearable.weather" />
+    </queries>
 
     <application
         android:allowBackup="false"
@@ -42,6 +46,27 @@
         </service>
         <service android:name=".WatchRunService" android:exported="false"
             android:foregroundServiceType="location" />
+        <service android:name=".WeatherComplicationService" android:exported="true"
+            android:label="DraftingRoom5 weather" android:icon="@mipmap/ic_launcher"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" /></intent-filter>
+            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT" />
+            <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="300" />
+        </service>
+        <service android:name=".StandComplicationService" android:exported="true"
+            android:label="DraftingRoom5 stand reminder" android:icon="@mipmap/ic_launcher"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" /></intent-filter>
+            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT" />
+            <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="300" />
+        </service>
+        <activity android:name=".StandResetActivity" android:exported="false" />
+        <activity android:name=".StandScheduleActivity" android:exported="true" android:label="Stand hours">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <service android:name=".WatchSpotifyNotificationListener" android:exported="true"
             android:label="DraftingRoom5 music status"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">

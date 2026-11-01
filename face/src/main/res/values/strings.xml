@@ -1,0 +1,8 @@
+<resources>
+    <string name="weather_slot">Weather</string>
+    <string name="stand_slot">Stand reminder</string>
+    <string name="accent_label">Accent color</string>
+    <string name="accent_mint">Mint</string>
+    <string name="accent_sky">Sky blue</string>
+    <string name="accent_gold">Sun gold</string>
+</resources>

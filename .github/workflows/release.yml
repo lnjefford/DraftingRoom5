@@ -18,6 +18,12 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
+      - name: Validate Watch Face Format
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/google/watchface/releases/download/latest/wff-validator.jar \
+            --output "$RUNNER_TEMP/wff-validator.jar"
+          java -jar "$RUNNER_TEMP/wff-validator.jar" 1 face/src/main/res/raw/watchface.xml
       - name: Restore persistent signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -40,13 +46,14 @@ jobs:
           PHONE_CODE=$((BASE_CODE * 10))
           WEAR_CODE=$((BASE_CODE * 10 + 1))
           (( WEAR_CODE <= 2100000000 )) || { echo "Calculated version codes exceed Google Play's limit"; exit 1; }
-          ./gradlew :app:assembleRelease :wear:assembleRelease :app:bundlePlay :wear:bundlePlay \
+          ./gradlew :app:assembleRelease :wear:assembleRelease :face:assembleRelease :app:bundlePlay :wear:bundlePlay \
             -PappVersionName="$VERSION" -PphoneVersionCode="$PHONE_CODE" -PwearVersionCode="$WEAR_CODE"
           PLAY_MANIFEST=app/build/intermediates/bundle_manifest/play/processApplicationManifestPlayForBundle/AndroidManifest.xml
           ! grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' "$PLAY_MANIFEST"
           ! grep -q 'dev.draftingroom5.updates' "$PLAY_MANIFEST"
           cp app/build/outputs/apk/release/app-release.apk DraftingRoom5.apk
           cp wear/build/outputs/apk/release/wear-release.apk DraftingRoom5-Wear.apk
+          cp face/build/outputs/apk/release/face-release.apk DraftingRoom5-Face.apk
           cp app/build/outputs/bundle/play/app-play.aab DraftingRoom5-Play.aab
           cp wear/build/outputs/bundle/play/wear-play.aab DraftingRoom5-Wear-Play.aab
       - name: Publish GitHub release
@@ -56,6 +63,7 @@ jobs:
           files: |
             DraftingRoom5.apk
             DraftingRoom5-Wear.apk
+            DraftingRoom5-Face.apk
             DraftingRoom5-Play.aab
             DraftingRoom5-Wear-Play.aab
       - name: Publish phone bundle to Google Play internal testing

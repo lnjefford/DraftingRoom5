@@ -87,6 +87,7 @@ internal class WatchSyncRepository private constructor(context: Context) : DataC
         pendingCommands = pendingCommands.filterNot { it.id in snapshot.acknowledgedCommandIds }
         persist()
         publish()
+        updateWeatherComplication(appContext)
         mutableConnectionMessage.value = "Connected to phone"
     }
 

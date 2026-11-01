@@ -56,3 +56,4 @@ gradle.beforeProject {
 rootProject.name = "DraftingRoom5"
 include(":app")
 include(":wear")
+include(":face")

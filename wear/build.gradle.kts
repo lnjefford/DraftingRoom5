@@ -13,8 +13,8 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 30
         targetSdk = 37
-        versionCode = providers.gradleProperty("wearVersionCode").orElse("290301").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.29.28").get()
+        versionCode = providers.gradleProperty("wearVersionCode").orElse("290311").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.29.29").get()
     }
 
     signingConfigs {
@@ -62,6 +62,7 @@ dependencies {
     implementation("androidx.wear:wear:1.4.0")
     implementation(libs.androidx.wear.compose.material3)
     implementation(libs.google.play.services.wearable)
+    implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.3.0")
     testImplementation(libs.junit)
     testImplementation(libs.json)
     screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16") {

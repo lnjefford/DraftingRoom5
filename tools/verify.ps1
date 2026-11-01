@@ -2,7 +2,7 @@
 param(
     [ValidateSet('Fast', 'Changed', 'Commit', 'Release')]
     [string]$Tier = 'Fast',
-    [ValidateSet('Auto', 'App', 'Wear', 'All')]
+    [ValidateSet('Auto', 'App', 'Wear', 'Face', 'All')]
     [string]$Scope = 'Auto',
     [string[]]$Tests = @(),
     [string[]]$ScreenshotTests = @(),
@@ -86,7 +86,7 @@ function Get-ChangedFiles {
 }
 
 function Test-VersionMetadataOnly([string]$Path) {
-    if ($Path -notin @('app/build.gradle.kts', 'wear/build.gradle.kts')) { return $false }
+    if ($Path -notin @('app/build.gradle.kts', 'wear/build.gradle.kts', 'face/build.gradle.kts')) { return $false }
     $changedLines = @(& git -C $repositoryRoot diff --unified=0 HEAD -- $Path |
         Where-Object { $_ -match '^[+-]' -and $_ -notmatch '^(---|\+\+\+)' } |
         ForEach-Object { $_.Substring(1).Trim() })
@@ -161,6 +161,7 @@ function Get-ChangedPlan([string[]]$Paths) {
 
     $needsApp = $Scope -in @('App', 'All')
     $needsWear = $Scope -in @('Wear', 'All')
+    $needsFace = $Scope -in @('Face', 'All')
     $runAppTests = $Scope -in @('App', 'All')
     $runWearTests = $Scope -in @('Wear', 'All')
     $appScreenshots = $false
@@ -184,9 +185,15 @@ function Get-ChangedPlan([string[]]$Paths) {
                 if (Test-VisualPath $path) { $wearScreenshots = $true }
                 continue
             }
+            if ($path -like 'face/*') {
+                $needsFace = $true
+                $toolingOnly = $false
+                continue
+            }
             if ($path -like 'shared/*') {
                 $needsApp = $true
                 $needsWear = $true
+                $needsFace = $true
                 $runAppTests = $true
                 $runWearTests = $true
                 $toolingOnly = $false
@@ -195,6 +202,7 @@ function Get-ChangedPlan([string[]]$Paths) {
             if ($path -match '^(build\.gradle|settings\.gradle|gradle\.properties|gradle/|buildSrc/)') {
                 $needsApp = $true
                 $needsWear = $true
+                $needsFace = $true
                 $runAppTests = $true
                 $runWearTests = $true
                 $toolingOnly = $false
@@ -203,6 +211,7 @@ function Get-ChangedPlan([string[]]$Paths) {
             if ($path -notmatch '^(\.github/|docs/|tools/|AGENTS\.md$|README)') {
                 $needsApp = $true
                 $needsWear = $true
+                $needsFace = $true
                 $runAppTests = $true
                 $runWearTests = $true
                 $toolingOnly = $false
@@ -213,6 +222,7 @@ function Get-ChangedPlan([string[]]$Paths) {
     return [pscustomobject]@{
         NeedsApp = $needsApp
         NeedsWear = $needsWear
+        NeedsFace = $needsFace
         RunAppTests = $runAppTests
         RunWearTests = $runWearTests
         AppScreenshots = $appScreenshots
@@ -225,6 +235,7 @@ function Write-ChangedPlan([string[]]$Paths, [object]$Plan) {
     $scopeNames = @()
     if ($Plan.NeedsApp) { $scopeNames += 'app' }
     if ($Plan.NeedsWear) { $scopeNames += 'wear' }
+    if ($Plan.NeedsFace) { $scopeNames += 'face' }
     if ($Plan.ToolingOnly) { $scopeNames += 'tooling' }
     Write-Host "`n[Plan] $($Paths.Count) changed file(s); scope: $($scopeNames -join ', ')"
     Write-Host "[Plan] app tests=$($Plan.RunAppTests), wear tests=$($Plan.RunWearTests), app screenshots=$($Plan.AppScreenshots), wear screenshots=$($Plan.WearScreenshots)"
@@ -273,6 +284,9 @@ function Invoke-ChangedValidation {
         if ($plan.WearScreenshots) {
             Invoke-GradleChecked 'Changed Wear screenshots' (Screenshot-Arguments ':wear:validateDebugScreenshotTest')
         }
+    }
+    if ($plan.NeedsFace) {
+        Invoke-GradleChecked 'Changed face lint and APK' @(':face:lintDebug', ':face:assembleDebug')
     }
 }
 
