@@ -20,5 +20,7 @@ off to pause the reminder.
 The face offers mint, sky blue, and sun gold accents in the watch face editor.
 The weather art makes one brief cloud-and-sun motion when the face becomes
 visible. Ambient mode hides the animation and second hand and dims the face.
-The separate face APK
-is attached to GitHub releases; it is not yet a Google Play listing.
+The separate face APK and signed Play app bundle are attached to GitHub releases.
+The face needs its own Play Console app and initial manual upload before the
+internal test can be distributed through Google Play. Listing copy and graphics
+are in `play/face/`.

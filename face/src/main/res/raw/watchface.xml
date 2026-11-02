@@ -156,8 +156,8 @@
                 </PartText>
             </Complication>
         </ComplicationSlot>
-        <PartText x="175" y="346" width="100" height="48">
-            <Text><Font family="SYNC_TO_DEVICE" size="28" color="#FFF6F6F6"><Template><![CDATA[%s %d]]><Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template></Font></Text>
+        <PartText x="166" y="310" width="118" height="42">
+            <Text><Font family="SYNC_TO_DEVICE" size="22" color="#FFF6F6F6"><Template><![CDATA[%s %d]]><Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template></Font></Text>
         </PartText>
         <AnalogClock x="0" y="0" width="450" height="450">
             <HourHand resource="hour" x="214" y="83" width="22" height="170" pivotX="0.5" pivotY="0.835" tintColor="[CONFIGURATION.accent]">

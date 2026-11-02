@@ -46,7 +46,7 @@ jobs:
           PHONE_CODE=$((BASE_CODE * 10))
           WEAR_CODE=$((BASE_CODE * 10 + 1))
           (( WEAR_CODE <= 2100000000 )) || { echo "Calculated version codes exceed Google Play's limit"; exit 1; }
-          ./gradlew :app:assembleRelease :wear:assembleRelease :face:assembleRelease :app:bundlePlay :wear:bundlePlay \
+          ./gradlew :app:assembleRelease :wear:assembleRelease :face:assembleRelease :face:bundleRelease :app:bundlePlay :wear:bundlePlay \
             -PappVersionName="$VERSION" -PphoneVersionCode="$PHONE_CODE" -PwearVersionCode="$WEAR_CODE"
           PLAY_MANIFEST=app/build/intermediates/bundle_manifest/play/processApplicationManifestPlayForBundle/AndroidManifest.xml
           ! grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' "$PLAY_MANIFEST"
@@ -54,6 +54,7 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk DraftingRoom5.apk
           cp wear/build/outputs/apk/release/wear-release.apk DraftingRoom5-Wear.apk
           cp face/build/outputs/apk/release/face-release.apk DraftingRoom5-Face.apk
+          cp face/build/outputs/bundle/release/face-release.aab DraftingRoom5-Face-Play.aab
           cp app/build/outputs/bundle/play/app-play.aab DraftingRoom5-Play.aab
           cp wear/build/outputs/bundle/play/wear-play.aab DraftingRoom5-Wear-Play.aab
       - name: Publish GitHub release
@@ -64,6 +65,7 @@ jobs:
             DraftingRoom5.apk
             DraftingRoom5-Wear.apk
             DraftingRoom5-Face.apk
+            DraftingRoom5-Face-Play.aab
             DraftingRoom5-Play.aab
             DraftingRoom5-Wear-Play.aab
       - name: Publish phone bundle to Google Play internal testing

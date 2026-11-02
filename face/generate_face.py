@@ -97,8 +97,8 @@ xml = f'''<?xml version="1.0" encoding="utf-8"?>
         </PartText>
 {weather}
 {stand}
-        <PartText x="175" y="346" width="100" height="48">
-            <Text><Font family="SYNC_TO_DEVICE" size="28" color="#FFF6F6F6"><Template><![CDATA[%s %d]]><Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template></Font></Text>
+        <PartText x="166" y="310" width="118" height="42">
+            <Text><Font family="SYNC_TO_DEVICE" size="22" color="#FFF6F6F6"><Template><![CDATA[%s %d]]><Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template></Font></Text>
         </PartText>
         <AnalogClock x="0" y="0" width="450" height="450">
             <HourHand resource="hour" x="214" y="83" width="22" height="170" pivotX="0.5" pivotY="0.835" tintColor="[CONFIGURATION.accent]">
@@ -170,7 +170,7 @@ def preview() -> None:
     text("WEATHER", 138, 251, 15, "#B8C8CC")
     text("08m", 312, 214, 30, "#FFFFFF")
     text("STAND", 312, 251, 15, "#69E6CA")
-    text("SUN 01", 225, 371, 28, "#F6F6F6")
+    text("SUN 01", 225, 332, 22, "#F6F6F6")
     for angle, length, width, color in ((137.5, 125, 22, "#69E6CA"), (210, 170, 14, "#FFFFFF"), (150, 188, 3, "#69E6CA")):
         radians = angle * pi / 180 - pi / 2
         draw.line((point(225, 225), point(225 + length * cos(radians), 225 + length * sin(radians))),

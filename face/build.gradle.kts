@@ -10,8 +10,8 @@ android {
         applicationId = "dev.draftingroom5.face"
         minSdk = 33
         targetSdk = 37
-        versionCode = providers.gradleProperty("wearVersionCode").orElse("290311").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.29.29").get()
+        versionCode = providers.gradleProperty("wearVersionCode").orElse("290321").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.29.30").get()
     }
 
     signingConfigs {
@@ -26,6 +26,14 @@ android {
         }
     }
     buildTypes {
-        getByName("release") { signingConfig = signingConfigs.getByName("distribution") }
+        getByName("debug") {
+            isMinifyEnabled = true
+            isShrinkResources = false
+        }
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("distribution")
+        }
     }
 }

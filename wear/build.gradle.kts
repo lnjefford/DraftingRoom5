@@ -13,8 +13,8 @@ android {
         applicationId = "dev.draftingroom5"
         minSdk = 30
         targetSdk = 37
-        versionCode = providers.gradleProperty("wearVersionCode").orElse("290311").get().toInt()
-        versionName = providers.gradleProperty("appVersionName").orElse("0.29.29").get()
+        versionCode = providers.gradleProperty("wearVersionCode").orElse("290321").get().toInt()
+        versionName = providers.gradleProperty("appVersionName").orElse("0.29.30").get()
     }
 
     signingConfigs {
