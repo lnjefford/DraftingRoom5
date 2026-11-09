@@ -65,7 +65,7 @@ dependencies {
     implementation("androidx.wear.watchface:watchface-complications-data-source-ktx:1.3.0")
     testImplementation(libs.junit)
     testImplementation(libs.json)
-    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16") {
+    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha17") {
         exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
     }
     screenshotTestImplementation(libs.androidx.compose.ui.tooling)
